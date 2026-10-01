@@ -1,0 +1,64 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+dist/
+**/dist/
+build/
+**/build/
+out/
+**/out/
+
+# Environment variables
+.env
+**/.env
+!.env.example
+**/.env.local
+**/.env.*.local
+
+# TypeScript
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+**/.DS_Store
+Thumbs.db
+
+# IDE / editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Prisma
+backend/prisma/migrations/*.sql.bak
+
+# Docker
+docker-compose.override.yml
+
+# Kubernetes secrets
+k8s/secrets/
+k8s/**/*-secret.yaml
+
+# Monitoring / data volumes
+monitoring/grafana/data/
+monitoring/prometheus/data/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+**/coverage/

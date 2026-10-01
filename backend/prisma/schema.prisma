@@ -1,0 +1,395 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Struttura {
+  id         String        @id
+  nome       String
+  citta      String
+  tipo       String
+  eliminato  Boolean       @default(false)
+  zone       Zona[]
+  oggetti    Oggetto[]
+  manutenzioni Manutenzione[]
+
+  @@map("strutture")
+}
+
+model Zona {
+  id           String     @id
+  strutturaId  String
+  struttura    Struttura  @relation(fields: [strutturaId], references: [id])
+  nome         String
+  tipo         String
+  camere       Camera[]
+  oggetti      Oggetto[]
+  manutenzioni Manutenzione[]
+
+  @@index([strutturaId])
+  @@map("zone")
+}
+
+model Camera {
+  id           String    @id
+  zonaId       String
+  zona         Zona      @relation(fields: [zonaId], references: [id])
+  numero       String
+  tipo         String
+  oggetti      Oggetto[]
+  manutenzioni Manutenzione[]
+
+  @@index([zonaId])
+  @@map("camere")
+}
+
+model Oggetto {
+  id             String    @id
+  strutturaId    String
+  struttura      Struttura @relation(fields: [strutturaId], references: [id])
+  zonaId         String?
+  zona           Zona?     @relation(fields: [zonaId], references: [id])
+  camereId       String?
+  camera         Camera?   @relation(fields: [camereId], references: [id])
+  nome           String
+  categoria      String
+  codiceCespite  String
+  condizione     String
+  ultimaVerifica DateTime?
+  manutenzioni   Manutenzione[]
+
+  @@index([strutturaId])
+  @@index([zonaId])
+  @@index([camereId])
+  @@map("oggetti")
+}
+
+model Manutenzione {
+  id               String    @id
+  tipo             String
+  strutturaId      String
+  struttura        Struttura @relation(fields: [strutturaId], references: [id])
+  zonaId           String?
+  zona             Zona?     @relation(fields: [zonaId], references: [id])
+  camereId         String?
+  camera           Camera?   @relation(fields: [camereId], references: [id])
+  oggettoId        String?
+  oggetto          Oggetto?  @relation(fields: [oggettoId], references: [id])
+  titolo           String
+  descrizione      String
+  priorita         String
+  stato            String
+  dataCreazione    DateTime
+  scadenza         DateTime
+  dataApprovazione DateTime?
+  assegnatoId      String?
+  assegnatoLibero  String?
+  ricorrenza       Json?
+  note             String?
+  notaChiusura     String?
+  foto             String[]
+
+  tempiRegistrati  TempoRegistrato[]
+  materiali        Materiale[]
+  storico          StoricoModifica[]
+
+  @@index([strutturaId])
+  @@index([stato])
+  @@map("manutenzioni")
+}
+
+model TempoRegistrato {
+  id              String       @id
+  manutenzioneId  String
+  manutenzione    Manutenzione @relation(fields: [manutenzioneId], references: [id], onDelete: Cascade)
+  manutentoreId   String
+  minuti          Int
+  data            DateTime
+  note            String?
+
+  @@index([manutenzioneId])
+  @@map("tempi_registrati")
+}
+
+model Materiale {
+  id              String       @id
+  manutenzioneId  String
+  manutenzione    Manutenzione @relation(fields: [manutenzioneId], references: [id], onDelete: Cascade)
+  nome            String
+  quantita        Int
+  costoUnitario   Decimal      @db.Decimal(10, 2)
+  note            String?
+  stato           String
+
+  @@index([manutenzioneId])
+  @@map("materiali")
+}
+
+model StoricoModifica {
+  id              String       @id
+  manutenzioneId  String
+  manutenzione    Manutenzione @relation(fields: [manutenzioneId], references: [id], onDelete: Cascade)
+  data            DateTime
+  utenteId        String
+  dettagli        String[]
+
+  @@index([manutenzioneId])
+  @@map("storico_modifiche")
+}
+
+model Ditta {
+  id                String     @id
+  ragioneSociale    String
+  piva              String
+  indirizzo         String?
+  telefono          String?
+  email             String?
+  referente         String?
+  specializzazioni  String[]
+  strutture         String[]
+  attivo            Boolean    @default(true)
+  dataFineContratto DateTime?
+  approvatoreId     String?
+  note              String?
+  // Tariffe per figura professionale, annidate come nel frontend
+  // (array di {id, figuraProfessionaleId, tariffaOraria, scadenza}):
+  // non è una relazione separata perché l'app non le gestisce come
+  // risorsa a sé stante.
+  tariffe           Json       @default("[]")
+
+  manutentori  Manutentore[]
+
+  @@map("ditte")
+}
+
+model Manutentore {
+  id                    String   @id
+  nome                  String
+  tipo                  String
+  dittaId               String?
+  ditta                 Ditta?   @relation(fields: [dittaId], references: [id])
+  visibilita            String
+  figuraProfessionaleId String?
+  figuraProfessionale   FiguraProfessionale? @relation(fields: [figuraProfessionaleId], references: [id])
+  telefono              String?
+  email                 String?
+  strutture             String[]
+  attivo                Boolean  @default(true)
+  note                  String?
+  sostitutoId           String?
+
+  @@index([dittaId])
+  @@map("manutentori")
+}
+
+model FiguraProfessionale {
+  id           String        @id
+  nome         String
+  manutentori  Manutentore[]
+
+  @@map("figure_professionali")
+}
+
+// App: Utenti e accessi (directory account/ruoli/sedi)
+// NB: questa è la persistenza per le SCHERMATE CRUD dell'app Utenti.
+// Il login/sessione/controllo permessi cross-app (UHAccounts) resta
+// su localStorage in ogni app — non è stato toccato.
+
+model UtentiAccount {
+  id           String  @id
+  nome         String
+  email        String
+  password     String
+  ruoloGlobale String
+  accessi      Json
+
+  @@map("utenti_accounts")
+}
+
+model UtentiRuolo {
+  id       String  @id
+  appId    String
+  nome     String
+  bloccato Boolean @default(false)
+  permessi Json
+
+  @@map("utenti_ruoli")
+}
+
+model UtentiSostituto {
+  id          String   @id
+  titolareId  String
+  appId       String
+  sostitutoId String
+  dataInizio  DateTime
+  dataFine    DateTime
+  note        String?
+
+  @@map("utenti_sostituti")
+}
+
+model UtentiSede {
+  id        String  @id
+  nome      String
+  tipo      String
+  citta     String?
+  indirizzo String?
+  attiva    Boolean @default(true)
+
+  @@map("utenti_sedi")
+}
+
+// App: Ticket IT
+
+model TicketStruttura {
+  id     String         @id
+  nome   String
+  utenti TicketUtente[]
+  ticket Ticket[]
+
+  @@map("ticket_strutture")
+}
+
+model TicketUtente {
+  id          String          @id
+  nome        String
+  email       String
+  strutturaId String
+  struttura   TicketStruttura @relation(fields: [strutturaId], references: [id])
+  reparto     String
+
+  @@index([strutturaId])
+  @@map("ticket_utenti")
+}
+
+model Ticket {
+  id            String          @id
+  strutturaId   String
+  struttura     TicketStruttura @relation(fields: [strutturaId], references: [id])
+  reparto       String
+  titolo        String
+  descrizione   String
+  categoria     String
+  priorita      String
+  stato         String
+  dataCreazione DateTime
+  scadenza      DateTime
+  richiedente   String?
+  note          String?
+  foto          String[]
+
+  @@index([strutturaId])
+  @@map("tickets")
+}
+
+// App: Baggy Locker (deposito bagagli)
+
+model LockerStruttura {
+  id             String          @id
+  sedeCentraleId String
+  nome           String
+  citta          String
+  attiva         Boolean         @default(true)
+  ordini         LockerOrdine[]
+  locali         LockerLocale[]
+  vendite        LockerVendita[]
+
+  @@map("locker_strutture")
+}
+
+model LockerOrdine {
+  id          String          @id
+  strutturaId String
+  struttura   LockerStruttura @relation(fields: [strutturaId], references: [id])
+  dataOrdine  DateTime
+  oraOrdine   String
+  inizio      DateTime
+  oraInizio   String
+  fine        DateTime
+  oraFine     String
+  prezzo      Decimal         @db.Decimal(10, 2)
+  stato       String
+  numArmadio  Int
+  tipologia   String
+  provenienza String
+
+  @@index([strutturaId])
+  @@map("locker_ordini")
+}
+
+model LockerLocale {
+  id          String          @id
+  strutturaId String
+  struttura   LockerStruttura @relation(fields: [strutturaId], references: [id])
+  nome        String
+  conteggi    Json
+
+  @@index([strutturaId])
+  @@map("locker_locali")
+}
+
+model LockerVendita {
+  id              String          @id
+  strutturaId     String
+  struttura       LockerStruttura @relation(fields: [strutturaId], references: [id])
+  data            DateTime
+  ora             String
+  prodotto        String
+  quantita        Int
+  prezzoUnitario  Decimal         @db.Decimal(10, 2)
+  metodoPagamento String
+
+  @@index([strutturaId])
+  @@map("locker_vendite")
+}
+
+// App: Vending Machine
+
+model VendingStruttura {
+  id             String            @id
+  sedeCentraleId String
+  nome           String
+  citta          String
+  attiva         Boolean           @default(true)
+  macchine       VendingMacchina[]
+  vendite        VendingVendita[]
+
+  @@map("vending_strutture")
+}
+
+model VendingMacchina {
+  id          String           @id
+  strutturaId String
+  struttura   VendingStruttura @relation(fields: [strutturaId], references: [id])
+  nome        String
+  tipo        String
+  attiva      Boolean          @default(true)
+  vendite     VendingVendita[]
+
+  @@index([strutturaId])
+  @@map("vending_macchine")
+}
+
+model VendingVendita {
+  id              String           @id
+  strutturaId     String
+  struttura       VendingStruttura @relation(fields: [strutturaId], references: [id])
+  macchinaId      String?
+  macchina        VendingMacchina? @relation(fields: [macchinaId], references: [id])
+  macchinaNome    String?
+  data            DateTime
+  ora             String
+  prodotto        String
+  quantita        Int
+  prezzoUnitario  Decimal          @db.Decimal(10, 2)
+  metodoPagamento String
+  stato           String
+
+  @@index([strutturaId])
+  @@index([macchinaId])
+  @@map("vending_vendite")
+}

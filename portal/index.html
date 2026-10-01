@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Urban Homy · Applicazioni</title>
+<link rel="icon" href="data:,">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+  html, body { height: 100%; margin: 0; background: #F3F0E8; font-family: 'Inter', sans-serif; }
+  .font-fraunces { font-family: 'Fraunces', serif; }
+</style>
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <div id="loginScreen" class="min-h-screen flex flex-col items-center justify-center px-4 py-16">
+    <div class="w-full max-w-sm">
+      <div class="text-center mb-8">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-[#1B2430] mb-4">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <h1 class="font-fraunces text-3xl font-semibold text-stone-900">Urban Homy</h1>
+        <p class="text-stone-500 mt-2 text-sm">Accedi per usare le applicazioni aziendali</p>
+      </div>
+
+      <form id="loginForm" class="bg-white border border-stone-200 rounded-2xl shadow-sm p-6">
+        <label class="block mb-3">
+          <span class="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Email</span>
+          <input id="loginEmail" type="email" required autocomplete="username"
+            class="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#C1622D]/40 focus:border-[#C1622D]"
+            placeholder="nome.cognome@urbanhomy.it" />
+        </label>
+        <label class="block mb-1">
+          <span class="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Password</span>
+          <input id="loginPassword" type="password" required autocomplete="current-password"
+            class="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#C1622D]/40 focus:border-[#C1622D]"
+            placeholder="••••••••" />
+        </label>
+        <div id="loginError" class="hidden text-xs font-medium text-rose-600 mt-2">Email o password non corrette.</div>
+        <button type="submit" class="w-full mt-4 bg-[#C1622D] hover:bg-[#a9531f] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
+          Accedi
+        </button>
+
+        <div class="flex items-center gap-3 my-4">
+          <div class="h-px bg-stone-200 flex-1"></div>
+          <span class="text-[11px] text-stone-400 uppercase tracking-wide">oppure</span>
+          <div class="h-px bg-stone-200 flex-1"></div>
+        </div>
+
+        <button type="button" id="msoLoginBtn" class="w-full flex items-center justify-center gap-2.5 bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
+          <svg width="16" height="16" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+          Accedi con Microsoft
+        </button>
+        <div id="msoConfigNote" class="hidden text-[11px] text-stone-400 mt-2 text-center">
+          SSO Microsoft non ancora configurato su questo portale.
+        </div>
+        <div id="msoError" class="hidden text-xs font-medium text-rose-600 mt-2"></div>
+      </form>
+
+      <p class="text-center text-[11px] text-stone-400 mt-5 leading-relaxed">
+        Il login è verificato su un database Postgres locale a scopo di sviluppo/demo, non ancora in produzione.<br>
+        Non inserire credenziali reali o riservate.
+      </p>
+    </div>
+  </div>
+
+  <!-- LAUNCHER -->
+  <div id="launcher" class="hidden min-h-screen flex flex-col items-center justify-center px-4 py-16">
+    <div class="w-full max-w-4xl">
+      <div class="flex items-center justify-end gap-4 mb-6 text-sm text-stone-500">
+        Connesso come <span id="utenteNome" class="font-semibold text-stone-700"></span>
+        <button id="logoutBtn" class="text-stone-400 hover:text-stone-700 font-medium underline underline-offset-2">Esci</button>
+      </div>
+
+      <div class="text-center mb-12">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-[#1B2430] mb-4">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <h1 class="font-fraunces text-3xl md:text-4xl font-semibold text-stone-900">Urban Homy</h1>
+        <p class="text-stone-500 mt-2">Applicazioni aziendali del gruppo</p>
+      </div>
+
+      <div id="cardGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <a id="cardUtenti" href="./utenti/" class="hidden group bg-white border border-stone-200 rounded-2xl shadow-sm p-6 flex flex-col gap-4 hover:border-[#5B4B9E]/60 hover:shadow-md transition">
+          <div class="w-12 h-12 rounded-lg bg-[#5B4B9E] flex items-center justify-center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+          </div>
+          <div>
+            <div class="font-fraunces text-lg font-semibold text-stone-900">Utenti e accessi</div>
+            <div class="text-sm text-stone-500 mt-1">Gestione degli utenti del portale, con ruoli e permessi personalizzati per ciascuna applicazione.</div>
+          </div>
+          <div class="text-sm font-semibold text-[#5B4B9E] flex items-center gap-1.5 mt-auto">
+            Apri applicazione
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-x-0.5 transition-transform"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+        </a>
+
+        <a id="cardManutenzioni" href="./manutenzioni/" class="hidden group bg-white border border-stone-200 rounded-2xl shadow-sm p-6 flex flex-col gap-4 hover:border-[#C1622D]/60 hover:shadow-md transition">
+          <div class="w-12 h-12 rounded-lg bg-[#C1622D] flex items-center justify-center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+          </div>
+          <div>
+            <div class="font-fraunces text-lg font-semibold text-stone-900">Manutenzioni</div>
+            <div class="text-sm text-stone-500 mt-1">Gestione interventi, censimento e manutentori delle strutture del gruppo.</div>
+          </div>
+          <div class="text-sm font-semibold text-[#C1622D] flex items-center gap-1.5 mt-auto">
+            Apri applicazione
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-x-0.5 transition-transform"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+        </a>
+
+        <a id="cardTicketIt" href="./ticket-it/" class="hidden group bg-white border border-stone-200 rounded-2xl shadow-sm p-6 flex flex-col gap-4 hover:border-[#2D6BC1]/60 hover:shadow-md transition">
+          <div class="w-12 h-12 rounded-lg bg-[#2D6BC1] flex items-center justify-center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/></svg>
+          </div>
+          <div>
+            <div class="font-fraunces text-lg font-semibold text-stone-900">Ticket</div>
+            <div class="text-sm text-stone-500 mt-1">Richieste di assistenza informatica: apertura, stato e gestione dei ticket.</div>
+          </div>
+          <div class="text-sm font-semibold text-[#2D6BC1] flex items-center gap-1.5 mt-auto">
+            Apri applicazione
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-x-0.5 transition-transform"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+        </a>
+
+        <a id="cardBaggyLocker" href="./locker/" class="hidden group bg-white border border-stone-200 rounded-2xl shadow-sm p-6 flex flex-col gap-4 hover:border-[#1E8E6E]/60 hover:shadow-md transition">
+          <div class="w-12 h-12 rounded-lg bg-[#1E8E6E] flex items-center justify-center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="8" width="14" height="13" rx="2"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/><line x1="9" y1="12" x2="9" y2="17"/><line x1="15" y1="12" x2="15" y2="17"/></svg>
+          </div>
+          <div>
+            <div class="font-fraunces text-lg font-semibold text-stone-900">Baggy Locker</div>
+            <div class="text-sm text-stone-500 mt-1">Analisi incassi del deposito bagagli — Padova attivo, Trieste in arrivo.</div>
+          </div>
+          <div class="text-sm font-semibold text-[#1E8E6E] flex items-center gap-1.5 mt-auto">
+            Apri applicazione
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-x-0.5 transition-transform"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+        </a>
+
+        <a id="cardVendingMachine" href="./vending/" class="hidden group bg-white border border-stone-200 rounded-2xl shadow-sm p-6 flex flex-col gap-4 hover:border-[#CA8A04]/60 hover:shadow-md transition">
+          <div class="w-12 h-12 rounded-lg bg-[#CA8A04] flex items-center justify-center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          </div>
+          <div>
+            <div class="font-fraunces text-lg font-semibold text-stone-900">Vending Machine</div>
+            <div class="text-sm text-stone-500 mt-1">Analisi incassi dei distributori automatici del gruppo.</div>
+          </div>
+          <div class="text-sm font-semibold text-[#CA8A04] flex items-center gap-1.5 mt-auto">
+            Apri applicazione
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-x-0.5 transition-transform"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+        </a>
+      </div>
+
+      <p id="nessunAccesso" class="hidden text-center text-sm text-stone-400 bg-white border border-dashed border-stone-300 rounded-xl py-10">
+        Non hai ancora accesso a nessuna applicazione. Contatta un amministratore del portale.
+      </p>
+
+      <p class="text-center text-[11px] text-stone-400 mt-8">
+        Ambiente dimostrativo — accesso verificato solo lato browser, non è una vera autenticazione.
+      </p>
+    </div>
+  </div>
+
+  <script src="/shared/accounts.js"></script>
+  <script>
+    var loginScreen = document.getElementById("loginScreen");
+    var launcher = document.getElementById("launcher");
+    var loginForm = document.getElementById("loginForm");
+    var loginError = document.getElementById("loginError");
+    var utenteNome = document.getElementById("utenteNome");
+    var logoutBtn = document.getElementById("logoutBtn");
+    var cardManutenzioni = document.getElementById("cardManutenzioni");
+    var cardTicketIt = document.getElementById("cardTicketIt");
+    var cardBaggyLocker = document.getElementById("cardBaggyLocker");
+    var cardVendingMachine = document.getElementById("cardVendingMachine");
+    var cardUtenti = document.getElementById("cardUtenti");
+    var nessunAccesso = document.getElementById("nessunAccesso");
+
+    function mostraLauncher(account) {
+      utenteNome.textContent = account.nome;
+
+      var isAdmin = UHAccounts.isAdminGlobale(account);
+      cardUtenti.classList.toggle("hidden", !isAdmin);
+
+      var haManutenzioni = UHAccounts.hasAccesso(account, "manutenzioni");
+      var haTicketIt = UHAccounts.hasAccesso(account, "ticketIt");
+      var haBaggyLocker = UHAccounts.hasAccesso(account, "baggyLocker");
+      var haVendingMachine = UHAccounts.hasAccesso(account, "vendingMachine");
+      cardManutenzioni.classList.toggle("hidden", !haManutenzioni);
+      cardTicketIt.classList.toggle("hidden", !haTicketIt);
+      cardBaggyLocker.classList.toggle("hidden", !haBaggyLocker);
+      cardVendingMachine.classList.toggle("hidden", !haVendingMachine);
+      nessunAccesso.classList.toggle("hidden", haManutenzioni || haTicketIt || haBaggyLocker || haVendingMachine || isAdmin);
+
+      loginScreen.classList.add("hidden");
+      launcher.classList.remove("hidden");
+    }
+    function mostraLogin() {
+      launcher.classList.add("hidden");
+      loginScreen.classList.remove("hidden");
+    }
+
+    var sessione = UHAccounts.loadSession();
+    if (sessione) mostraLauncher(sessione);
+
+    loginForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var email = document.getElementById("loginEmail").value.trim().toLowerCase();
+      var password = document.getElementById("loginPassword").value;
+      loginError.classList.add("hidden");
+      UHAccounts.login(email, password).then(function (account) {
+        mostraLauncher(account);
+      }).catch(function () {
+        loginError.classList.remove("hidden");
+      });
+    });
+
+    logoutBtn.addEventListener("click", function () {
+      UHAccounts.clearSession();
+      loginForm.reset();
+      mostraLogin();
+    });
+  </script>
+
+  <!-- ------------------------------------------------------------------ -->
+  <!--  LOGIN CON MICROSOFT (SSO) — richiede una App Registration Entra ID -->
+  <!--  Vedi istruzioni di configurazione nel README del progetto.         -->
+  <!-- ------------------------------------------------------------------ -->
+  <script type="module">
+    import * as msal from "https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/+esm";
+
+    // ---- CONFIGURAZIONE: sostituisci questi due valori con quelli della
+    // tua App Registration su Microsoft Entra ID (Azure AD). Vedi il README
+    // di urban-homy-home per la guida passo-passo.
+    var MSAL_CONFIG = {
+      clientId: window.__UH_MSAL_CLIENT_ID__ || "REPLACE_WITH_YOUR_CLIENT_ID",
+      tenantId: window.__UH_MSAL_TENANT_ID__ || "REPLACE_WITH_YOUR_TENANT_ID", // oppure "organizations" per qualsiasi account aziendale/scuola Microsoft
+    };
+
+    var msoBtn = document.getElementById("msoLoginBtn");
+    var msoConfigNote = document.getElementById("msoConfigNote");
+    var msoError = document.getElementById("msoError");
+
+    var nonConfigurato = MSAL_CONFIG.clientId.indexOf("REPLACE_WITH") === 0;
+
+    if (nonConfigurato) {
+      msoBtn.disabled = true;
+      msoBtn.classList.add("opacity-50", "cursor-not-allowed");
+      msoConfigNote.classList.remove("hidden");
+    } else {
+      var pca = new msal.PublicClientApplication({
+        auth: {
+          clientId: MSAL_CONFIG.clientId,
+          authority: "https://login.microsoftonline.com/" + MSAL_CONFIG.tenantId,
+          redirectUri: window.location.origin + "/",
+        },
+        cache: { cacheLocation: "sessionStorage" },
+      });
+      await pca.initialize();
+
+      msoBtn.addEventListener("click", async function () {
+        msoError.classList.add("hidden");
+        try {
+          var result = await pca.loginPopup({ scopes: ["User.Read"] });
+          var tokenResult = await pca.acquireTokenSilent({ scopes: ["User.Read"], account: result.account });
+          var account = await UHAccounts.loginSso(tokenResult.accessToken);
+          window.mostraLauncher(account);
+        } catch (err) {
+          var nonAutorizzato = err && err.message && err.message.indexOf("autorizzato") !== -1;
+          msoError.textContent = nonAutorizzato
+            ? "Accesso Microsoft riuscito ma questo account non è ancora autorizzato su nessuna applicazione. Contatta un amministratore del portale."
+            : "Accesso con Microsoft non riuscito. Riprova.";
+          msoError.classList.remove("hidden");
+          pca.setActiveAccount(null);
+        }
+      });
+    }
+  </script>
+</body>
+</html>
