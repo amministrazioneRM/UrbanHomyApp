@@ -4,8 +4,8 @@ RUN apk add --no-cache openssl netcat-openbsd
 
 WORKDIR /app
 
-COPY package.json tsconfig.json ./
-RUN npm install
+COPY package.json package-lock.json tsconfig.json ./
+RUN npm ci
 
 COPY prisma ./prisma
 RUN npx prisma generate

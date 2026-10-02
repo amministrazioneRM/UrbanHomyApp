@@ -50,11 +50,11 @@ model Camera {
 model Oggetto {
   id             String    @id
   strutturaId    String
-  struttura      Struttura @relation(fields: [strutturaId], references: [id])
+  struttura      Struttura @relation(fields: [strutturaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   zonaId         String?
-  zona           Zona?     @relation(fields: [zonaId], references: [id])
+  zona           Zona?     @relation(fields: [zonaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   camereId       String?
-  camera         Camera?   @relation(fields: [camereId], references: [id])
+  camera         Camera?   @relation(fields: [camereId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   nome           String
   categoria      String
   codiceCespite  String
@@ -72,13 +72,13 @@ model Manutenzione {
   id               String    @id
   tipo             String
   strutturaId      String
-  struttura        Struttura @relation(fields: [strutturaId], references: [id])
+  struttura        Struttura @relation(fields: [strutturaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   zonaId           String?
-  zona             Zona?     @relation(fields: [zonaId], references: [id])
+  zona             Zona?     @relation(fields: [zonaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   camereId         String?
-  camera           Camera?   @relation(fields: [camereId], references: [id])
+  camera           Camera?   @relation(fields: [camereId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   oggettoId        String?
-  oggetto          Oggetto?  @relation(fields: [oggettoId], references: [id])
+  oggetto          Oggetto?  @relation(fields: [oggettoId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   titolo           String
   descrizione      String
   priorita         String
@@ -88,7 +88,7 @@ model Manutenzione {
   dataApprovazione DateTime?
   assegnatoId      String?
   assegnatoLibero  String?
-  ricorrenza       Json?    @db.NVarChar(Max)
+  ricorrenza       String?  @db.NVarChar(Max)
   note             String?
   notaChiusura     String?
   foto             String   @default("[]") @db.NVarChar(Max)
@@ -159,7 +159,7 @@ model Ditta {
   // (array di {id, figuraProfessionaleId, tariffaOraria, scadenza}):
   // non è una relazione separata perché l'app non le gestisce come
   // risorsa a sé stante.
-  tariffe           Json       @default("[]") @db.NVarChar(Max)
+  tariffe           String     @default("[]") @db.NVarChar(Max)
 
   manutentori  Manutentore[]
 
@@ -205,7 +205,7 @@ model UtentiAccount {
   email        String
   password     String
   ruoloGlobale String
-  accessi      Json     @db.NVarChar(Max)
+  accessi      String   @db.NVarChar(Max)
 
   @@map("utenti_accounts")
 }
@@ -215,7 +215,7 @@ model UtentiRuolo {
   appId    String
   nome     String
   bloccato Boolean @default(false)
-  permessi Json     @db.NVarChar(Max)
+  permessi String   @db.NVarChar(Max)
 
   @@map("utenti_ruoli")
 }
@@ -326,7 +326,7 @@ model LockerLocale {
   strutturaId String
   struttura   LockerStruttura @relation(fields: [strutturaId], references: [id])
   nome        String
-  conteggi    Json     @db.NVarChar(Max)
+  conteggi    String   @db.NVarChar(Max)
 
   @@index([strutturaId])
   @@map("locker_locali")
@@ -377,9 +377,9 @@ model VendingMacchina {
 model VendingVendita {
   id              String           @id
   strutturaId     String
-  struttura       VendingStruttura @relation(fields: [strutturaId], references: [id])
+  struttura       VendingStruttura @relation(fields: [strutturaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   macchinaId      String?
-  macchina        VendingMacchina? @relation(fields: [macchinaId], references: [id])
+  macchina        VendingMacchina? @relation(fields: [macchinaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   macchinaNome    String?
   data            DateTime
   ora             String
