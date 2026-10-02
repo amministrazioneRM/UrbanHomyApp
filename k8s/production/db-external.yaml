@@ -23,7 +23,7 @@ metadata:
   namespace: production
 subsets:
   - addresses:
-      - ip: <HOST_IP>   # replace with host IP (see above)
+      - ip: 192.168.0.6
     ports:
       - port: 1433
 ---

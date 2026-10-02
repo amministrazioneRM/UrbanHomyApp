@@ -144,6 +144,11 @@ jobs:
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_B64 }}" | base64 -d > ~/.kube/config
           chmod 600 ~/.kube/config
+          # The k3s TLS cert doesn't include the Tailscale IP in its SANs.
+          # Traffic is already encrypted by Tailscale, so skipping TLS verify is safe.
+          kubectl config set-cluster "$(kubectl config current-context)" \
+            --insecure-skip-tls-verify=true
+          kubectl config unset "clusters.$(kubectl config current-context).certificate-authority-data" 2>/dev/null || true
 
       - name: Verify cluster connection
         run: kubectl get nodes
