@@ -37,16 +37,16 @@ async function seedUtenti(): Promise<void> {
     const matriceUtente = matrice(appId, "vuoti");
     Object.keys(matriceUtente).forEach((modId) => { matriceUtente[modId].lettura = true; });
     return [
-      { id: ruoloAdminId(appId), appId, nome: "Amministratore", bloccato: true, permessi: matrice(appId, "completi") },
-      { id: ruoloUtenteId(appId), appId, nome: "Utente", bloccato: false, permessi: matriceUtente },
+      { id: ruoloAdminId(appId), appId, nome: "Amministratore", bloccato: true, permessi: JSON.stringify(matrice(appId, "completi")) },
+      { id: ruoloUtenteId(appId), appId, nome: "Utente", bloccato: false, permessi: JSON.stringify(matriceUtente) },
     ];
   });
 
   const accounts = [
-    { id: "ACC-1", nome: "Amministratore", email: "admin@urbanhomy.it", password: "admin123", ruoloGlobale: "Amministratore", accessi: Object.fromEntries(APPS.map((a) => [a, { abilitato: false, ruoloId: ruoloUtenteId(a) }])) },
-    { id: "ACC-2", nome: "Marco Bortolotti", email: "marco.b@urbanhomy.it", password: "manutenzione123", ruoloGlobale: "Utente", accessi: { manutenzioni: { abilitato: true, ruoloId: ruoloAdminId("manutenzioni") }, ticketIt: { abilitato: false, ruoloId: ruoloUtenteId("ticketIt") } } },
-    { id: "ACC-3", nome: "Maria Conti", email: "maria.c@urbanhomy.it", password: "reception123", ruoloGlobale: "Utente", accessi: { manutenzioni: { abilitato: false, ruoloId: ruoloUtenteId("manutenzioni") }, ticketIt: { abilitato: true, ruoloId: ruoloUtenteId("ticketIt") } } },
-    { id: "ACC-4", nome: "Davide Russo", email: "davide.r@urbanhomy.it", password: "amministrazione123", ruoloGlobale: "Utente", accessi: { manutenzioni: { abilitato: false, ruoloId: ruoloUtenteId("manutenzioni") }, ticketIt: { abilitato: true, ruoloId: ruoloAdminId("ticketIt") } } },
+    { id: "ACC-1", nome: "Amministratore", email: "admin@urbanhomy.it", password: "admin123", ruoloGlobale: "Amministratore", accessi: JSON.stringify(Object.fromEntries(APPS.map((a) => [a, { abilitato: false, ruoloId: ruoloUtenteId(a) }]))) },
+    { id: "ACC-2", nome: "Marco Bortolotti", email: "marco.b@urbanhomy.it", password: "manutenzione123", ruoloGlobale: "Utente", accessi: JSON.stringify({ manutenzioni: { abilitato: true, ruoloId: ruoloAdminId("manutenzioni") }, ticketIt: { abilitato: false, ruoloId: ruoloUtenteId("ticketIt") } }) },
+    { id: "ACC-3", nome: "Maria Conti", email: "maria.c@urbanhomy.it", password: "reception123", ruoloGlobale: "Utente", accessi: JSON.stringify({ manutenzioni: { abilitato: false, ruoloId: ruoloUtenteId("manutenzioni") }, ticketIt: { abilitato: true, ruoloId: ruoloUtenteId("ticketIt") } }) },
+    { id: "ACC-4", nome: "Davide Russo", email: "davide.r@urbanhomy.it", password: "amministrazione123", ruoloGlobale: "Utente", accessi: JSON.stringify({ manutenzioni: { abilitato: false, ruoloId: ruoloUtenteId("manutenzioni") }, ticketIt: { abilitato: true, ruoloId: ruoloAdminId("ticketIt") } }) },
   ];
 
   const sedi = [
@@ -89,12 +89,12 @@ async function seedTicketIt(): Promise<void> {
   const oggi = new Date();
   const dPlus = (n: number): Date => { const d = new Date(oggi); d.setDate(d.getDate() + n); return d; };
   const seedTicket = [
-    { id: "TIC-1", strutturaId: "STR-1", reparto: "Reception", titolo: "Stampante reception non stampa", descrizione: "La stampante degli scontrini si blocca dopo la prima pagina.", categoria: "Hardware", priorita: "Alta", stato: "Aperto", dataCreazione: dPlus(-1), scadenza: dPlus(1), richiedente: "Maria Conti", note: "", foto: [] },
-    { id: "TIC-2", strutturaId: "STR-2", reparto: "Reception", titolo: "Gestionale prenotazioni non si connette", descrizione: "Il PMS perde la connessione internet più volte al giorno.", categoria: "Rete", priorita: "Urgente", stato: "In corso", dataCreazione: dPlus(-2), scadenza: dPlus(0), richiedente: "Elena Fabris", note: "Verifica router in corso con il fornitore.", foto: [] },
-    { id: "TIC-3", strutturaId: "STR-5", reparto: "Amministrazione", titolo: "Nuovo account email per assunzione", descrizione: "Serve una casella email per il nuovo collega in amministrazione.", categoria: "Account", priorita: "Media", stato: "Aperto", dataCreazione: dPlus(-1), scadenza: dPlus(3), richiedente: "Davide Russo", note: "", foto: [] },
-    { id: "TIC-4", strutturaId: "STR-3", reparto: "Reception", titolo: "PC reception si riavvia da solo", descrizione: "Il computer si riavvia improvvisamente durante il check-in.", categoria: "Hardware", priorita: "Alta", stato: "Aperto", dataCreazione: dPlus(-4), scadenza: dPlus(-1), richiedente: "Nicola Zanetti", note: "", foto: [] },
-    { id: "TIC-5", strutturaId: "STR-4", reparto: "Reception", titolo: "Aggiornamento software gestionale cassa", descrizione: "Va installato l'ultimo aggiornamento del software di cassa.", categoria: "Software", priorita: "Bassa", stato: "Risolto", dataCreazione: dPlus(-8), scadenza: dPlus(-5), richiedente: "Sara Bevilacqua", note: "Aggiornato in remoto.", foto: [] },
-    { id: "TIC-6", strutturaId: "STR-1", reparto: "Ristorazione/Bar", titolo: "Wifi ospiti lento", descrizione: "Gli ospiti segnalano una connessione wifi molto lenta in sala colazione.", categoria: "Rete", priorita: "Media", stato: "In corso", dataCreazione: dPlus(-3), scadenza: dPlus(5), richiedente: "Luca Bortolussi", note: "", foto: [] },
+    { id: "TIC-1", strutturaId: "STR-1", reparto: "Reception", titolo: "Stampante reception non stampa", descrizione: "La stampante degli scontrini si blocca dopo la prima pagina.", categoria: "Hardware", priorita: "Alta", stato: "Aperto", dataCreazione: dPlus(-1), scadenza: dPlus(1), richiedente: "Maria Conti", note: "", foto: JSON.stringify([]) },
+    { id: "TIC-2", strutturaId: "STR-2", reparto: "Reception", titolo: "Gestionale prenotazioni non si connette", descrizione: "Il PMS perde la connessione internet più volte al giorno.", categoria: "Rete", priorita: "Urgente", stato: "In corso", dataCreazione: dPlus(-2), scadenza: dPlus(0), richiedente: "Elena Fabris", note: "Verifica router in corso con il fornitore.", foto: JSON.stringify([]) },
+    { id: "TIC-3", strutturaId: "STR-5", reparto: "Amministrazione", titolo: "Nuovo account email per assunzione", descrizione: "Serve una casella email per il nuovo collega in amministrazione.", categoria: "Account", priorita: "Media", stato: "Aperto", dataCreazione: dPlus(-1), scadenza: dPlus(3), richiedente: "Davide Russo", note: "", foto: JSON.stringify([]) },
+    { id: "TIC-4", strutturaId: "STR-3", reparto: "Reception", titolo: "PC reception si riavvia da solo", descrizione: "Il computer si riavvia improvvisamente durante il check-in.", categoria: "Hardware", priorita: "Alta", stato: "Aperto", dataCreazione: dPlus(-4), scadenza: dPlus(-1), richiedente: "Nicola Zanetti", note: "", foto: JSON.stringify([]) },
+    { id: "TIC-5", strutturaId: "STR-4", reparto: "Reception", titolo: "Aggiornamento software gestionale cassa", descrizione: "Va installato l'ultimo aggiornamento del software di cassa.", categoria: "Software", priorita: "Bassa", stato: "Risolto", dataCreazione: dPlus(-8), scadenza: dPlus(-5), richiedente: "Sara Bevilacqua", note: "Aggiornato in remoto.", foto: JSON.stringify([]) },
+    { id: "TIC-6", strutturaId: "STR-1", reparto: "Ristorazione/Bar", titolo: "Wifi ospiti lento", descrizione: "Gli ospiti segnalano una connessione wifi molto lenta in sala colazione.", categoria: "Rete", priorita: "Media", stato: "In corso", dataCreazione: dPlus(-3), scadenza: dPlus(5), richiedente: "Luca Bortolussi", note: "", foto: JSON.stringify([]) },
   ];
 
   await prisma.ticket.deleteMany();
