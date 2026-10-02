@@ -94,6 +94,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build apps (pre-build dist/ for portal Dockerfile)
+        run: |
+          for app in manutenzioni locker ticket-it utenti vending; do
+            echo "Building apps/$app..."
+            npm install --prefix "apps/$app"
+            npm run build --prefix "apps/$app"
+          done
+
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
