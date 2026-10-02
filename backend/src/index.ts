@@ -58,4 +58,4 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 const port = parseInt(process.env.PORT ?? "4000", 10);
-app.listen(port, () => console.log(`API in ascolto su http://localhost:${port}`));
+app.listen(port, () => console.log(`API listening on http://localhost:${port}`));
