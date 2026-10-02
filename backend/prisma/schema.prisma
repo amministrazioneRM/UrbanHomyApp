@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlserver"
   url      = env("DATABASE_URL")
 }
 
@@ -88,10 +88,10 @@ model Manutenzione {
   dataApprovazione DateTime?
   assegnatoId      String?
   assegnatoLibero  String?
-  ricorrenza       Json?
+  ricorrenza       Json?    @db.NVarChar(Max)
   note             String?
   notaChiusura     String?
-  foto             String[]
+  foto             String   @default("[]") @db.NVarChar(Max)
 
   tempiRegistrati  TempoRegistrato[]
   materiali        Materiale[]
@@ -135,7 +135,7 @@ model StoricoModifica {
   manutenzione    Manutenzione @relation(fields: [manutenzioneId], references: [id], onDelete: Cascade)
   data            DateTime
   utenteId        String
-  dettagli        String[]
+  dettagli        String   @default("[]") @db.NVarChar(Max)
 
   @@index([manutenzioneId])
   @@map("storico_modifiche")
@@ -149,8 +149,8 @@ model Ditta {
   telefono          String?
   email             String?
   referente         String?
-  specializzazioni  String[]
-  strutture         String[]
+  specializzazioni  String   @default("[]") @db.NVarChar(Max)
+  strutture         String   @default("[]") @db.NVarChar(Max)
   attivo            Boolean    @default(true)
   dataFineContratto DateTime?
   approvatoreId     String?
@@ -159,7 +159,7 @@ model Ditta {
   // (array di {id, figuraProfessionaleId, tariffaOraria, scadenza}):
   // non è una relazione separata perché l'app non le gestisce come
   // risorsa a sé stante.
-  tariffe           Json       @default("[]")
+  tariffe           Json       @default("[]") @db.NVarChar(Max)
 
   manutentori  Manutentore[]
 
@@ -177,7 +177,7 @@ model Manutentore {
   figuraProfessionale   FiguraProfessionale? @relation(fields: [figuraProfessionaleId], references: [id])
   telefono              String?
   email                 String?
-  strutture             String[]
+  strutture             String   @default("[]") @db.NVarChar(Max)
   attivo                Boolean  @default(true)
   note                  String?
   sostitutoId           String?
@@ -205,7 +205,7 @@ model UtentiAccount {
   email        String
   password     String
   ruoloGlobale String
-  accessi      Json
+  accessi      Json     @db.NVarChar(Max)
 
   @@map("utenti_accounts")
 }
@@ -215,7 +215,7 @@ model UtentiRuolo {
   appId    String
   nome     String
   bloccato Boolean @default(false)
-  permessi Json
+  permessi Json     @db.NVarChar(Max)
 
   @@map("utenti_ruoli")
 }
@@ -280,7 +280,7 @@ model Ticket {
   scadenza      DateTime
   richiedente   String?
   note          String?
-  foto          String[]
+  foto          String   @default("[]") @db.NVarChar(Max)
 
   @@index([strutturaId])
   @@map("tickets")
@@ -326,7 +326,7 @@ model LockerLocale {
   strutturaId String
   struttura   LockerStruttura @relation(fields: [strutturaId], references: [id])
   nome        String
-  conteggi    Json
+  conteggi    Json     @db.NVarChar(Max)
 
   @@index([strutturaId])
   @@map("locker_locali")

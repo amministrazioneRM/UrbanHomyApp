@@ -1,19 +1,19 @@
 # =============================================================================
-# Database esterno — Service + Endpoints
+# External database — Service + Endpoints
 #
-# Il database Postgres gira fuori dal cluster (sulla stessa macchina host).
-# Questo manifest crea un Service Kubernetes di nome "db" che risolve
-# all'IP dell'host, permettendo ai pod di connettersi con la stringa:
-#   postgresql://user:pass@db:5432/urbanhomy
+# The SQL Server database runs outside the cluster (on the host machine).
+# This manifest creates a Kubernetes Service named "db" that resolves
+# to the host IP, allowing pods to connect using the connection string:
+#   sqlserver://user:pass@db:1433;database=urbanhomy;...
 #
-# SETUP: sostituire <HOST_IP> con l'IP del server visibile dall'interno
-# del cluster k3s. Per trovarlo:
+# SETUP: replace <HOST_IP> with the IP of the server visible from inside
+# the k3s cluster. To find it:
 #   ip route | grep default | awk '{print $3}'
-# Tipicamente è 10.0.2.2 (VirtualBox), 172.17.0.1 (Docker bridge),
-# oppure l'IP LAN del server (es. 192.168.1.x o 10.x.x.x).
+# Typically 10.0.2.2 (VirtualBox), 172.17.0.1 (Docker bridge),
+# or the server's LAN IP (e.g. 192.168.1.x or 10.x.x.x).
 #
-# Su k3s il gateway dell'interfaccia cni0/flannel è solitamente
-# raggiungibile tramite: kubectl get nodes -o wide (colonna INTERNAL-IP)
+# On k3s the cni0/flannel interface gateway is usually
+# reachable via: kubectl get nodes -o wide (INTERNAL-IP column)
 # =============================================================================
 ---
 apiVersion: v1
@@ -22,9 +22,9 @@ metadata:
   name: db
 subsets:
   - addresses:
-      - ip: <HOST_IP>   # sostituire con l'IP host (vedi sopra)
+      - ip: <HOST_IP>   # replace with host IP (see above)
     ports:
-      - port: 5432
+      - port: 1433
 ---
 apiVersion: v1
 kind: Service
@@ -32,6 +32,6 @@ metadata:
   name: db
 spec:
   ports:
-    - port: 5432
-      targetPort: 5432
-  clusterIP: None   # headless — risolve direttamente all'IP dell'Endpoints
+    - port: 1433
+      targetPort: 1433
+  clusterIP: None   # headless — resolves directly to the Endpoints IP
