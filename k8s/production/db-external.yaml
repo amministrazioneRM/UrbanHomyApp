@@ -20,6 +20,7 @@ apiVersion: v1
 kind: Endpoints
 metadata:
   name: db
+  namespace: production
 subsets:
   - addresses:
       - ip: <HOST_IP>   # replace with host IP (see above)
@@ -30,6 +31,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: db
+  namespace: production
 spec:
   ports:
     - port: 1433

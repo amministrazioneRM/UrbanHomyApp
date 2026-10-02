@@ -1,9 +1,9 @@
-name: Deploy to Kubernetes
+name: Deploy to Kubernetes (staging)
 
 on:
   push:
     branches:
-      - "release/**"
+      - develop
 
 # Permissions required to push to ghcr.io with GITHUB_TOKEN
 permissions:
@@ -27,10 +27,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract version from branch name
+      - name: Extract version from commit SHA
         id: extract-version
         run: |
-          VERSION="${GITHUB_REF#refs/heads/release/}"
+          VERSION="staging-${GITHUB_SHA::8}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Building version: ${VERSION}"
 
@@ -51,9 +51,9 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_BASE }}/backend:${{ steps.extract-version.outputs.version }}
-            ${{ env.IMAGE_BASE }}/backend:latest
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
+            ${{ env.IMAGE_BASE }}/backend:staging
+          cache-from: type=gha,scope=backend-staging
+          cache-to: type=gha,mode=max,scope=backend-staging
 
   # ---------------------------------------------------------------------------
   # Job 2: Build and push portal image (parallel to build-backend)
@@ -67,10 +67,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract version from branch name
+      - name: Extract version from commit SHA
         id: extract-version
         run: |
-          VERSION="${GITHUB_REF#refs/heads/release/}"
+          VERSION="staging-${GITHUB_SHA::8}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Building version: ${VERSION}"
 
@@ -92,17 +92,17 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE_BASE }}/portal:${{ steps.extract-version.outputs.version }}
-            ${{ env.IMAGE_BASE }}/portal:latest
-          cache-from: type=gha,scope=portal
-          cache-to: type=gha,mode=max,scope=portal
+            ${{ env.IMAGE_BASE }}/portal:staging
+          cache-from: type=gha,scope=portal-staging
+          cache-to: type=gha,mode=max,scope=portal-staging
           build-args: |
-            API_BASE_URL=${{ vars.API_BASE_URL }}
+            API_BASE_URL=${{ vars.API_BASE_URL_STAGING }}
 
   # ---------------------------------------------------------------------------
   # Job 3: Deploy to k3s via Tailscale (waits for both builds)
   # ---------------------------------------------------------------------------
   deploy:
-    name: Deploy to k3s
+    name: Deploy to k3s (staging)
     runs-on: ubuntu-latest
     needs:
       - build-backend
@@ -128,22 +128,24 @@ jobs:
         run: kubectl get nodes
 
       - name: Apply Kubernetes manifests (idempotent)
-        run: kubectl apply -f k8s/
+        run: kubectl apply -f k8s/staging/
 
       - name: Update backend image
         run: |
           VERSION="${{ needs.build-backend.outputs.version }}"
           kubectl set image deployment/backend \
-            backend=${{ env.IMAGE_BASE }}/backend:${VERSION}
+            backend=${{ env.IMAGE_BASE }}/backend:${VERSION} \
+            --namespace=staging
 
       - name: Update portal image
         run: |
           VERSION="${{ needs.build-portal.outputs.version }}"
           kubectl set image deployment/portal \
-            portal=${{ env.IMAGE_BASE }}/portal:${VERSION}
+            portal=${{ env.IMAGE_BASE }}/portal:${VERSION} \
+            --namespace=staging
 
       - name: Wait for backend rollout
-        run: kubectl rollout status deployment/backend --timeout=120s
+        run: kubectl rollout status deployment/backend --timeout=120s --namespace=staging
 
       - name: Wait for portal rollout
-        run: kubectl rollout status deployment/portal --timeout=120s
+        run: kubectl rollout status deployment/portal --timeout=120s --namespace=staging

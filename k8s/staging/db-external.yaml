@@ -1,0 +1,32 @@
+# =============================================================================
+# External database (staging) — Service + Endpoints
+#
+# Points to the same SQL Server host as production but uses the
+# staging database (UH_AMMINISTRAZIONERM_TEST).
+# The DATABASE_URL in the staging secret already specifies the correct
+# database name — no change needed here.
+#
+# SETUP: replace <HOST_IP> with the same IP used in k8s/db-external.yaml.
+# =============================================================================
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: db
+  namespace: staging
+subsets:
+  - addresses:
+      - ip: <HOST_IP>   # replace with host IP (same as production)
+    ports:
+      - port: 1433
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+  namespace: staging
+spec:
+  ports:
+    - port: 1433
+      targetPort: 1433
+  clusterIP: None   # headless — resolves directly to the Endpoints IP
