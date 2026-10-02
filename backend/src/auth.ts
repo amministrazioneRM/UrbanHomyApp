@@ -17,7 +17,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const header = req.headers.authorization ?? "";
     const [scheme, token] = header.split(" ");
     if (scheme !== "Bearer" || !token) {
-      res.status(401).json({ error: "Token mancante" });
+      res.status(401).json({ error: "Missing or invalid token" });
       return;
     }
     const payload = jwt.verify(token, SECRET!) as JwtPayload;
