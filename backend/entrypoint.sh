@@ -1,12 +1,12 @@
 #!/bin/sh
 set -e
 
-echo "Waiting for PostgreSQL to be ready..."
-until nc -z db 5432 2>/dev/null; do
-  echo "PostgreSQL is unavailable - sleeping 2s"
+echo "Waiting for SQL Server to be ready..."
+until nc -z db 1433 2>/dev/null; do
+  echo "SQL Server is unavailable - sleeping 2s"
   sleep 2
 done
-echo "PostgreSQL port is open - waiting 1s for full readiness..."
+echo "SQL Server port is open - waiting 1s for full readiness..."
 sleep 1
 
 echo "Running Prisma migrations..."
