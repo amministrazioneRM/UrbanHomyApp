@@ -4,7 +4,7 @@ import prisma from "./prisma.js";
 import type { JwtPayload, SafeAccount } from "./types.js";
 
 const SECRET = process.env.JWT_SECRET;
-if (!SECRET) throw new Error("JWT_SECRET mancante in .env");
+if (!SECRET) throw new Error("JWT_SECRET missing in .env");
 
 const TOKEN_TTL = "7d";
 
