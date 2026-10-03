@@ -20,7 +20,7 @@ spec:
         - name: ghcr-secret
       containers:
         - name: portal
-          image: ghcr.io/amministrazioneRM/UrbanHomyApp/portal:latest
+          image: ghcr.io/amministrazionerm/urban-homy-amministrazionerm/portal:staging
           ports:
             - containerPort: 5173
           env:
