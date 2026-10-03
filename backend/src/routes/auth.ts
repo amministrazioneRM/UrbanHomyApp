@@ -11,9 +11,12 @@ interface MsGraphProfile {
   userPrincipalName?: string;
 }
 
-function omitPassword(account: { password: string } & Omit<SafeAccount, never>): SafeAccount {
+function omitPassword(account: { password: string; accessi: unknown } & Omit<SafeAccount, never>): SafeAccount {
   const { password: _pw, ...rest } = account as { password: string } & SafeAccount;
-  return rest;
+  return {
+    ...rest,
+    accessi: typeof rest.accessi === "string" ? JSON.parse(rest.accessi) : rest.accessi,
+  };
 }
 
 router.post("/login", async (req, res, next) => {
@@ -22,7 +25,7 @@ router.post("/login", async (req, res, next) => {
     if (!email || !password) { res.status(400).json({ error: "Email e password richieste" }); return; }
 
     const account = await prisma.utentiAccount.findFirst({
-      where: { email: { equals: email, mode: "insensitive" } },
+      where: { email },
     });
     if (!account) { res.status(401).json({ error: "Credenziali non valide" }); return; }
 
@@ -51,7 +54,7 @@ router.post("/sso", async (req, res, next) => {
     if (!email) { res.status(401).json({ error: "Impossibile determinare l'email dell'account Microsoft" }); return; }
 
     const account = await prisma.utentiAccount.findFirst({
-      where: { email: { equals: email, mode: "insensitive" } },
+      where: { email },
     });
     if (!account) {
       res.status(403).json({ error: "Account Microsoft non autorizzato su nessuna applicazione" });

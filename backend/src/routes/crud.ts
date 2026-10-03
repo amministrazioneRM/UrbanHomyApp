@@ -52,10 +52,28 @@ function coerceDates(data: AnyRecord, dateFields: string[]): AnyRecord {
   return out;
 }
 
+// Serialize objects/arrays to JSON strings for NVarChar(Max) fields (SQL Server)
+function serializeJsonFields(data: AnyRecord): AnyRecord {
+  const out = { ...data };
+  for (const [key, value] of Object.entries(out)) {
+    if (value !== null && value !== undefined && typeof value === "object" && !(value instanceof Date)) {
+      out[key] = JSON.stringify(value);
+    }
+  }
+  return out;
+}
+
 function serializeValue(value: unknown): unknown {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   if (value !== null && typeof value === "object" && typeof (value as { toNumber?: () => number }).toNumber === "function") {
     return (value as { toNumber: () => number }).toNumber();
+  }
+  // Deserialize JSON strings (SQL Server stores JSON as NVarChar)
+  if (typeof value === "string") {
+    const trimmed = value.trimStart();
+    if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+      try { return JSON.parse(value); } catch { /* not JSON, return as-is */ }
+    }
   }
   return value;
 }
@@ -103,7 +121,7 @@ export function makeCrudRouter(delegate: PrismaDelegate, options: CrudOptions = 
   router.post("/", async (req, res, next) => {
     try {
       const id = (req.body as AnyRecord).id ?? `${idPrefix}-${crypto.randomUUID()}`;
-      const data = await hashFieldsIn(coerceDates({ ...(req.body as AnyRecord), id }, dateFields), hashFields);
+      const data = await hashFieldsIn(serializeJsonFields(coerceDates({ ...(req.body as AnyRecord), id }, dateFields)), hashFields);
       const item = await delegate.create({ data });
       res.status(201).json(serialize(item, omit));
     } catch (err) {
@@ -114,7 +132,7 @@ export function makeCrudRouter(delegate: PrismaDelegate, options: CrudOptions = 
   router.put("/:id", async (req, res, next) => {
     try {
       const { id: _id, ...rest } = req.body as AnyRecord;
-      const data = await hashFieldsIn(coerceDates(rest, dateFields), hashFields);
+      const data = await hashFieldsIn(serializeJsonFields(coerceDates(rest, dateFields)), hashFields);
       const item = await delegate.update({ where: { id: req.params.id }, data });
       res.json(serialize(item, omit));
     } catch (err) {

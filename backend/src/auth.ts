@@ -27,7 +27,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       return;
     }
     const { password: _pw, ...safeAccount } = account;
-    req.account = safeAccount as SafeAccount;
+    req.account = {
+      ...safeAccount,
+      accessi: typeof safeAccount.accessi === "string"
+        ? JSON.parse(safeAccount.accessi)
+        : safeAccount.accessi,
+    } as SafeAccount;
     next();
   } catch {
     res.status(401).json({ error: "Token non valido o scaduto" });
