@@ -64,10 +64,22 @@ http_1.default
     if (app && roots[app]) {
         const rest = "/" + segments.slice(1).join("/");
         const filePath = path_1.default.join(roots[app], rest === "/" ? "/index.html" : rest);
-        send(res, filePath);
+        // SPA fallback: if the file doesn't exist, serve index.html for client-side routing
+        if (!fs_1.default.existsSync(filePath) || fs_1.default.statSync(filePath).isDirectory()) {
+            send(res, path_1.default.join(roots[app], "index.html"));
+        }
+        else {
+            send(res, filePath);
+        }
         return;
     }
     const filePath = path_1.default.join(homeRoot, url === "/" ? "/index.html" : url);
-    send(res, filePath);
+    // SPA fallback for home portal
+    if (url !== "/" && !fs_1.default.existsSync(filePath)) {
+        send(res, path_1.default.join(homeRoot, "index.html"));
+    }
+    else {
+        send(res, filePath);
+    }
 })
     .listen(port, () => console.log(`Portale Urban Homy su http://localhost:${port}`));

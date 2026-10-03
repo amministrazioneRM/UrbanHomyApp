@@ -68,11 +68,21 @@ http
     if (app && roots[app]) {
       const rest = "/" + segments.slice(1).join("/");
       const filePath = path.join(roots[app], rest === "/" ? "/index.html" : rest);
-      send(res, filePath);
+      // SPA fallback: if the file doesn't exist, serve index.html for client-side routing
+      if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+        send(res, path.join(roots[app], "index.html"));
+      } else {
+        send(res, filePath);
+      }
       return;
     }
 
     const filePath = path.join(homeRoot, url === "/" ? "/index.html" : url);
-    send(res, filePath);
+    // SPA fallback for home portal
+    if (url !== "/" && !fs.existsSync(filePath)) {
+      send(res, path.join(homeRoot, "index.html"));
+    } else {
+      send(res, filePath);
+    }
   })
   .listen(port, () => console.log(`Portale Urban Homy su http://localhost:${port}`));
