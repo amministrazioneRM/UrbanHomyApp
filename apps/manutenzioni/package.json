@@ -4,7 +4,7 @@
   "description": "Piattaforma di gestione manutenzioni per il gruppo Urban Homy (Hotello Trieste, Hotello Padova, Urban Homy Gorizia, Europalace Hotel Monfalcone).",
   "main": "src/main.jsx",
   "scripts": {
-    "build": "esbuild src/main.tsx --bundle --minify --loader:.tsx=tsx --jsx=automatic --define:process.env.NODE_ENV='\"production\"' --outfile=dist/bundle.js",
+    "build": "esbuild src/main.tsx --bundle --minify --loader:.tsx=tsx --jsx=automatic --define:process.env.NODE_ENV='\"production\"' --outfile=dist/bundle.js && cp index.html dist/index.html",
     "watch": "esbuild src/main.tsx --bundle --loader:.tsx=tsx --jsx=automatic --define:process.env.NODE_ENV='\"development\"' --outfile=dist/bundle.js --watch=forever"
   },
   "keywords": [],
