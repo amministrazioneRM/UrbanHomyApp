@@ -3,7 +3,7 @@ name: Deploy to Kubernetes (staging)
 on:
   push:
     branches:
-      - develop
+      - staging
 
 # Permissions required to push to ghcr.io with GITHUB_TOKEN
 permissions:
