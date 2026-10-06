@@ -23,7 +23,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     const payload = jwt.verify(token, SECRET!) as JwtPayload;
     const account = await prisma.utentiAccount.findUnique({ where: { id: payload.sub } });
     if (!account) {
-      res.status(401).json({ error: "Account non trovato" });
+      res.status(401).json({ error: "Account not found" });
       return;
     }
     const { password: _pw, ...safeAccount } = account;
