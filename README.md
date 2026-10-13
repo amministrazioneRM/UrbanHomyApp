@@ -39,7 +39,7 @@ Built with **Claude Code**.
 | Excel Import/Export | SheetJS (xlsx) — Locker & Vending apps |
 | Backend | Express.js (Node.js, CommonJS) |
 | ORM | Prisma 5.x |
-| Database | PostgreSQL 14 |
+| Database | SQL Server 2022 |
 | Authentication | JWT + bcryptjs (backend), MSAL.js for Microsoft SSO |
 | Frontend Session | localStorage via shared UHAccounts library |
 | Containerization | Docker + Docker Compose |
@@ -148,11 +148,13 @@ Revenue analysis and reporting for vending machines across all properties.
 
 ## 5. Quick Start with Docker
 
-> **Prerequisites**: Docker and Docker Compose installed.
+> **Prerequisites**: Docker and Docker Compose installed. Node.js >= 18 required to build the frontend apps.
 
 ```bash
 docker compose up --build
 ```
+
+This starts three containers: `db` (SQL Server 2022), `backend` (Express API), and `portal` (static file server). The portal image compiles all frontend apps internally during build. The backend waits for SQL Server to be healthy, then runs Prisma migrations and optional seed data automatically.
 
 | Service | URL |
 |---|---|
@@ -168,17 +170,11 @@ The database is automatically provisioned, migrations are applied, and seed data
 ### Prerequisites
 
 - Node.js >= 18
-- PostgreSQL >= 14
+- SQL Server 2022 (local instance or Docker)
 
 ### Steps
 
-**1. Create the database**
-
-```bash
-createdb urbanhomy
-```
-
-**2. Backend setup**
+**1. Backend setup**
 
 ```bash
 cd backend
@@ -259,7 +255,7 @@ Authorization: Bearer <token>
 
 ## 9. Database Schema
 
-The PostgreSQL database is managed via **Prisma** migrations. Tables are organized by functional area:
+The SQL Server database is managed via **Prisma** migrations. Tables are organized by functional area:
 
 | Area | Tables |
 |---|---|
