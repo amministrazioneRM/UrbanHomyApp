@@ -763,7 +763,6 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
           <h1 className="font-[Fraunces] text-2xl md:text-[28px] font-semibold text-stone-900">Cruscotto incassi</h1>
           <p className="text-stone-500 text-sm mt-1">Baggy Locker · Gruppo Urban Homy</p>
         </div>
-        <button onClick={onNuovo} className="flex items-center gap-2 bg-[#1E8E6E] hover:bg-[#186f57] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition"><Plus size={16} /> Nuovo ordine</button>
       </header>
       <div className="flex gap-2 mb-5">
         {PERIODI.map((p) => (
@@ -933,7 +932,6 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
             className="flex items-center gap-2 bg-white border border-stone-300 hover:border-[#1E8E6E] text-stone-700 text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition disabled:opacity-50">
             <Upload size={16} /> {importRisultato?.loading ? "Importazione…" : "Importa da Excel"}
           </button>
-          <button onClick={onNuovo} className="flex items-center gap-2 bg-[#1E8E6E] hover:bg-[#186f57] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition"><Plus size={16} /> Nuovo ordine</button>
         </div>
       </header>
       {importRisultato && !importRisultato.loading && (
