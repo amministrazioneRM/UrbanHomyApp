@@ -1,6 +1,6 @@
 FROM node:23.9.0-alpine
 
-RUN apk add --no-cache openssl netcat-openbsd
+RUN apk add --no-cache openssl netcat-openbsd dos2unix
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ COPY scripts ./scripts
 RUN npx tsc
 
 COPY entrypoint.sh ./
-RUN chmod +x entrypoint.sh
+RUN dos2unix entrypoint.sh && chmod +x entrypoint.sh
 
 EXPOSE 4000
 
