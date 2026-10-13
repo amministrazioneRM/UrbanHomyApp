@@ -5,6 +5,9 @@ WORKDIR /app
 ARG API_BASE_URL=http://localhost:4000/api
 ENV API_BASE_URL=${API_BASE_URL}
 
+# Copy shared library first (apps import from ../../../shared/accounts)
+COPY shared shared
+
 # Build each frontend app (esbuild is a dependency of each app)
 COPY apps/manutenzioni apps/manutenzioni
 RUN cd apps/manutenzioni && npm install && npm run build
@@ -21,8 +24,7 @@ RUN cd apps/utenti && npm install && npm run build
 COPY apps/vending apps/vending
 RUN cd apps/vending && npm install && npm run build
 
-# Build shared/accounts.js (reuse esbuild already installed in manutenzioni)
-COPY shared shared
+# Build shared/accounts.js as IIFE for browser (reuse esbuild from manutenzioni)
 RUN apps/manutenzioni/node_modules/.bin/esbuild shared/accounts.ts \
       --bundle \
       --format=iife \
