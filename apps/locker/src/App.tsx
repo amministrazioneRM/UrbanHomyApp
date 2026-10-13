@@ -38,6 +38,8 @@ interface ImportRisultato {
   errore?: string;
   refresh?: boolean;
   totaleImportati?: number;
+  nomeSede?: string;
+  modalita?: string;
   scartati?: Array<{ riga: number; motivo: string }>;
 }
 
@@ -494,7 +496,7 @@ export default function App() {
     setModale(null);
   }
 
-  async function importaOrdiniDaFile(file: File) {
+  async function importaOrdiniDaFile(file: File, strutturaId: string, modalita: string) {
     setImportRisultato({ loading: true });
     try {
       const buf = await file.arrayBuffer();
@@ -507,15 +509,19 @@ export default function App() {
         setImportRisultato({ loading: false, errore: "Nessun ordine valido trovato nel file.", scartati });
         return;
       }
-      const conferma = window.confirm(
-        `Il file contiene ${righeValide.length} ordini validi. L'importazione sostituirà completamente l'elenco ordini attuale (${ordini.length} presenti ora) con quello del file. Continuare?`
-      );
-      if (!conferma) { setImportRisultato(null); return; }
+      // Sovrascrive la strutturaId con quella scelta esplicitamente dall'utente
+      // (il file potrebbe non avere una colonna sede, o avere un nome diverso).
+      const righeConSede = righeValide.map((o) => ({ ...o, strutturaId }));
       const mappa = new Map<string, LockerOrdine>();
-      righeValide.forEach((o) => mappa.set(o.id, o));
-      const nuovoElenco = Array.from(mappa.values());
-      setOrdini(nuovoElenco);
-      setImportRisultato({ loading: false, refresh: true, totaleImportati: nuovoElenco.length, scartati });
+      righeConSede.forEach((o) => mappa.set(o.id, o));
+      const righeUniche = Array.from(mappa.values());
+      const nomeSede = strutturaOf(strutturaId)?.nome ?? "";
+      if (modalita === "sostituzione") {
+        setOrdini((os) => [...righeUniche, ...os.filter((o) => o.strutturaId !== strutturaId)]);
+      } else {
+        setOrdini((os) => [...righeUniche, ...os]);
+      }
+      setImportRisultato({ loading: false, refresh: true, totaleImportati: righeUniche.length, scartati, nomeSede, modalita });
     } catch {
       setImportRisultato({ loading: false, errore: "File non leggibile. Verifica che sia un foglio Excel (.xlsx/.xls) o CSV valido." });
     }
@@ -892,16 +898,18 @@ interface OrdiniProps {
   ordini: LockerOrdine[]; strutture: LockerStruttura[];
   strutturaOf: (id: string) => LockerStruttura | undefined;
   onApri: (o: LockerOrdine) => void; onNuovo: () => void;
-  onImportaFile: (f: File) => void;
+  onImportaFile: (f: File, strutturaId: string, modalita: string) => Promise<void>;
   importRisultato: ImportRisultato | null;
   onChiudiImport: () => void;
 }
+interface ImportaOrdiniFormProps { strutture: LockerStruttura[]; onConferma: (strutturaId: string, modalita: string) => void; onClose: () => void; }
 
 function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile, importRisultato, onChiudiImport }: OrdiniProps) {
   const [filtroStruttura, setFiltroStruttura] = useState("");
   const [filtroStato, setFiltroStato] = useState("");
   const [filtroPeriodo, setFiltroPeriodo] = useState("tutto");
   const [ricerca, setRicerca] = useState("");
+  const [fileInAttesa, setFileInAttesa] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const elenco = ordini
@@ -916,7 +924,7 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
   function onFileScelto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (file && onImportaFile) onImportaFile(file);
+    if (file) setFileInAttesa(file);
   }
 
   return (
@@ -941,7 +949,11 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
             <div className="flex-1">
               {importRisultato.errore ? <div className="font-medium">{importRisultato.errore}</div> : (
                 <>
-                  <div className="font-medium">Elenco ordini aggiornato: {importRisultato.totaleImportati} ordini importati dal file{importRisultato.scartati && importRisultato.scartati.length > 0 && `, ${importRisultato.scartati.length} righe scartate`}.</div>
+                  <div className="font-medium">
+                    {importRisultato.totaleImportati} ordini importati per {importRisultato.nomeSede}
+                    {" "}({importRisultato.modalita === "sostituzione" ? "sostituiti gli ordini esistenti della sede" : "aggiunti agli ordini esistenti"})
+                    {importRisultato.scartati && importRisultato.scartati.length > 0 && `, ${importRisultato.scartati.length} righe scartate`}.
+                  </div>
                   {importRisultato.scartati && importRisultato.scartati.length > 0 && (
                     <ul className="mt-1.5 text-xs text-emerald-700/80 list-disc list-inside space-y-0.5">
                       {importRisultato.scartati.slice(0, 8).map((s, i) => (<li key={i}>Riga {s.riga}: {s.motivo}</li>))}
@@ -1007,7 +1019,65 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
           </table>
         </div>
       )}
+
+      {fileInAttesa && (
+        <ImportaOrdiniForm
+          strutture={strutture}
+          onConferma={(strutturaId, modalita) => {
+            onImportaFile(fileInAttesa, strutturaId, modalita);
+            setFileInAttesa(null);
+          }}
+          onClose={() => setFileInAttesa(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function ImportaOrdiniForm({ strutture, onConferma, onClose }: ImportaOrdiniFormProps) {
+  const [strutturaId, setStrutturaId] = useState<string>(strutture.find((s) => s.attiva)?.id ?? strutture[0]?.id ?? "");
+  const [modalita, setModalita] = useState<string>("sostituzione");
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!strutturaId) return;
+    onConferma(strutturaId, modalita);
+  }
+  return (
+    <Modal title="Importa ordini da Excel" onClose={onClose}>
+      <form onSubmit={submit}>
+        <Field label="Per quale sede stai caricando questi ordini?">
+          <select required className={inputCls} value={strutturaId} onChange={(e) => setStrutturaId(e.target.value)}>
+            {strutture.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+          </select>
+        </Field>
+        <FieldGroup label="Modalità">
+          <div className="grid gap-2">
+            <button
+              type="button" onClick={() => setModalita("sostituzione")}
+              className={`text-left px-3 py-2.5 rounded-lg border transition ${modalita === "sostituzione" ? "bg-[#1B2A26] text-white border-[#1B2A26]" : "bg-white text-stone-700 border-stone-300"}`}
+            >
+              <div className="text-sm font-semibold">Sostituzione</div>
+              <div className={`text-xs mt-0.5 ${modalita === "sostituzione" ? "text-stone-300" : "text-stone-500"}`}>
+                Rimpiazza tutti gli ordini già presenti per questa sede con quelli del file.
+              </div>
+            </button>
+            <button
+              type="button" onClick={() => setModalita("aggiunta")}
+              className={`text-left px-3 py-2.5 rounded-lg border transition ${modalita === "aggiunta" ? "bg-[#1B2A26] text-white border-[#1B2A26]" : "bg-white text-stone-700 border-stone-300"}`}
+            >
+              <div className="text-sm font-semibold">Aggiunta</div>
+              <div className={`text-xs mt-0.5 ${modalita === "aggiunta" ? "text-stone-300" : "text-stone-500"}`}>
+                Accoda gli ordini del file a quelli già presenti, senza toccarli.
+              </div>
+            </button>
+          </div>
+        </FieldGroup>
+        <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-stone-200">
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold text-stone-500 hover:bg-stone-100">Annulla</button>
+          <button type="submit" disabled={!strutturaId} className="px-4 py-2 rounded-lg text-sm font-semibold bg-[#1E8E6E] hover:bg-[#186f57] text-white disabled:opacity-50">Importa</button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
