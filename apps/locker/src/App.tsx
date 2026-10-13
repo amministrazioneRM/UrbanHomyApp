@@ -444,11 +444,13 @@ export default function App() {
     setModale(null);
   }
   function salvaStruttura(dati: LockerStruttura) {
-    if (dati.id) {
-      setStrutture((ss) => ss.map((s) => (s.id === dati.id ? dati : s)));
-    } else {
-      setStrutture((ss) => [...ss, { ...dati, id: nid("LOC") }]);
-    }
+    // Il form assegna sempre l'id prima di chiamare onSalva: non basta
+    // controllare dati.id, occorre verificare se l'id è già presente.
+    setStrutture((ss) =>
+      ss.some((s) => s.id === dati.id)
+        ? ss.map((s) => (s.id === dati.id ? dati : s))
+        : [...ss, dati]
+    );
     setModale(null);
   }
   function eliminaStruttura(id: string) {
