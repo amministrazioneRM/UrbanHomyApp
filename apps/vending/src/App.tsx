@@ -1511,14 +1511,12 @@ export default function App() {
     }
   }
 
-  // Il cruscotto mostra le sedi che hanno almeno una macchina attiva OPPURE
-  // almeno una vendita registrata (anche importata per sedi non ancora
-  // censite con una macchina).
+  // Il cruscotto mostra solo le sedi che hanno almeno una macchina attiva:
+  // quelle senza distributori (o con tutti spenti/rimossi) non hanno dati
+  // reali da mostrare, quindi vengono escluse da statistiche, grafico e sedi.
   const idsConMacchinaAttiva = useMemo(() => new Set(macchine.filter((m) => m.attiva !== false).map((m) => m.strutturaId)), [macchine]);
-  const idsConVendite = useMemo(() => new Set(vendite.map((v) => v.strutturaId)), [vendite]);
-  const idsVisibili = useMemo(() => new Set([...idsConMacchinaAttiva, ...idsConVendite]), [idsConMacchinaAttiva, idsConVendite]);
-  const struttureConMacchine = useMemo(() => strutture.filter((s) => idsVisibili.has(s.id)), [strutture, idsVisibili]);
-  const venditeConMacchina = useMemo(() => vendite.filter((v) => idsVisibili.has(v.strutturaId)), [vendite, idsVisibili]);
+  const struttureConMacchine = useMemo(() => strutture.filter((s) => idsConMacchinaAttiva.has(s.id)), [strutture, idsConMacchinaAttiva]);
+  const venditeConMacchina = useMemo(() => vendite.filter((v) => idsConMacchinaAttiva.has(v.strutturaId)), [vendite, idsConMacchinaAttiva]);
   const venditePeriodo = useMemo(() => venditeConMacchina.filter((v) => inPeriodo(v.data, periodo)), [venditeConMacchina, periodo]);
 
   if (!puoAccedere) {
