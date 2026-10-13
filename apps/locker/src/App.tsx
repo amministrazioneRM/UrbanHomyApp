@@ -213,14 +213,14 @@ const CAMPI_ALIAS: Record<string, string[]> = {
   strutturaNome: ["sede", "struttura", "location", "site", "negozio", "punto vendita"],
   dataOrdine: ["data ordine", "data", "order date", "data creazione", "data acquisto"],
   oraOrdine: ["ora ordine", "ora", "order time", "ora creazione", "ora acquisto"],
-  inizio: ["inizio", "data inizio", "check in", "checkin", "start date", "data noleggio", "data deposito"],
-  oraInizio: ["ora inizio", "ora check in", "start time", "ora deposito"],
-  fine: ["fine", "data fine", "check out", "checkout", "end date", "data ritiro"],
-  oraFine: ["ora fine", "ora check out", "end time", "ora ritiro"],
+  inizio: ["inizio", "inizio noleggio", "data inizio", "check in", "checkin", "start date", "data noleggio", "data deposito"],
+  oraInizio: ["ora inizio", "ora inizio noleggio", "ora check in", "start time", "ora deposito"],
+  fine: ["fine", "fine noleggio", "data fine", "check out", "checkout", "end date", "data ritiro"],
+  oraFine: ["ora fine", "ora fine noleggio", "ora check out", "end time", "ora ritiro"],
   prezzo: ["prezzo", "importo", "totale", "price", "amount", "totale eur", "prezzo eur", "incasso"],
   stato: ["stato", "status"],
   numArmadio: ["armadio", "n armadio", "numero armadio", "locker", "locker number", "box", "n box"],
-  tipologia: ["tipologia", "tipo", "tipo box", "box type", "categoria", "taglia"],
+  tipologia: ["tipologia", "tipologia armadio", "tipologia box", "tipo", "tipo armadio", "tipo box", "box type", "categoria", "taglia"],
   provenienza: ["provenienza", "canale", "source", "channel"],
 };
 
@@ -234,9 +234,29 @@ function trovaCampo(rigaNorm: Record<string, unknown>, chiavi: string[]): unknow
   }
   return undefined;
 }
+// Alcuni export (es. "DataGrid.xlsx" del gestionale locker) dichiarano nel
+// foglio una <dimension> sbagliata (A1:C1) pur contenendo dati fino a J60:
+// SheetJS si fida di "!ref" e leggerebbe solo l'intestazione. Si ricalcola
+// quindi l'intervallo dalle celle effettivamente presenti.
+function ricalcolaIntervallo(foglio: Record<string, unknown>): void {
+  const celle = Object.keys(foglio).filter((k) => k[0] !== "!");
+  if (celle.length === 0) return;
+  const r = { s: { r: Infinity, c: Infinity }, e: { r: 0, c: 0 } };
+  celle.forEach((a) => {
+    const p = XLSX.utils.decode_cell(a);
+    r.s.r = Math.min(r.s.r, p.r); r.s.c = Math.min(r.s.c, p.c);
+    r.e.r = Math.max(r.e.r, p.r); r.e.c = Math.max(r.e.c, p.c);
+  });
+  foglio["!ref"] = XLSX.utils.encode_range(r);
+}
+// Le date lette con cellDates sono in ora locale: toISOString() le
+// convertirebbe in UTC, spostando al giorno prima gli ordini notturni.
+function dataLocaleIso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 function excelDataToIso(v: unknown): string {
   if (v == null || v === "") return "";
-  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (v instanceof Date) return dataLocaleIso(v);
   const s = String(v).trim();
   let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
   if (m) {
@@ -307,13 +327,17 @@ function parseFoglioOrdini(
     const strutturaId = strutturaMatch?.id || strutture[0]?.id || "";
 
     const dataOrdine = excelDataToIso(dataOrdineRaw);
-    const oraOrdine = excelOraToHHMM(trovaCampo(norm, CAMPI_ALIAS.oraOrdine)) || "00:00";
+    // Se manca una colonna "ora" dedicata, l'orario si ricava dalla cella
+    // data quando questa è un data/ora completo (es. "13/08/2026 12:30:21").
+    const oraDa = (colonnaOra: unknown, cellaData: unknown): string =>
+      excelOraToHHMM(colonnaOra) || (cellaData instanceof Date ? excelOraToHHMM(cellaData) : "");
+    const oraOrdine = oraDa(trovaCampo(norm, CAMPI_ALIAS.oraOrdine), dataOrdineRaw) || "00:00";
     const inizioRaw = trovaCampo(norm, CAMPI_ALIAS.inizio);
     const fineRaw = trovaCampo(norm, CAMPI_ALIAS.fine);
     const inizio = inizioRaw ? excelDataToIso(inizioRaw) : dataOrdine;
     const fine = fineRaw ? excelDataToIso(fineRaw) : dataOrdine;
-    const oraInizio = excelOraToHHMM(trovaCampo(norm, CAMPI_ALIAS.oraInizio)) || oraOrdine;
-    const oraFine = excelOraToHHMM(trovaCampo(norm, CAMPI_ALIAS.oraFine)) || oraOrdine;
+    const oraInizio = oraDa(trovaCampo(norm, CAMPI_ALIAS.oraInizio), inizioRaw) || oraOrdine;
+    const oraFine = oraDa(trovaCampo(norm, CAMPI_ALIAS.oraFine), fineRaw) || oraOrdine;
 
     const prezzoRaw = trovaCampo(norm, CAMPI_ALIAS.prezzo);
     const prezzo = Number(String(prezzoRaw ?? "0").replace(",", ".").replace(/[^\d.-]/g, "")) || 0;
@@ -476,6 +500,7 @@ export default function App() {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array", cellDates: true });
       const foglio = wb.Sheets[wb.SheetNames[0]];
+      ricalcolaIntervallo(foglio);
       const righe = XLSX.utils.sheet_to_json(foglio, { defval: "" }) as Record<string, unknown>[];
       const { ordini: righeValide, scartati } = parseFoglioOrdini(righe, strutture);
       if (righeValide.length === 0) {
