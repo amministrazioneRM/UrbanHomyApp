@@ -1329,7 +1329,7 @@ function parseFoglioVendite(righeGrezze: Record<string, unknown>[], strutturaId:
     const stato = rimborso === true ? "Rimborsata" : erogato === false ? "NonErogata" : "Completata";
 
     risultato.vendite.push({
-      id: nid("VEN"), strutturaId, macchinaId: macchinaMatch?.id || "", macchinaNome: macchinaMatch ? "" : macchinaNomeGrezzo,
+      id: nid("VEN"), strutturaId, macchinaId: macchinaMatch?.id ?? null, macchinaNome: macchinaMatch ? "" : macchinaNomeGrezzo,
       data, ora, prodotto: String(prodotto).trim(), quantita, prezzoUnitario, metodoPagamento, stato,
     });
   });
