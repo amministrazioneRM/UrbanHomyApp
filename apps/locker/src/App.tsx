@@ -434,7 +434,7 @@ const inputCls = "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 t
 
 export default function App() {
   const [strutture, setStrutture] = useSyncedResource<LockerStruttura>(api.strutture as never, seedStrutture);
-  const [ordini, setOrdini] = useSyncedResource<LockerOrdine>(api.ordini as never, seedOrdini);
+  const [ordini, setOrdini, reloadOrdini] = useSyncedResource<LockerOrdine>(api.ordini as never, seedOrdini);
   const [locali, setLocali] = useSyncedResource<LockerLocale>(api.locali as never, seedLocali);
   const [vendingStrutture] = useSyncedResource<VendingStruttura>(api.vendingStrutture as never, []);
   const [vendingVendite] = useSyncedResource<VendingVendita>(api.vendingVendite as never, []);
@@ -516,12 +516,23 @@ export default function App() {
       righeConSede.forEach((o) => mappa.set(o.id, o));
       const righeUniche = Array.from(mappa.values());
       const nomeSede = strutturaOf(strutturaId)?.nome ?? "";
+      const ordiniApi = api.ordini as unknown as { batch(i: LockerOrdine[]): Promise<void>; remove(id: string): Promise<void> };
+      // Aggiorna subito lo stato locale per visibilità immediata
       if (modalita === "sostituzione") {
         setOrdini((os) => [...righeUniche, ...os.filter((o) => o.strutturaId !== strutturaId)]);
       } else {
         setOrdini((os) => [...righeUniche, ...os]);
       }
       setImportRisultato({ loading: false, refresh: true, totaleImportati: righeUniche.length, scartati, nomeSede, modalita });
+      // Salva atomicamente al backend in background
+      if (modalita === "sostituzione") {
+        const daEliminare = ordini.filter((o) => o.strutturaId === strutturaId);
+        Promise.allSettled(daEliminare.map((o) => ordiniApi.remove(o.id))).then(() => {
+          ordiniApi.batch(righeUniche).catch((err: Error) => console.error("Batch save fallita:", err));
+        });
+      } else {
+        ordiniApi.batch(righeUniche).catch((err: Error) => console.error("Batch save fallita:", err));
+      }
     } catch {
       setImportRisultato({ loading: false, errore: "File non leggibile. Verifica che sia un foglio Excel (.xlsx/.xls) o CSV valido." });
     }
@@ -668,6 +679,18 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
     return { totaleIncasso, ordiniConclusi: conclusiPeriodo.length, totaleAttesa, nAttesa, mediaPerOrdine: conclusiPeriodo.length ? totaleIncasso / conclusiPeriodo.length : 0, durataMedia };
   }, [ordiniPeriodoFiltrati]);
 
+  const statsVending = useMemo(() => {
+    let totale = 0;
+    let nVendite = 0;
+    struttureAttive.forEach((s) => {
+      const idVendingSede = vendingStrutture.filter((vs) => vs.sedeCentraleId === s.sedeCentraleId).map((vs) => vs.id);
+      const venditeSede = vendingVenditePeriodo.filter((v) => idVendingSede.includes(v.strutturaId));
+      totale += venditeSede.reduce((sum, v) => sum + totaleVendita(v), 0);
+      nVendite += venditeSede.length;
+    });
+    return { totale, nVendite };
+  }, [struttureAttive, vendingStrutture, vendingVenditePeriodo]);
+
   const giorniGrafico = useMemo(() => {
     const p = PERIODI.find((x) => x.id === periodo);
     if (p && p.giorni !== null) return p.giorni;
@@ -778,11 +801,12 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
         <StatCard label="Incasso totale" value={fmtEuro(stats.totaleIncasso)} sub={`${stats.ordiniConclusi} ordini conclusi`} icon={Euro} accent="bg-[#1B2A26]" />
         <StatCard label="Ordini conclusi" value={stats.ordiniConclusi} icon={Package} accent="bg-[#1E8E6E]" />
         <StatCard label="In attesa di pagamento" value={fmtEuro(stats.totaleAttesa)} sub={`${stats.nAttesa} ordini`} icon={Clock3} accent="bg-amber-500" />
         <StatCard label="Media per ordine" value={fmtEuro(stats.mediaPerOrdine)} sub={`durata media ${stats.durataMedia.toFixed(1)} h`} icon={Wallet} accent="bg-teal-600" />
+        <StatCard label="Vending machine" value={fmtEuro(statsVending.totale)} sub={`${statsVending.nVendite} vendite`} icon={ShoppingCart} accent="bg-sky-600" />
       </div>
       <div className="bg-white border border-stone-200 rounded-xl shadow-sm px-5 py-4 mb-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">

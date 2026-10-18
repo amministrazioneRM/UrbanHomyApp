@@ -149,5 +149,30 @@ export function makeCrudRouter(delegate: PrismaDelegate, options: CrudOptions = 
     }
   });
 
+  // Salva un array di elementi in un'unica chiamata (upsert: create o update se esiste già)
+  router.post("/batch", async (req, res, next) => {
+    try {
+      const items: AnyRecord[] = Array.isArray(req.body) ? req.body : [];
+      const results = await Promise.allSettled(
+        items.map(async (item) => {
+          const id = (item.id as string) ?? `${idPrefix}-${crypto.randomUUID()}`;
+          const data = await hashFieldsIn(serializeJsonFields(coerceDates({ ...item, id }, dateFields)), hashFields);
+          try {
+            return await delegate.create({ data });
+          } catch {
+            const { id: _id, ...rest } = data;
+            return await delegate.update({ where: { id }, data: rest });
+          }
+        })
+      );
+      const saved = results
+        .filter((r): r is PromiseFulfilledResult<AnyRecord> => r.status === "fulfilled")
+        .map((r) => r.value);
+      res.status(201).json(serialize(saved, omit));
+    } catch (err) {
+      next(err);
+    }
+  });
+
   return router;
 }

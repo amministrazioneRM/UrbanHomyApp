@@ -19,14 +19,14 @@ async function seedLocker(): Promise<void> {
   const seedStrutture = extractSeed(file, "seedStrutture");
   const seedOrdini = withDates(extractSeed(file, "seedOrdini"), ["dataOrdine", "inizio", "fine"]);
 
-  await prisma.lockerVendita.deleteMany();
-  await prisma.lockerLocale.deleteMany();
-  await prisma.lockerOrdine.deleteMany();
-  await prisma.lockerStruttura.deleteMany();
-
-  await prisma.lockerStruttura.createMany({ data: seedStrutture as never[] });
-  await prisma.lockerOrdine.createMany({ data: seedOrdini as never[] });
-  console.log(`Locker: ${seedStrutture.length} strutture, ${seedOrdini.length} ordini`);
+  const struttureCount = await prisma.lockerStruttura.count();
+  if (struttureCount === 0) {
+    await prisma.lockerStruttura.createMany({ data: seedStrutture as never[] });
+    await prisma.lockerOrdine.createMany({ data: seedOrdini as never[] });
+    console.log(`Locker: ${seedStrutture.length} strutture, ${seedOrdini.length} ordini`);
+  } else {
+    console.log(`Locker: dati già presenti (${struttureCount} strutture) — seed saltato`);
+  }
 }
 
 async function seedVending(): Promise<void> {
@@ -35,14 +35,15 @@ async function seedVending(): Promise<void> {
   const seedMacchine = extractSeed(file, "seedMacchine");
   const seedVendite = withDates(extractSeed(file, "seedVendite"), ["data"]);
 
-  await prisma.vendingVendita.deleteMany();
-  await prisma.vendingMacchina.deleteMany();
-  await prisma.vendingStruttura.deleteMany();
-
-  await prisma.vendingStruttura.createMany({ data: seedStrutture as never[] });
-  await prisma.vendingMacchina.createMany({ data: seedMacchine as never[] });
-  await prisma.vendingVendita.createMany({ data: seedVendite as never[] });
-  console.log(`Vending: ${seedStrutture.length} strutture, ${seedMacchine.length} macchine, ${seedVendite.length} vendite`);
+  const struttureCount = await prisma.vendingStruttura.count();
+  if (struttureCount === 0) {
+    await prisma.vendingStruttura.createMany({ data: seedStrutture as never[] });
+    await prisma.vendingMacchina.createMany({ data: seedMacchine as never[] });
+    await prisma.vendingVendita.createMany({ data: seedVendite as never[] });
+    console.log(`Vending: ${seedStrutture.length} strutture, ${seedMacchine.length} macchine, ${seedVendite.length} vendite`);
+  } else {
+    console.log(`Vending: dati già presenti (${struttureCount} strutture) — seed saltato`);
+  }
 }
 
 async function main(): Promise<void> {
