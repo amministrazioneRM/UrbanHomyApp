@@ -42,6 +42,8 @@ services:
       - "${PORTAL_PORT}:${PORTAL_PORT}"
     environment:
       PORT: ${PORTAL_PORT}
+      MSAL_CLIENT_ID: ${MSAL_CLIENT_ID:-}
+      MSAL_TENANT_ID: ${MSAL_TENANT_ID:-}
     depends_on:
       - backend
 
