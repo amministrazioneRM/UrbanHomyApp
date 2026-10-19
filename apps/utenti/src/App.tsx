@@ -15,6 +15,8 @@ interface AccountDraft {
   password: string;
   ruoloGlobale: "Amministratore" | "Utente";
   accessi: AccessiMap;
+  // null = tutte le sedi; string[] = solo le sedi elencate
+  sediAbilitate: string[] | null;
 }
 
 interface RuoloDraft {
@@ -414,6 +416,14 @@ export default function App(): JSX.Element {
                         );
                       })}
                     </div>
+                    <div className="flex items-center gap-1 mt-1.5">
+                      <MapPin size={11} className="text-stone-400 shrink-0" />
+                      <span className="text-xs text-stone-500">
+                        {!a.sediAbilitate || a.sediAbilitate.length === 0
+                          ? "Tutte le sedi"
+                          : a.sediAbilitate.map((id) => sedi.find((s) => s.id === id)?.nome ?? id).join(", ")}
+                      </span>
+                    </div>
                   </div>
                   <button onClick={() => setModale({ type: "modifica", payload: a })} className="p-2 rounded-lg hover:bg-stone-100 text-stone-500 shrink-0">
                     <Pencil size={15} />
@@ -480,6 +490,7 @@ export default function App(): JSX.Element {
           ruoli={ruoli}
           accounts={accounts}
           sostituti={sostituti}
+          sedi={sedi}
           onSalvaSostituto={salvaSostituto}
           onEliminaSostituto={eliminaSostituto}
           isProprioAccount={!!(modale.payload && session && modale.payload.id === session.id)}
@@ -519,6 +530,7 @@ interface UtenteFormProps {
   ruoli: UHRuolo[];
   accounts: UHAccount[];
   sostituti: UHSostituto[];
+  sedi: UHSede[];
   onSalvaSostituto: (dati: UHSostituto) => void;
   onEliminaSostituto: (id: string) => void;
   isProprioAccount: boolean;
@@ -528,17 +540,23 @@ interface UtenteFormProps {
 }
 
 function UtenteForm({
-  esistente, ruoli, accounts, sostituti,
+  esistente, ruoli, accounts, sostituti, sedi,
   onSalvaSostituto, onEliminaSostituto, isProprioAccount,
   onSalva, onElimina, onClose,
 }: UtenteFormProps): JSX.Element {
   const vuoto: AccountDraft = {
     id: null, nome: "", email: "", password: "", ruoloGlobale: "Utente",
     accessi: UHAccounts.accessoVuoto(),
+    sediAbilitate: null,
   };
   const [f, setF] = useState<AccountDraft>(
     esistente
-      ? { ...esistente, password: "", accessi: { ...UHAccounts.accessoVuoto(), ...esistente.accessi } }
+      ? {
+          ...esistente,
+          password: "",
+          accessi: { ...UHAccounts.accessoVuoto(), ...esistente.accessi },
+          sediAbilitate: esistente.sediAbilitate ?? null,
+        }
       : vuoto
   );
   const [modaleSostituto, setModaleSostituto] = useState<ModaleSostituto | null>(null);
@@ -587,6 +605,42 @@ function UtenteForm({
             ))}
           </select>
         </Field>
+
+        <div className="mt-2 pt-3 border-t border-stone-200">
+          <div className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">Sedi abilitate</div>
+          <label className="flex items-center gap-2 text-sm font-medium text-stone-700 mb-2">
+            <input
+              type="checkbox"
+              className="accent-[#5B4B9E]"
+              checked={f.sediAbilitate === null}
+              onChange={(e) => upd({ sediAbilitate: e.target.checked ? null : [] })}
+            />
+            Tutte le sedi
+          </label>
+          {f.sediAbilitate !== null && (
+            <div className="grid gap-1 pl-1">
+              {sedi.filter((s) => s.attiva).map((sede) => (
+                <label key={sede.id} className="flex items-center gap-2 text-sm text-stone-700">
+                  <input
+                    type="checkbox"
+                    className="accent-[#5B4B9E]"
+                    checked={f.sediAbilitate!.includes(sede.id)}
+                    onChange={(e) => {
+                      const sel = f.sediAbilitate!;
+                      upd({ sediAbilitate: e.target.checked ? [...sel, sede.id] : sel.filter((id) => id !== sede.id) });
+                    }}
+                  />
+                  <MapPin size={12} className="text-stone-400 shrink-0" />
+                  {sede.nome}
+                  {sede.citta && <span className="text-stone-400 text-xs">· {sede.citta}</span>}
+                </label>
+              ))}
+              {sedi.filter((s) => s.attiva).length === 0 && (
+                <p className="text-xs text-stone-400">Nessuna sede attiva configurata.</p>
+              )}
+            </div>
+          )}
+        </div>
 
         {f.ruoloGlobale === "Utente" && (
           <div className="mt-2 pt-3 border-t border-stone-200">

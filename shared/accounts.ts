@@ -38,6 +38,8 @@ export interface UHAccount {
   password?: string;
   ruoloGlobale: "Amministratore" | "Utente";
   accessi: AccessiMap;
+  // undefined/null = accesso a tutte le sedi; array = solo le sedi elencate
+  sediAbilitate?: string[] | null;
 }
 
 export interface UHRuolo {
@@ -380,6 +382,16 @@ function isAdminGlobale(account: UHAccount | null | undefined): boolean {
   return !!(account && account.ruoloGlobale === "Amministratore");
 }
 
+// Ritorna true se l'account ha accesso alla sede indicata.
+// Gli amministratori globali hanno sempre accesso a tutto.
+// Un account senza sediAbilitate (undefined/null) ha accesso a tutte le sedi.
+function sedeAbilitata(account: UHAccount | null | undefined, sedeId: string): boolean {
+  if (!account) return false;
+  if (isAdminGlobale(account)) return true;
+  if (!account.sediAbilitate || account.sediAbilitate.length === 0) return true;
+  return account.sediAbilitate.includes(sedeId);
+}
+
 interface AccessoDiretto {
   abilitato: boolean;
   ruolo: { nome: string; permessi: PermessiMap | null; admin?: boolean } | null;
@@ -490,6 +502,7 @@ const UHAccounts = {
   hasAccesso,
   ruoloIn,
   permesso,
+  sedeAbilitata,
 };
 
 export default UHAccounts;
