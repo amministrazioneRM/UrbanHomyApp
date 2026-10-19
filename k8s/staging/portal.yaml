@@ -21,11 +21,29 @@ spec:
       containers:
         - name: portal
           image: ghcr.io/amministrazionerm/urban-homy-amministrazionerm/portal:staging
+          imagePullPolicy: Always
           ports:
             - containerPort: 5173
           env:
             - name: PORT
               value: "5173"
+            - name: API_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: urbanhomy-portal-secret
+                  key: API_BASE_URL
+            - name: MSAL_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: urbanhomy-portal-secret
+                  key: MSAL_CLIENT_ID
+                  optional: true
+            - name: MSAL_TENANT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: urbanhomy-portal-secret
+                  key: MSAL_TENANT_ID
+                  optional: true
           readinessProbe:
             httpGet:
               path: /

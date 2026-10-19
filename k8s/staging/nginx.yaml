@@ -1,0 +1,141 @@
+# =============================================================================
+# Nginx — reverse proxy per staging (HTTPS self-signed)
+#
+# Instrada:
+#   /api/*  → backend:4000  (ClusterIP interno)
+#   /*      → portal:5173   (ClusterIP interno)
+#
+# TLS terminato qui con certificato self-signed (secret: urbanhomy-staging-tls)
+# Esposto su NodePort 443 → 30443
+#
+# SETUP del secret TLS (una tantum sul server):
+#   openssl req -x509 -nodes -newkey rsa:2048 -days 730 \
+#     -keyout staging-tls.key -out staging-tls.crt \
+#     -subj "/CN=<SERVER_IP>/O=UrbanHomy Staging" \
+#     -addext "subjectAltName=IP:<SERVER_IP>"
+#   kubectl create secret tls urbanhomy-staging-tls \
+#     --cert=staging-tls.crt --key=staging-tls.key \
+#     --namespace=staging
+#   rm staging-tls.crt staging-tls.key
+# =============================================================================
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: staging
+data:
+  nginx.conf: |
+    worker_processes 1;
+
+    events {
+      worker_connections 1024;
+    }
+
+    http {
+      sendfile on;
+
+      upstream portal {
+        server portal:5173;
+      }
+
+      upstream backend {
+        server backend:4000;
+      }
+
+      server {
+        listen 443 ssl;
+
+        ssl_certificate     /etc/nginx/tls/tls.crt;
+        ssl_certificate_key /etc/nginx/tls/tls.key;
+        ssl_protocols       TLSv1.2 TLSv1.3;
+        ssl_ciphers         HIGH:!aNULL:!MD5;
+
+        # Backend API
+        location /api/ {
+          proxy_pass         http://backend;
+          proxy_http_version 1.1;
+          proxy_set_header   Host              $host;
+          proxy_set_header   X-Real-IP         $remote_addr;
+          proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+          proxy_set_header   X-Forwarded-Proto $scheme;
+          proxy_read_timeout 60s;
+        }
+
+        # Portal (SPA fallback gestito da serve.js)
+        location / {
+          proxy_pass         http://portal;
+          proxy_http_version 1.1;
+          proxy_set_header   Host              $host;
+          proxy_set_header   X-Real-IP         $remote_addr;
+          proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+          proxy_set_header   X-Forwarded-Proto $scheme;
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: staging
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 443
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+            - name: tls
+              mountPath: /etc/nginx/tls
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 443
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 443
+              scheme: HTTPS
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            failureThreshold: 3
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-config
+        - name: tls
+          secret:
+            secretName: urbanhomy-staging-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: staging
+spec:
+  selector:
+    app: nginx
+  ports:
+    - port: 443
+      targetPort: 443
+      nodePort: 30443
+  type: NodePort

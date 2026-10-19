@@ -21,6 +21,7 @@ spec:
       containers:
         - name: backend
           image: ghcr.io/amministrazionerm/urban-homy-amministrazionerm/backend:staging
+          imagePullPolicy: Always
           ports:
             - containerPort: 4000
           env:
