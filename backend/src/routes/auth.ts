@@ -11,12 +11,17 @@ interface MsGraphProfile {
   userPrincipalName?: string;
 }
 
+function parseJsonField(value: unknown): unknown {
+  return typeof value === "string" ? JSON.parse(value) : value;
+}
+
 function omitPassword(account: { password: string; accessi: unknown } & Omit<SafeAccount, never>): SafeAccount {
-  const { password: _pw, ...rest } = account as { password: string } & SafeAccount;
+  const { password: _pw, ...rest } = account as { password: string } & SafeAccount & { sediAbilitate?: unknown };
   return {
     ...rest,
-    accessi: typeof rest.accessi === "string" ? JSON.parse(rest.accessi) : rest.accessi,
-  };
+    accessi: parseJsonField(rest.accessi),
+    sediAbilitate: parseJsonField(rest.sediAbilitate),
+  } as SafeAccount;
 }
 
 router.post("/login", async (req, res, next) => {
