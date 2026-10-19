@@ -66,6 +66,12 @@ http
     const app = segments[0];
 
     if (app && roots[app]) {
+      // Redirect /utenti → /utenti/ so relative paths in index.html resolve correctly
+      if (url === `/${app}`) {
+        res.writeHead(301, { Location: `/${app}/` });
+        res.end();
+        return;
+      }
       const rest = "/" + segments.slice(1).join("/");
       const filePath = path.join(roots[app], rest === "/" ? "/index.html" : rest);
       // SPA fallback: if the file doesn't exist, serve index.html for client-side routing
