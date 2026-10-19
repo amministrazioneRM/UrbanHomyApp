@@ -117,15 +117,15 @@ function withDates(rows: unknown[], fields: string[]): unknown[] {
 }
 
 async function seedLocker(): Promise<void> {
+  const struttureCount = await prisma.lockerStruttura.count();
+  if (struttureCount > 0) {
+    console.log(`Locker: dati già presenti (${struttureCount} strutture) — seed saltato`);
+    return;
+  }
   const file = p("urban-homy-locker", "src/App.jsx");
   const seedStrutture = extractSeed(file, "seedStrutture");
   const seedOrdini = withDates(extractSeed(file, "seedOrdini"), ["dataOrdine", "inizio", "fine"]);
   const seedVendite = withDates(extractSeed(file, "seedVendite"), ["data"]);
-
-  await prisma.lockerVendita.deleteMany();
-  await prisma.lockerLocale.deleteMany();
-  await prisma.lockerOrdine.deleteMany();
-  await prisma.lockerStruttura.deleteMany();
 
   await prisma.lockerStruttura.createMany({ data: seedStrutture as never[] });
   await prisma.lockerOrdine.createMany({ data: seedOrdini as never[] });
@@ -134,14 +134,15 @@ async function seedLocker(): Promise<void> {
 }
 
 async function seedVending(): Promise<void> {
+  const struttureCount = await prisma.vendingStruttura.count();
+  if (struttureCount > 0) {
+    console.log(`Vending: dati già presenti (${struttureCount} strutture) — seed saltato`);
+    return;
+  }
   const file = p("urban-homy-vending", "src/App.jsx");
   const seedStrutture = extractSeed(file, "seedStrutture");
   const seedMacchine = extractSeed(file, "seedMacchine");
   const seedVendite = withDates(extractSeed(file, "seedVendite"), ["data"]);
-
-  await prisma.vendingVendita.deleteMany();
-  await prisma.vendingMacchina.deleteMany();
-  await prisma.vendingStruttura.deleteMany();
 
   await prisma.vendingStruttura.createMany({ data: seedStrutture as never[] });
   await prisma.vendingMacchina.createMany({ data: seedMacchine as never[] });

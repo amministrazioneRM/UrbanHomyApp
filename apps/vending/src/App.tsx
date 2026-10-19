@@ -1329,7 +1329,7 @@ function parseFoglioVendite(righeGrezze: Record<string, unknown>[], strutturaId:
     const stato = rimborso === true ? "Rimborsata" : erogato === false ? "NonErogata" : "Completata";
 
     risultato.vendite.push({
-      id: nid("VEN"), strutturaId, macchinaId: macchinaMatch?.id || "", macchinaNome: macchinaMatch ? "" : macchinaNomeGrezzo,
+      id: nid("VEN"), strutturaId, macchinaId: macchinaMatch?.id ?? null, macchinaNome: macchinaMatch ? "" : macchinaNomeGrezzo,
       data, ora, prodotto: String(prodotto).trim(), quantita, prezzoUnitario, metodoPagamento, stato,
     });
   });
@@ -1417,7 +1417,7 @@ const inputCls = "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 t
 export default function App() {
   const [strutture, setStrutture] = useSyncedResource(api.strutture, seedStrutture);
   const [macchine, setMacchine] = useSyncedResource(api.macchine, seedMacchine);
-  const [vendite, setVendite] = useSyncedResource(api.vendite, seedVendite);
+  const [vendite, setVendite, reloadVendite] = useSyncedResource(api.vendite, seedVendite);
   const backendOffline = useBackendOffline();
 
   const [tab, setTab] = useState<string>("dashboard");
@@ -1497,6 +1497,7 @@ export default function App() {
       }
 
       const nomeSede = strutturaOf(strutturaId)?.nome ?? "";
+      // Aggiorna subito lo stato locale per visibilità immediata
       if (modalita === "sostituzione") {
         setVendite((vs) => [...righeValide, ...vs.filter((v) => v.strutturaId !== strutturaId)]);
       } else {
@@ -1506,6 +1507,15 @@ export default function App() {
         loading: false, refresh: true, totaleImportati: righeValide.length, scartati,
         nomeSede, modalita,
       });
+      // Salva atomicamente al backend in background (garantisce persistenza al reload)
+      if (modalita === "sostituzione") {
+        const daEliminare = vendite.filter((v) => v.strutturaId === strutturaId);
+        Promise.allSettled(daEliminare.map((v) => api.vendite.remove(v.id))).then(() => {
+          api.vendite.batch(righeValide).catch((err: Error) => console.error("Batch save fallita:", err));
+        });
+      } else {
+        api.vendite.batch(righeValide).catch((err: Error) => console.error("Batch save fallita:", err));
+      }
     } catch (err) {
       setImportRisultato({ loading: false, errore: "File non leggibile. Verifica che sia un foglio Excel (.xlsx/.xls) o CSV valido." });
     }
