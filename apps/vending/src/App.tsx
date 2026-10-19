@@ -1224,9 +1224,29 @@ function trovaCampo(rigaNorm: Record<string, unknown>, chiavi: string[]): unknow
   }
   return undefined;
 }
+// Alcuni export dichiarano nel foglio una <dimension> sbagliata (es. A1:C1)
+// pur contenendo molte più righe/colonne: SheetJS si fida di "!ref" e
+// leggerebbe solo l'intestazione. Si ricalcola quindi l'intervallo dalle
+// celle effettivamente presenti.
+function ricalcolaIntervallo(foglio: Record<string, unknown>): void {
+  const celle = Object.keys(foglio).filter((k) => k[0] !== "!");
+  if (celle.length === 0) return;
+  const r = { s: { r: Infinity, c: Infinity }, e: { r: 0, c: 0 } };
+  celle.forEach((a) => {
+    const p = XLSX.utils.decode_cell(a);
+    r.s.r = Math.min(r.s.r, p.r); r.s.c = Math.min(r.s.c, p.c);
+    r.e.r = Math.max(r.e.r, p.r); r.e.c = Math.max(r.e.c, p.c);
+  });
+  foglio["!ref"] = XLSX.utils.encode_range(r);
+}
+// Le date lette con cellDates sono in ora locale: toISOString() le
+// convertirebbe in UTC, spostando al giorno prima le vendite notturne.
+function dataLocaleIso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 function excelDataToIso(v: unknown): string {
   if (v == null || v === "") return "";
-  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (v instanceof Date) return dataLocaleIso(v);
   const s = String(v).trim();
   let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
   if (m) {
@@ -1295,7 +1315,10 @@ function parseFoglioVendite(righeGrezze: Record<string, unknown>[], strutturaId:
     const macchinaMatch = macchine.find((m) => m.strutturaId === strutturaId && normalizeTesto(m.nome) === normalizeTesto(macchinaNomeRaw));
 
     const data = excelDataToIso(dataRaw);
-    const ora = excelOraToHHMM(trovaCampo(norm, CAMPI_ALIAS_VENDITE.ora)) || "00:00";
+    // Senza colonna "ora" dedicata, l'orario si ricava dalla cella data
+    // quando questa è un data/ora completo.
+    const ora = excelOraToHHMM(trovaCampo(norm, CAMPI_ALIAS_VENDITE.ora))
+      || (dataRaw instanceof Date ? excelOraToHHMM(dataRaw) : "") || "00:00";
     const quantitaRaw = trovaCampo(norm, CAMPI_ALIAS_VENDITE.quantita);
     const quantita = Number(String(quantitaRaw ?? "1").replace(",", ".")) || 1;
     const prezzoRaw = trovaCampo(norm, CAMPI_ALIAS_VENDITE.prezzoUnitario);
@@ -1306,7 +1329,7 @@ function parseFoglioVendite(righeGrezze: Record<string, unknown>[], strutturaId:
     const stato = rimborso === true ? "Rimborsata" : erogato === false ? "NonErogata" : "Completata";
 
     risultato.vendite.push({
-      id: nid("VEN"), strutturaId, macchinaId: macchinaMatch?.id || "", macchinaNome: macchinaMatch ? "" : macchinaNomeGrezzo,
+      id: nid("VEN"), strutturaId, macchinaId: macchinaMatch?.id ?? null, macchinaNome: macchinaMatch ? "" : macchinaNomeGrezzo,
       data, ora, prodotto: String(prodotto).trim(), quantita, prezzoUnitario, metodoPagamento, stato,
     });
   });
@@ -1394,7 +1417,7 @@ const inputCls = "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 t
 export default function App() {
   const [strutture, setStrutture] = useSyncedResource(api.strutture, seedStrutture);
   const [macchine, setMacchine] = useSyncedResource(api.macchine, seedMacchine);
-  const [vendite, setVendite] = useSyncedResource(api.vendite, seedVendite);
+  const [vendite, setVendite, reloadVendite] = useSyncedResource(api.vendite, seedVendite);
   const backendOffline = useBackendOffline();
 
   const [tab, setTab] = useState<string>("dashboard");
@@ -1464,6 +1487,7 @@ export default function App() {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array", cellDates: true });
       const foglio = wb.Sheets[wb.SheetNames[0]];
+      ricalcolaIntervallo(foglio);
       const righe = XLSX.utils.sheet_to_json(foglio, { defval: "" }) as Record<string, unknown>[];
       const { vendite: righeValide, scartati } = parseFoglioVendite(righe, strutturaId, macchine);
 
@@ -1473,6 +1497,7 @@ export default function App() {
       }
 
       const nomeSede = strutturaOf(strutturaId)?.nome ?? "";
+      // Aggiorna subito lo stato locale per visibilità immediata
       if (modalita === "sostituzione") {
         setVendite((vs) => [...righeValide, ...vs.filter((v) => v.strutturaId !== strutturaId)]);
       } else {
@@ -1482,6 +1507,15 @@ export default function App() {
         loading: false, refresh: true, totaleImportati: righeValide.length, scartati,
         nomeSede, modalita,
       });
+      // Salva atomicamente al backend in background (garantisce persistenza al reload)
+      if (modalita === "sostituzione") {
+        const daEliminare = vendite.filter((v) => v.strutturaId === strutturaId);
+        Promise.allSettled(daEliminare.map((v) => api.vendite.remove(v.id))).then(() => {
+          api.vendite.batch(righeValide).catch((err: Error) => console.error("Batch save fallita:", err));
+        });
+      } else {
+        api.vendite.batch(righeValide).catch((err: Error) => console.error("Batch save fallita:", err));
+      }
     } catch (err) {
       setImportRisultato({ loading: false, errore: "File non leggibile. Verifica che sia un foglio Excel (.xlsx/.xls) o CSV valido." });
     }

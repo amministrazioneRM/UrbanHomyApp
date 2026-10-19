@@ -38,6 +38,8 @@ interface ImportRisultato {
   errore?: string;
   refresh?: boolean;
   totaleImportati?: number;
+  nomeSede?: string;
+  modalita?: string;
   scartati?: Array<{ riga: number; motivo: string }>;
 }
 
@@ -213,14 +215,14 @@ const CAMPI_ALIAS: Record<string, string[]> = {
   strutturaNome: ["sede", "struttura", "location", "site", "negozio", "punto vendita"],
   dataOrdine: ["data ordine", "data", "order date", "data creazione", "data acquisto"],
   oraOrdine: ["ora ordine", "ora", "order time", "ora creazione", "ora acquisto"],
-  inizio: ["inizio", "data inizio", "check in", "checkin", "start date", "data noleggio", "data deposito"],
-  oraInizio: ["ora inizio", "ora check in", "start time", "ora deposito"],
-  fine: ["fine", "data fine", "check out", "checkout", "end date", "data ritiro"],
-  oraFine: ["ora fine", "ora check out", "end time", "ora ritiro"],
+  inizio: ["inizio", "inizio noleggio", "data inizio", "check in", "checkin", "start date", "data noleggio", "data deposito"],
+  oraInizio: ["ora inizio", "ora inizio noleggio", "ora check in", "start time", "ora deposito"],
+  fine: ["fine", "fine noleggio", "data fine", "check out", "checkout", "end date", "data ritiro"],
+  oraFine: ["ora fine", "ora fine noleggio", "ora check out", "end time", "ora ritiro"],
   prezzo: ["prezzo", "importo", "totale", "price", "amount", "totale eur", "prezzo eur", "incasso"],
   stato: ["stato", "status"],
   numArmadio: ["armadio", "n armadio", "numero armadio", "locker", "locker number", "box", "n box"],
-  tipologia: ["tipologia", "tipo", "tipo box", "box type", "categoria", "taglia"],
+  tipologia: ["tipologia", "tipologia armadio", "tipologia box", "tipo", "tipo armadio", "tipo box", "box type", "categoria", "taglia"],
   provenienza: ["provenienza", "canale", "source", "channel"],
 };
 
@@ -234,9 +236,29 @@ function trovaCampo(rigaNorm: Record<string, unknown>, chiavi: string[]): unknow
   }
   return undefined;
 }
+// Alcuni export (es. "DataGrid.xlsx" del gestionale locker) dichiarano nel
+// foglio una <dimension> sbagliata (A1:C1) pur contenendo dati fino a J60:
+// SheetJS si fida di "!ref" e leggerebbe solo l'intestazione. Si ricalcola
+// quindi l'intervallo dalle celle effettivamente presenti.
+function ricalcolaIntervallo(foglio: Record<string, unknown>): void {
+  const celle = Object.keys(foglio).filter((k) => k[0] !== "!");
+  if (celle.length === 0) return;
+  const r = { s: { r: Infinity, c: Infinity }, e: { r: 0, c: 0 } };
+  celle.forEach((a) => {
+    const p = XLSX.utils.decode_cell(a);
+    r.s.r = Math.min(r.s.r, p.r); r.s.c = Math.min(r.s.c, p.c);
+    r.e.r = Math.max(r.e.r, p.r); r.e.c = Math.max(r.e.c, p.c);
+  });
+  foglio["!ref"] = XLSX.utils.encode_range(r);
+}
+// Le date lette con cellDates sono in ora locale: toISOString() le
+// convertirebbe in UTC, spostando al giorno prima gli ordini notturni.
+function dataLocaleIso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 function excelDataToIso(v: unknown): string {
   if (v == null || v === "") return "";
-  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  if (v instanceof Date) return dataLocaleIso(v);
   const s = String(v).trim();
   let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
   if (m) {
@@ -307,13 +329,17 @@ function parseFoglioOrdini(
     const strutturaId = strutturaMatch?.id || strutture[0]?.id || "";
 
     const dataOrdine = excelDataToIso(dataOrdineRaw);
-    const oraOrdine = excelOraToHHMM(trovaCampo(norm, CAMPI_ALIAS.oraOrdine)) || "00:00";
+    // Se manca una colonna "ora" dedicata, l'orario si ricava dalla cella
+    // data quando questa è un data/ora completo (es. "13/08/2026 12:30:21").
+    const oraDa = (colonnaOra: unknown, cellaData: unknown): string =>
+      excelOraToHHMM(colonnaOra) || (cellaData instanceof Date ? excelOraToHHMM(cellaData) : "");
+    const oraOrdine = oraDa(trovaCampo(norm, CAMPI_ALIAS.oraOrdine), dataOrdineRaw) || "00:00";
     const inizioRaw = trovaCampo(norm, CAMPI_ALIAS.inizio);
     const fineRaw = trovaCampo(norm, CAMPI_ALIAS.fine);
     const inizio = inizioRaw ? excelDataToIso(inizioRaw) : dataOrdine;
     const fine = fineRaw ? excelDataToIso(fineRaw) : dataOrdine;
-    const oraInizio = excelOraToHHMM(trovaCampo(norm, CAMPI_ALIAS.oraInizio)) || oraOrdine;
-    const oraFine = excelOraToHHMM(trovaCampo(norm, CAMPI_ALIAS.oraFine)) || oraOrdine;
+    const oraInizio = oraDa(trovaCampo(norm, CAMPI_ALIAS.oraInizio), inizioRaw) || oraOrdine;
+    const oraFine = oraDa(trovaCampo(norm, CAMPI_ALIAS.oraFine), fineRaw) || oraOrdine;
 
     const prezzoRaw = trovaCampo(norm, CAMPI_ALIAS.prezzo);
     const prezzo = Number(String(prezzoRaw ?? "0").replace(",", ".").replace(/[^\d.-]/g, "")) || 0;
@@ -408,7 +434,7 @@ const inputCls = "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 t
 
 export default function App() {
   const [strutture, setStrutture] = useSyncedResource<LockerStruttura>(api.strutture as never, seedStrutture);
-  const [ordini, setOrdini] = useSyncedResource<LockerOrdine>(api.ordini as never, seedOrdini);
+  const [ordini, setOrdini, reloadOrdini] = useSyncedResource<LockerOrdine>(api.ordini as never, seedOrdini);
   const [locali, setLocali] = useSyncedResource<LockerLocale>(api.locali as never, seedLocali);
   const [vendingStrutture] = useSyncedResource<VendingStruttura>(api.vendingStrutture as never, []);
   const [vendingVendite] = useSyncedResource<VendingVendita>(api.vendingVendite as never, []);
@@ -444,11 +470,13 @@ export default function App() {
     setModale(null);
   }
   function salvaStruttura(dati: LockerStruttura) {
-    if (dati.id) {
-      setStrutture((ss) => ss.map((s) => (s.id === dati.id ? dati : s)));
-    } else {
-      setStrutture((ss) => [...ss, { ...dati, id: nid("LOC") }]);
-    }
+    // Il form assegna sempre l'id prima di chiamare onSalva: non basta
+    // controllare dati.id, occorre verificare se l'id è già presente.
+    setStrutture((ss) =>
+      ss.some((s) => s.id === dati.id)
+        ? ss.map((s) => (s.id === dati.id ? dati : s))
+        : [...ss, dati]
+    );
     setModale(null);
   }
   function eliminaStruttura(id: string) {
@@ -468,27 +496,43 @@ export default function App() {
     setModale(null);
   }
 
-  async function importaOrdiniDaFile(file: File) {
+  async function importaOrdiniDaFile(file: File, strutturaId: string, modalita: string) {
     setImportRisultato({ loading: true });
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array", cellDates: true });
       const foglio = wb.Sheets[wb.SheetNames[0]];
+      ricalcolaIntervallo(foglio);
       const righe = XLSX.utils.sheet_to_json(foglio, { defval: "" }) as Record<string, unknown>[];
       const { ordini: righeValide, scartati } = parseFoglioOrdini(righe, strutture);
       if (righeValide.length === 0) {
         setImportRisultato({ loading: false, errore: "Nessun ordine valido trovato nel file.", scartati });
         return;
       }
-      const conferma = window.confirm(
-        `Il file contiene ${righeValide.length} ordini validi. L'importazione sostituirà completamente l'elenco ordini attuale (${ordini.length} presenti ora) con quello del file. Continuare?`
-      );
-      if (!conferma) { setImportRisultato(null); return; }
+      // Sovrascrive la strutturaId con quella scelta esplicitamente dall'utente
+      // (il file potrebbe non avere una colonna sede, o avere un nome diverso).
+      const righeConSede = righeValide.map((o) => ({ ...o, strutturaId }));
       const mappa = new Map<string, LockerOrdine>();
-      righeValide.forEach((o) => mappa.set(o.id, o));
-      const nuovoElenco = Array.from(mappa.values());
-      setOrdini(nuovoElenco);
-      setImportRisultato({ loading: false, refresh: true, totaleImportati: nuovoElenco.length, scartati });
+      righeConSede.forEach((o) => mappa.set(o.id, o));
+      const righeUniche = Array.from(mappa.values());
+      const nomeSede = strutturaOf(strutturaId)?.nome ?? "";
+      const ordiniApi = api.ordini as unknown as { batch(i: LockerOrdine[]): Promise<void>; remove(id: string): Promise<void> };
+      // Aggiorna subito lo stato locale per visibilità immediata
+      if (modalita === "sostituzione") {
+        setOrdini((os) => [...righeUniche, ...os.filter((o) => o.strutturaId !== strutturaId)]);
+      } else {
+        setOrdini((os) => [...righeUniche, ...os]);
+      }
+      setImportRisultato({ loading: false, refresh: true, totaleImportati: righeUniche.length, scartati, nomeSede, modalita });
+      // Salva atomicamente al backend in background
+      if (modalita === "sostituzione") {
+        const daEliminare = ordini.filter((o) => o.strutturaId === strutturaId);
+        Promise.allSettled(daEliminare.map((o) => ordiniApi.remove(o.id))).then(() => {
+          ordiniApi.batch(righeUniche).catch((err: Error) => console.error("Batch save fallita:", err));
+        });
+      } else {
+        ordiniApi.batch(righeUniche).catch((err: Error) => console.error("Batch save fallita:", err));
+      }
     } catch {
       setImportRisultato({ loading: false, errore: "File non leggibile. Verifica che sia un foglio Excel (.xlsx/.xls) o CSV valido." });
     }
@@ -635,6 +679,18 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
     return { totaleIncasso, ordiniConclusi: conclusiPeriodo.length, totaleAttesa, nAttesa, mediaPerOrdine: conclusiPeriodo.length ? totaleIncasso / conclusiPeriodo.length : 0, durataMedia };
   }, [ordiniPeriodoFiltrati]);
 
+  const statsVending = useMemo(() => {
+    let totale = 0;
+    let nVendite = 0;
+    struttureAttive.forEach((s) => {
+      const idVendingSede = vendingStrutture.filter((vs) => vs.sedeCentraleId === s.sedeCentraleId).map((vs) => vs.id);
+      const venditeSede = vendingVenditePeriodo.filter((v) => idVendingSede.includes(v.strutturaId));
+      totale += venditeSede.reduce((sum, v) => sum + totaleVendita(v), 0);
+      nVendite += venditeSede.length;
+    });
+    return { totale, nVendite };
+  }, [struttureAttive, vendingStrutture, vendingVenditePeriodo]);
+
   const giorniGrafico = useMemo(() => {
     const p = PERIODI.find((x) => x.id === periodo);
     if (p && p.giorni !== null) return p.giorni;
@@ -736,7 +792,6 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
           <h1 className="font-[Fraunces] text-2xl md:text-[28px] font-semibold text-stone-900">Cruscotto incassi</h1>
           <p className="text-stone-500 text-sm mt-1">Baggy Locker · Gruppo Urban Homy</p>
         </div>
-        <button onClick={onNuovo} className="flex items-center gap-2 bg-[#1E8E6E] hover:bg-[#186f57] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition"><Plus size={16} /> Nuovo ordine</button>
       </header>
       <div className="flex gap-2 mb-5">
         {PERIODI.map((p) => (
@@ -746,11 +801,12 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
           </button>
         ))}
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 mb-6">
         <StatCard label="Incasso totale" value={fmtEuro(stats.totaleIncasso)} sub={`${stats.ordiniConclusi} ordini conclusi`} icon={Euro} accent="bg-[#1B2A26]" />
         <StatCard label="Ordini conclusi" value={stats.ordiniConclusi} icon={Package} accent="bg-[#1E8E6E]" />
         <StatCard label="In attesa di pagamento" value={fmtEuro(stats.totaleAttesa)} sub={`${stats.nAttesa} ordini`} icon={Clock3} accent="bg-amber-500" />
         <StatCard label="Media per ordine" value={fmtEuro(stats.mediaPerOrdine)} sub={`durata media ${stats.durataMedia.toFixed(1)} h`} icon={Wallet} accent="bg-teal-600" />
+        <StatCard label="Vending machine" value={fmtEuro(statsVending.totale)} sub={`${statsVending.nVendite} vendite`} icon={ShoppingCart} accent="bg-sky-600" />
       </div>
       <div className="bg-white border border-stone-200 rounded-xl shadow-sm px-5 py-4 mb-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -866,16 +922,18 @@ interface OrdiniProps {
   ordini: LockerOrdine[]; strutture: LockerStruttura[];
   strutturaOf: (id: string) => LockerStruttura | undefined;
   onApri: (o: LockerOrdine) => void; onNuovo: () => void;
-  onImportaFile: (f: File) => void;
+  onImportaFile: (f: File, strutturaId: string, modalita: string) => Promise<void>;
   importRisultato: ImportRisultato | null;
   onChiudiImport: () => void;
 }
+interface ImportaOrdiniFormProps { strutture: LockerStruttura[]; onConferma: (strutturaId: string, modalita: string) => void; onClose: () => void; }
 
 function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile, importRisultato, onChiudiImport }: OrdiniProps) {
   const [filtroStruttura, setFiltroStruttura] = useState("");
   const [filtroStato, setFiltroStato] = useState("");
   const [filtroPeriodo, setFiltroPeriodo] = useState("tutto");
   const [ricerca, setRicerca] = useState("");
+  const [fileInAttesa, setFileInAttesa] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const elenco = ordini
@@ -890,7 +948,7 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
   function onFileScelto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (file && onImportaFile) onImportaFile(file);
+    if (file) setFileInAttesa(file);
   }
 
   return (
@@ -906,7 +964,6 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
             className="flex items-center gap-2 bg-white border border-stone-300 hover:border-[#1E8E6E] text-stone-700 text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition disabled:opacity-50">
             <Upload size={16} /> {importRisultato?.loading ? "Importazione…" : "Importa da Excel"}
           </button>
-          <button onClick={onNuovo} className="flex items-center gap-2 bg-[#1E8E6E] hover:bg-[#186f57] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition"><Plus size={16} /> Nuovo ordine</button>
         </div>
       </header>
       {importRisultato && !importRisultato.loading && (
@@ -916,7 +973,11 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
             <div className="flex-1">
               {importRisultato.errore ? <div className="font-medium">{importRisultato.errore}</div> : (
                 <>
-                  <div className="font-medium">Elenco ordini aggiornato: {importRisultato.totaleImportati} ordini importati dal file{importRisultato.scartati && importRisultato.scartati.length > 0 && `, ${importRisultato.scartati.length} righe scartate`}.</div>
+                  <div className="font-medium">
+                    {importRisultato.totaleImportati} ordini importati per {importRisultato.nomeSede}
+                    {" "}({importRisultato.modalita === "sostituzione" ? "sostituiti gli ordini esistenti della sede" : "aggiunti agli ordini esistenti"})
+                    {importRisultato.scartati && importRisultato.scartati.length > 0 && `, ${importRisultato.scartati.length} righe scartate`}.
+                  </div>
                   {importRisultato.scartati && importRisultato.scartati.length > 0 && (
                     <ul className="mt-1.5 text-xs text-emerald-700/80 list-disc list-inside space-y-0.5">
                       {importRisultato.scartati.slice(0, 8).map((s, i) => (<li key={i}>Riga {s.riga}: {s.motivo}</li>))}
@@ -982,7 +1043,65 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
           </table>
         </div>
       )}
+
+      {fileInAttesa && (
+        <ImportaOrdiniForm
+          strutture={strutture}
+          onConferma={(strutturaId, modalita) => {
+            onImportaFile(fileInAttesa, strutturaId, modalita);
+            setFileInAttesa(null);
+          }}
+          onClose={() => setFileInAttesa(null)}
+        />
+      )}
     </div>
+  );
+}
+
+function ImportaOrdiniForm({ strutture, onConferma, onClose }: ImportaOrdiniFormProps) {
+  const [strutturaId, setStrutturaId] = useState<string>(strutture.find((s) => s.attiva)?.id ?? strutture[0]?.id ?? "");
+  const [modalita, setModalita] = useState<string>("sostituzione");
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!strutturaId) return;
+    onConferma(strutturaId, modalita);
+  }
+  return (
+    <Modal title="Importa ordini da Excel" onClose={onClose}>
+      <form onSubmit={submit}>
+        <Field label="Per quale sede stai caricando questi ordini?">
+          <select required className={inputCls} value={strutturaId} onChange={(e) => setStrutturaId(e.target.value)}>
+            {strutture.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+          </select>
+        </Field>
+        <FieldGroup label="Modalità">
+          <div className="grid gap-2">
+            <button
+              type="button" onClick={() => setModalita("sostituzione")}
+              className={`text-left px-3 py-2.5 rounded-lg border transition ${modalita === "sostituzione" ? "bg-[#1B2A26] text-white border-[#1B2A26]" : "bg-white text-stone-700 border-stone-300"}`}
+            >
+              <div className="text-sm font-semibold">Sostituzione</div>
+              <div className={`text-xs mt-0.5 ${modalita === "sostituzione" ? "text-stone-300" : "text-stone-500"}`}>
+                Rimpiazza tutti gli ordini già presenti per questa sede con quelli del file.
+              </div>
+            </button>
+            <button
+              type="button" onClick={() => setModalita("aggiunta")}
+              className={`text-left px-3 py-2.5 rounded-lg border transition ${modalita === "aggiunta" ? "bg-[#1B2A26] text-white border-[#1B2A26]" : "bg-white text-stone-700 border-stone-300"}`}
+            >
+              <div className="text-sm font-semibold">Aggiunta</div>
+              <div className={`text-xs mt-0.5 ${modalita === "aggiunta" ? "text-stone-300" : "text-stone-500"}`}>
+                Accoda gli ordini del file a quelli già presenti, senza toccarli.
+              </div>
+            </button>
+          </div>
+        </FieldGroup>
+        <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-stone-200">
+          <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold text-stone-500 hover:bg-stone-100">Annulla</button>
+          <button type="submit" disabled={!strutturaId} className="px-4 py-2 rounded-lg text-sm font-semibold bg-[#1E8E6E] hover:bg-[#186f57] text-white disabled:opacity-50">Importa</button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

@@ -37,9 +37,10 @@ interface Resource<T> {
   create: (item: T) => Promise<T>;
   update: (id: string, item: Partial<T>) => Promise<T>;
   remove: (id: string) => Promise<void>;
+  batch: (items: T[]) => Promise<T[]>;
 }
 
-type SyncedResourceReturn<T> = [T[], Dispatch<SetStateAction<T[]>>];
+type SyncedResourceReturn<T> = [T[], Dispatch<SetStateAction<T[]>>, () => Promise<void>];
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   let res: Response;
@@ -67,6 +68,7 @@ function makeResource<T extends { id: string }>(path: string): Resource<T> {
     create: (item) => apiFetch<T>(`/${path}`, { method: "POST", body: JSON.stringify(item) }),
     update: (id, item) => apiFetch<T>(`/${path}/${id}`, { method: "PUT", body: JSON.stringify(item) }),
     remove: (id) => apiFetch<void>(`/${path}/${id}`, { method: "DELETE" }),
+    batch: (items) => apiFetch<T[]>(`/${path}/batch`, { method: "POST", body: JSON.stringify(items) }),
   };
 }
 
@@ -136,5 +138,11 @@ export function useSyncedResource<T extends { id: string }>(resource: Resource<T
     prevRef.current = items;
   }, [items, loaded, resource]);
 
-  return [items, setItems];
+  async function reload(): Promise<void> {
+    const data = await resource.list();
+    prevRef.current = data;
+    setItems(data);
+  }
+
+  return [items, setItems, reload];
 }
