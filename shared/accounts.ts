@@ -384,11 +384,11 @@ function isAdminGlobale(account: UHAccount | null | undefined): boolean {
 
 // Ritorna true se l'account ha accesso alla sede indicata.
 // Gli amministratori globali hanno sempre accesso a tutto.
-// Un account senza sediAbilitate (undefined/null) ha accesso a tutte le sedi.
+// sediAbilitate null/undefined = tutte le sedi; [] = nessuna sede; [...] = solo quelle.
 function sedeAbilitata(account: UHAccount | null | undefined, sedeId: string): boolean {
   if (!account) return false;
   if (isAdminGlobale(account)) return true;
-  if (!account.sediAbilitate || account.sediAbilitate.length === 0) return true;
+  if (account.sediAbilitate == null) return true;
   return account.sediAbilitate.includes(sedeId);
 }
 

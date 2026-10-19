@@ -8,12 +8,12 @@ import { requireAuth } from "./auth.js";
 import authRoutes from "./routes/auth.js";
 import type { AppId } from "./types.js";
 
-// Returns null = accesso a tutte le sedi; string[] = solo quelle sedi
+// null = tutte le sedi (nessun filtro); string[] = solo quelle sedi ([] = nessuna)
 function allowedSedi(req: Request): string[] | null {
   const { ruoloGlobale, sediAbilitate } = req.account;
   if (ruoloGlobale === "Amministratore") return null;
-  if (!sediAbilitate || sediAbilitate.length === 0) return null;
-  return sediAbilitate;
+  if (sediAbilitate == null) return null; // null/undefined = tutte le sedi
+  return sediAbilitate; // [] = nessuna sede; [...] = solo quelle
 }
 
 const NO_RESULTS = { id: { in: [] as string[] } };
@@ -27,7 +27,8 @@ function struttureFilter(appId: AppId) {
   return (req: Request) => {
     if (!hasAppAccess(req, appId)) return NO_RESULTS;
     const sedi = allowedSedi(req);
-    if (!sedi) return undefined;
+    if (!sedi) return undefined; // tutte le sedi
+    if (sedi.length === 0) return NO_RESULTS; // nessuna sede abilitata
     return { sedeCentraleId: { in: sedi } };
   };
 }
@@ -36,7 +37,8 @@ function lockerChildFilter(appId: AppId) {
   return async (req: Request) => {
     if (!hasAppAccess(req, appId)) return NO_RESULTS;
     const sedi = allowedSedi(req);
-    if (!sedi) return undefined;
+    if (!sedi) return undefined; // tutte le sedi
+    if (sedi.length === 0) return NO_RESULTS; // nessuna sede abilitata
     const strutture = await prisma.lockerStruttura.findMany({
       where: { sedeCentraleId: { in: sedi } },
       select: { id: true },
@@ -49,7 +51,8 @@ function vendingChildFilter(appId: AppId) {
   return async (req: Request) => {
     if (!hasAppAccess(req, appId)) return NO_RESULTS;
     const sedi = allowedSedi(req);
-    if (!sedi) return undefined;
+    if (!sedi) return undefined; // tutte le sedi
+    if (sedi.length === 0) return NO_RESULTS; // nessuna sede abilitata
     const strutture = await prisma.vendingStruttura.findMany({
       where: { sedeCentraleId: { in: sedi } },
       select: { id: true },

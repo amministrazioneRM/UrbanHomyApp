@@ -419,8 +419,10 @@ export default function App(): JSX.Element {
                     <div className="flex items-center gap-1 mt-1.5">
                       <MapPin size={11} className="text-stone-400 shrink-0" />
                       <span className="text-xs text-stone-500">
-                        {!Array.isArray(a.sediAbilitate) || a.sediAbilitate.length === 0
+                        {!Array.isArray(a.sediAbilitate) || a.sediAbilitate == null
                           ? "Tutte le sedi"
+                          : a.sediAbilitate.length === 0
+                          ? "Nessuna sede"
                           : a.sediAbilitate.map((id) => sedi.find((s) => s.id === id)?.nome ?? id).join(", ")}
                       </span>
                     </div>
