@@ -1,10 +1,62 @@
 import "dotenv/config";
 import express from "express";
+import type { Request } from "express";
 import cors from "cors";
 import prisma from "./prisma.js";
 import { makeCrudRouter } from "./routes/crud.js";
 import { requireAuth } from "./auth.js";
 import authRoutes from "./routes/auth.js";
+import type { AppId } from "./types.js";
+
+// Returns null = accesso a tutte le sedi; string[] = solo quelle sedi
+function allowedSedi(req: Request): string[] | null {
+  const { ruoloGlobale, sediAbilitate } = req.account;
+  if (ruoloGlobale === "Amministratore") return null;
+  if (!sediAbilitate || sediAbilitate.length === 0) return null;
+  return sediAbilitate;
+}
+
+const NO_RESULTS = { id: { in: [] as string[] } };
+
+function hasAppAccess(req: Request, appId: AppId): boolean {
+  return req.account.accessi[appId]?.abilitato === true ||
+    req.account.ruoloGlobale === "Amministratore";
+}
+
+function struttureFilter(appId: AppId) {
+  return (req: Request) => {
+    if (!hasAppAccess(req, appId)) return NO_RESULTS;
+    const sedi = allowedSedi(req);
+    if (!sedi) return undefined;
+    return { sedeCentraleId: { in: sedi } };
+  };
+}
+
+function lockerChildFilter(appId: AppId) {
+  return async (req: Request) => {
+    if (!hasAppAccess(req, appId)) return NO_RESULTS;
+    const sedi = allowedSedi(req);
+    if (!sedi) return undefined;
+    const strutture = await prisma.lockerStruttura.findMany({
+      where: { sedeCentraleId: { in: sedi } },
+      select: { id: true },
+    });
+    return { strutturaId: { in: strutture.map((s) => s.id) } };
+  };
+}
+
+function vendingChildFilter(appId: AppId) {
+  return async (req: Request) => {
+    if (!hasAppAccess(req, appId)) return NO_RESULTS;
+    const sedi = allowedSedi(req);
+    if (!sedi) return undefined;
+    const strutture = await prisma.vendingStruttura.findMany({
+      where: { sedeCentraleId: { in: sedi } },
+      select: { id: true },
+    });
+    return { strutturaId: { in: strutture.map((s) => s.id) } };
+  };
+}
 
 const app = express();
 
@@ -42,15 +94,15 @@ app.use("/api/ticket/utenti", makeCrudRouter(prisma.ticketUtente as never, { idP
 app.use("/api/ticket/tickets", makeCrudRouter(prisma.ticket as never, { idPrefix: "TIC", modelName: "Ticket" }));
 
 // Baggy Locker
-app.use("/api/locker/strutture", makeCrudRouter(prisma.lockerStruttura as never, { idPrefix: "LOC", modelName: "LockerStruttura" }));
-app.use("/api/locker/ordini", makeCrudRouter(prisma.lockerOrdine as never, { idPrefix: "ORD", modelName: "LockerOrdine" }));
-app.use("/api/locker/locali", makeCrudRouter(prisma.lockerLocale as never, { idPrefix: "LOA", modelName: "LockerLocale" }));
-app.use("/api/locker/vendite", makeCrudRouter(prisma.lockerVendita as never, { idPrefix: "LVEN", modelName: "LockerVendita" }));
+app.use("/api/locker/strutture", makeCrudRouter(prisma.lockerStruttura as never, { idPrefix: "LOC", modelName: "LockerStruttura", filter: struttureFilter("baggyLocker") }));
+app.use("/api/locker/ordini", makeCrudRouter(prisma.lockerOrdine as never, { idPrefix: "ORD", modelName: "LockerOrdine", filter: lockerChildFilter("baggyLocker") }));
+app.use("/api/locker/locali", makeCrudRouter(prisma.lockerLocale as never, { idPrefix: "LOA", modelName: "LockerLocale", filter: lockerChildFilter("baggyLocker") }));
+app.use("/api/locker/vendite", makeCrudRouter(prisma.lockerVendita as never, { idPrefix: "LVEN", modelName: "LockerVendita", filter: lockerChildFilter("baggyLocker") }));
 
 // Vending Machine
-app.use("/api/vending/strutture", makeCrudRouter(prisma.vendingStruttura as never, { idPrefix: "VSTR", modelName: "VendingStruttura" }));
-app.use("/api/vending/macchine", makeCrudRouter(prisma.vendingMacchina as never, { idPrefix: "MAC", modelName: "VendingMacchina" }));
-app.use("/api/vending/vendite", makeCrudRouter(prisma.vendingVendita as never, { idPrefix: "VEN", modelName: "VendingVendita" }));
+app.use("/api/vending/strutture", makeCrudRouter(prisma.vendingStruttura as never, { idPrefix: "VSTR", modelName: "VendingStruttura", filter: struttureFilter("vendingMachine") }));
+app.use("/api/vending/macchine", makeCrudRouter(prisma.vendingMacchina as never, { idPrefix: "MAC", modelName: "VendingMacchina", filter: vendingChildFilter("vendingMachine") }));
+app.use("/api/vending/vendite", makeCrudRouter(prisma.vendingVendita as never, { idPrefix: "VEN", modelName: "VendingVendita", filter: vendingChildFilter("vendingMachine") }));
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

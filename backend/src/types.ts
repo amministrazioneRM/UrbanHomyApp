@@ -29,6 +29,7 @@ export interface SafeAccount {
   email: string;
   ruoloGlobale: string;
   accessi: AccessiMap;
+  sediAbilitate?: string[] | null;
 }
 
 // Express augmentation

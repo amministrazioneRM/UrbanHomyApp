@@ -27,11 +27,15 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       return;
     }
     const { password: _pw, ...safeAccount } = account;
+    const raw = safeAccount as typeof safeAccount & { sediAbilitate?: unknown };
     req.account = {
       ...safeAccount,
       accessi: typeof safeAccount.accessi === "string"
         ? JSON.parse(safeAccount.accessi)
         : safeAccount.accessi,
+      sediAbilitate: typeof raw.sediAbilitate === "string"
+        ? JSON.parse(raw.sediAbilitate)
+        : (raw.sediAbilitate ?? null),
     } as SafeAccount;
     next();
   } catch {

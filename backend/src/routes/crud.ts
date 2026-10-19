@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { Request } from "express";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
@@ -6,7 +7,7 @@ import { Prisma } from "@prisma/client";
 type AnyRecord = Record<string, unknown>;
 
 interface PrismaDelegate {
-  findMany(args?: { include?: AnyRecord }): Promise<AnyRecord[]>;
+  findMany(args?: { include?: AnyRecord; where?: AnyRecord }): Promise<AnyRecord[]>;
   findUnique(args: { where: { id: string }; include?: AnyRecord }): Promise<AnyRecord | null>;
   create(args: { data: AnyRecord }): Promise<AnyRecord>;
   update(args: { where: { id: string }; data: AnyRecord }): Promise<AnyRecord>;
@@ -19,6 +20,7 @@ interface CrudOptions {
   modelName?: string;
   omit?: string[];
   hashFields?: string[];
+  filter?: (req: Request) => Promise<AnyRecord | undefined> | AnyRecord | undefined;
 }
 
 async function hashFieldsIn(data: AnyRecord, hashFields: string[]): Promise<AnyRecord> {
@@ -95,13 +97,14 @@ function serialize(data: unknown, omit?: string[]): unknown {
 }
 
 export function makeCrudRouter(delegate: PrismaDelegate, options: CrudOptions = {}): Router {
-  const { idPrefix, include, modelName, omit, hashFields = [] } = options;
+  const { idPrefix, include, modelName, omit, hashFields = [], filter } = options;
   const router = Router();
   const dateFields = modelName ? dateFieldsFor(modelName) : [];
 
   router.get("/", async (req, res, next) => {
     try {
-      const items = await delegate.findMany({ include });
+      const where = filter ? (await filter(req)) : undefined;
+      const items = await delegate.findMany({ include, ...(where ? { where } : {}) });
       res.json(serialize(items, omit));
     } catch (err) {
       next(err);
