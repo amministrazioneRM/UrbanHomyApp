@@ -11,11 +11,16 @@ interface MsGraphProfile {
   userPrincipalName?: string;
 }
 
-function omitPassword(account: { password: string; accessi: unknown } & Omit<SafeAccount, never>): SafeAccount {
-  const { password: _pw, ...rest } = account as { password: string } & SafeAccount;
+function parseJsonField(value: unknown): unknown {
+  return typeof value === "string" ? JSON.parse(value) : value;
+}
+
+function omitPassword(account: { password: string; accessi: unknown; sediAbilitate?: unknown } & Omit<SafeAccount, "accessi" | "sediAbilitate">): SafeAccount {
+  const { password: _pw, accessi, sediAbilitate, ...rest } = account;
   return {
     ...rest,
-    accessi: typeof rest.accessi === "string" ? JSON.parse(rest.accessi) : rest.accessi,
+    accessi: parseJsonField(accessi) as SafeAccount["accessi"],
+    sediAbilitate: parseJsonField(sediAbilitate) as SafeAccount["sediAbilitate"],
   };
 }
 

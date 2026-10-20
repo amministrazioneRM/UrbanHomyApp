@@ -200,12 +200,13 @@ model FiguraProfessionale {
 // su localStorage in ogni app — non è stato toccato.
 
 model UtentiAccount {
-  id           String  @id
-  nome         String
-  email        String
-  password     String
-  ruoloGlobale String
-  accessi      String   @db.NVarChar(Max)
+  id              String  @id
+  nome            String
+  email           String
+  password        String
+  ruoloGlobale    String
+  accessi         String   @db.NVarChar(Max)
+  sediAbilitate   String   @default("[]") @db.NVarChar(Max)
 
   @@map("utenti_accounts")
 }
