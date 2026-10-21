@@ -105,7 +105,15 @@ app.use("/api/locker/locali", makeCrudRouter(prisma.lockerLocale as never, { idP
 app.use("/api/locker/vendite", makeCrudRouter(prisma.lockerVendita as never, { idPrefix: "LVEN", modelName: "LockerVendita", filter: lockerChildFilter("baggyLocker") }));
 
 // Vending Machine
-app.use("/api/vending/strutture", makeCrudRouter(prisma.vendingStruttura as never, { idPrefix: "VSTR", modelName: "VendingStruttura", filter: struttureFilter("vendingMachine") }));
+app.use("/api/vending/strutture", makeCrudRouter(prisma.vendingStruttura as never, {
+  idPrefix: "VSTR",
+  modelName: "VendingStruttura",
+  filter: struttureFilter("vendingMachine"),
+  preDelete: async (_req, id) => {
+    await prisma.vendingVendita.deleteMany({ where: { strutturaId: id } });
+    await prisma.vendingMacchina.deleteMany({ where: { strutturaId: id } });
+  },
+}));
 app.use("/api/vending/macchine", makeCrudRouter(prisma.vendingMacchina as never, { idPrefix: "MAC", modelName: "VendingMacchina", filter: vendingChildFilter("vendingMachine") }));
 app.use("/api/vending/vendite", makeCrudRouter(prisma.vendingVendita as never, { idPrefix: "VEN", modelName: "VendingVendita", filter: vendingChildFilter("vendingMachine") }));
 
