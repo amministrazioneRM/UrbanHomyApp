@@ -1150,9 +1150,13 @@ const statoVenditaColor: Record<string, string> = {
 const statoVenditaIcon: Record<string, LucideIcon> = { Completata: CheckCircle2, NonErogata: AlertTriangle, Rimborsata: RotateCcw };
 
 const PERIODI = [
-  { id: "7g", label: "Ultimi 7 giorni", giorni: 7 },
-  { id: "30g", label: "Ultimo mese", giorni: 30 },
-  { id: "tutto", label: "Tutto", giorni: null },
+  { id: "sett-corrente", label: "Settimana corrente" },
+  { id: "sett-prec", label: "Settimana precedente" },
+  { id: "mese-corrente", label: "Mese corrente" },
+  { id: "mese-prec", label: "Mese precedente" },
+  { id: "anno-corrente", label: "Anno corrente" },
+  { id: "anno-prec", label: "Anno precedente" },
+  { id: "tutto", label: "Tutto" },
 ];
 
 function totaleVendita(v: VendingVendita): number { return (Number(v.prezzoUnitario) || 0) * (Number(v.quantita) || 0); }
@@ -1168,10 +1172,29 @@ function fmtDataBreve(iso: string): string {
   return d.toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit" });
 }
 function inPeriodo(iso: string, periodoId: string): boolean {
-  const p = PERIODI.find((x) => x.id === periodoId);
-  if (!p || p.giorni === null) return true;
-  const cutoff = new Date(oggi); cutoff.setDate(cutoff.getDate() - (p.giorni - 1));
-  return iso >= cutoff.toISOString().slice(0, 10);
+  if (periodoId === "tutto") return true;
+  const now = new Date();
+  const anno = now.getFullYear();
+  const mese = now.getMonth();
+  const lunedi = new Date(now);
+  lunedi.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  let da: Date, a: Date;
+  switch (periodoId) {
+    case "sett-corrente": da = lunedi; a = now; break;
+    case "sett-prec": {
+      const lp = new Date(lunedi); lp.setDate(lunedi.getDate() - 7);
+      const dp = new Date(lunedi); dp.setDate(lunedi.getDate() - 1);
+      da = lp; a = dp; break;
+    }
+    case "mese-corrente": da = new Date(anno, mese, 1); a = now; break;
+    case "mese-prec": da = new Date(anno, mese - 1, 1); a = new Date(anno, mese, 0); break;
+    case "anno-corrente": da = new Date(anno, 0, 1); a = now; break;
+    case "anno-prec": da = new Date(anno - 1, 0, 1); a = new Date(anno - 1, 11, 31); break;
+    default: return true;
+  }
+  const s = da.toISOString().slice(0, 10);
+  const e = a.toISOString().slice(0, 10);
+  return iso >= s && iso <= e;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1424,7 +1447,7 @@ export default function App() {
   const TAB_IMPOSTAZIONI = ["sedi"];
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(tab));
   const [modale, setModale] = useState<Modale | null>(null);
-  const [periodo, setPeriodo] = useState<string>("tutto");
+  const [periodo, setPeriodo] = useState<string>("mese-corrente");
   const [importRisultato, setImportRisultato] = useState<ImportRisultato | null>(null);
 
   const [sessione] = useState<UHAccount | null>(() => UHAccounts.loadSession());
@@ -1764,8 +1787,8 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
   }, [venditePeriodoFiltrate]);
 
   const giorniGrafico = useMemo(() => {
-    const p = PERIODI.find((x) => x.id === periodo);
-    if (p && p.giorni !== null) return p.giorni;
+    const GIORNI_PERIODO: Record<string, number> = { "sett-corrente": 7, "sett-prec": 7, "mese-corrente": 31, "mese-prec": 31, "anno-corrente": 365, "anno-prec": 365 };
+    if (periodo in GIORNI_PERIODO) return GIORNI_PERIODO[periodo];
     const date = venditeFiltrate.map((v) => v.data).filter(Boolean).sort();
     if (date.length === 0) return 30;
     const primo = new Date(date[0] + "T00:00:00");
