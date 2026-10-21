@@ -19,9 +19,25 @@ export function useBackendOffline(): boolean {
   const [offline, setOffline] = useState(backendOffline);
   useEffect(() => {
     offlineListeners.add(setOffline);
-    return () => offlineListeners.delete(setOffline);
+    return () => { offlineListeners.delete(setOffline); };
   }, []);
   return offline;
+}
+
+let sessionExpired = false;
+const sessionExpiredListeners = new Set<Dispatch<SetStateAction<boolean>>>();
+function setSessionExpired(value: boolean): void {
+  if (value === sessionExpired) return;
+  sessionExpired = value;
+  sessionExpiredListeners.forEach((fn) => fn(value));
+}
+export function useSessionExpired(): boolean {
+  const [expired, setExpired] = useState(sessionExpired);
+  useEffect(() => {
+    sessionExpiredListeners.add(setExpired);
+    return () => { sessionExpiredListeners.delete(setExpired); };
+  }, []);
+  return expired;
 }
 
 function authHeaders(): Record<string, string> {
@@ -36,7 +52,7 @@ interface Resource<T> {
   remove: (id: string) => Promise<void>;
 }
 
-type SyncedResourceReturn<T> = [T[], Dispatch<SetStateAction<T[]>>];
+type SyncedResourceReturn<T> = [T[], Dispatch<SetStateAction<T[]>>, () => Promise<void>];
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   let res: Response;
@@ -50,6 +66,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     throw err;
   }
   setBackendOffline(false);
+  setSessionExpired(res.status === 401);
   if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
   if (res.status === 204) return null as unknown as T;
   return res.json() as Promise<T>;
@@ -131,5 +148,11 @@ export function useSyncedResource<T extends { id: string }>(resource: Resource<T
     prevRef.current = items;
   }, [items, loaded, resource]);
 
-  return [items, setItems];
+  async function reload(): Promise<void> {
+    const data = await resource.list();
+    prevRef.current = data;
+    setItems(data);
+  }
+
+  return [items, setItems, reload];
 }
