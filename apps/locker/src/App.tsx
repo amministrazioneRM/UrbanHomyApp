@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   Luggage, LayoutGrid, Wallet, Plus, Pencil, Trash2, X, ArrowLeft,
-  Settings, MapPin, Package, TrendingUp, Euro, ChevronDown, Clock3,
+  Settings, MapPin, Package, TrendingUp, Euro, ChevronDown, ChevronLeft, ChevronRight, Clock3,
   CheckCircle2, Ban, Search, Globe, Monitor, Upload, AlertTriangle,
   DoorClosed, ChevronRight, ShoppingCart
 } from "lucide-react";
@@ -466,6 +466,13 @@ export default function App() {
   const [tab, setTab] = useState("dashboard");
   const TAB_IMPOSTAZIONI = ["sedi"];
   const [impostazioniAperte, setImpostazioniAperte] = useState(TAB_IMPOSTAZIONI.includes(tab));
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem("locker-sidebar-collapsed") === "1"; } catch { return false; }
+  });
+  const toggleSidebar = () => setSidebarCollapsed((v) => {
+    try { localStorage.setItem("locker-sidebar-collapsed", v ? "0" : "1"); } catch {}
+    return !v;
+  });
   const [modale, setModale] = useState<ModaleState | null>(null);
   const [periodo, setPeriodo] = useState("mese-corrente");
   const [importRisultato, setImportRisultato] = useState<ImportRisultato | null>(null);
@@ -596,38 +603,41 @@ export default function App() {
         </div>
       )}
       <div className="flex flex-col md:flex-row min-h-screen">
-        <aside className="md:w-60 shrink-0 bg-[#1B2A26] text-stone-200 flex md:flex-col">
-          <div className="px-5 py-5 border-b border-white/10 hidden md:block">
-            <a href="/" className="flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-stone-200 transition mb-3"><ArrowLeft size={12} /> Applicazioni Urban Homy</a>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-md bg-[#1E8E6E] flex items-center justify-center"><Luggage size={16} className="text-white" /></div>
-              <div>
-                <div className="font-[Fraunces] font-semibold text-white text-[15px] leading-none">Baggy Locker</div>
-                <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy · incassi deposito bagagli</div>
-              </div>
+        <aside className={`${sidebarCollapsed ? "md:w-14" : "md:w-60"} shrink-0 bg-[#1B2A26] text-stone-200 flex md:flex-col transition-all duration-200`}>
+          <div className={`border-b border-white/10 hidden md:flex flex-col ${sidebarCollapsed ? "items-center px-0 py-4" : "px-5 py-5"}`}>
+            {!sidebarCollapsed && (
+              <a href="/" className="flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-stone-200 transition mb-3"><ArrowLeft size={12} /> Applicazioni Urban Homy</a>
+            )}
+            <div className={`flex items-center gap-2 ${sidebarCollapsed ? "justify-center" : ""}`}>
+              <div className="w-8 h-8 rounded-md bg-[#1E8E6E] flex items-center justify-center shrink-0"><Luggage size={16} className="text-white" /></div>
+              {!sidebarCollapsed && (
+                <div>
+                  <div className="font-[Fraunces] font-semibold text-white text-[15px] leading-none">Baggy Locker</div>
+                  <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy · incassi deposito bagagli</div>
+                </div>
+              )}
             </div>
           </div>
           <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-visible">
             <a href="/" className="md:hidden flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap text-stone-400 hover:text-stone-200 hover:bg-white/5 transition" title="Applicazioni Urban Homy"><ArrowLeft size={16} /></a>
             {([{ id: "dashboard", label: "Cruscotto", icon: LayoutGrid }, { id: "ordini", label: "Vendite", icon: Wallet }] as Array<{ id: string; label: string; icon: React.ComponentType<{ size?: number }> }>).map((t) => (
-              <button key={t.id} onClick={() => setTab(t.id)}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${tab === t.id ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"}`}>
-                <t.icon size={16} />{t.label}
+              <button key={t.id} onClick={() => setTab(t.id)} title={sidebarCollapsed ? t.label : undefined}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${tab === t.id ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"}`}>
+                <t.icon size={16} />{!sidebarCollapsed && t.label}
               </button>
             ))}
             {isAdminApp && (
               <div className="md:mt-1">
-                <button onClick={() => setImpostazioniAperte((v) => !v)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${TAB_IMPOSTAZIONI.includes(tab) ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"}`}>
-                  <Settings size={16} />Impostazioni
-                  <ChevronDown size={14} className={`ml-auto transition-transform hidden md:block ${impostazioniAperte ? "rotate-180" : ""}`} />
+                <button onClick={() => setImpostazioniAperte((v) => !v)} title={sidebarCollapsed ? "Impostazioni" : undefined}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${TAB_IMPOSTAZIONI.includes(tab) ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"}`}>
+                  <Settings size={16} />{!sidebarCollapsed && <>Impostazioni<ChevronDown size={14} className={`ml-auto transition-transform hidden md:block ${impostazioniAperte ? "rotate-180" : ""}`} /></>}
                 </button>
                 {impostazioniAperte && (
-                  <div className="flex md:flex-col gap-1 md:mt-1 md:pl-4 md:border-l md:border-white/10 md:ml-4">
+                  <div className={`flex md:flex-col gap-1 md:mt-1 ${sidebarCollapsed ? "" : "md:pl-4 md:border-l md:border-white/10 md:ml-4"}`}>
                     {([{ id: "sedi", label: "Sedi", icon: MapPin }] as Array<{ id: string; label: string; icon: React.ComponentType<{ size?: number }> }>).map((t) => (
-                      <button key={t.id} onClick={() => setTab(t.id)}
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${tab === t.id ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"}`}>
-                        <t.icon size={15} />{t.label}
+                      <button key={t.id} onClick={() => setTab(t.id)} title={sidebarCollapsed ? t.label : undefined}
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${tab === t.id ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"}`}>
+                        <t.icon size={15} />{!sidebarCollapsed && t.label}
                       </button>
                     ))}
                   </div>
@@ -635,8 +645,16 @@ export default function App() {
               </div>
             )}
           </nav>
-          <div className="px-5 py-3 text-[11px] text-stone-500 hidden md:block border-t border-white/10 mt-auto">
-            {strutture.filter((s) => s.attiva).length} sedi attive · {ordini.length} ordini importati
+          <div className="hidden md:flex flex-col border-t border-white/10 mt-auto">
+            {!sidebarCollapsed && (
+              <div className="px-5 py-3 text-[11px] text-stone-500">
+                {strutture.filter((s) => s.attiva).length} sedi attive · {ordini.length} ordini importati
+              </div>
+            )}
+            <button onClick={toggleSidebar} title={sidebarCollapsed ? "Espandi menu" : "Comprimi menu"}
+              className="flex items-center justify-center py-2.5 text-stone-500 hover:text-stone-300 hover:bg-white/5 transition">
+              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
           </div>
         </aside>
         <main className="flex-1 min-w-0 px-4 md:px-8 py-6 md:py-8">

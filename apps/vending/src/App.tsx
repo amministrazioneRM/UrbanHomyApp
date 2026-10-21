@@ -3,7 +3,7 @@ import type { LucideIcon } from "lucide-react";
 import type { UHAccount, UHSede } from "./accounts";
 import {
   ShoppingCart, LayoutGrid, Wallet, Plus, Pencil, Trash2, X, ArrowLeft,
-  Settings, MapPin, Package, Euro, ChevronDown, CheckCircle2,
+  Settings, MapPin, Package, Euro, ChevronDown, ChevronLeft, ChevronRight, CheckCircle2,
   Search, Upload, AlertTriangle, Banknote, CreditCard, Smartphone, RotateCcw,
 } from "lucide-react";
 // @ts-ignore
@@ -1452,6 +1452,13 @@ export default function App() {
   const [tab, setTab] = useState<string>("dashboard");
   const TAB_IMPOSTAZIONI = ["sedi"];
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(tab));
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem("vending-sidebar-collapsed") === "1"; } catch { return false; }
+  });
+  const toggleSidebar = () => setSidebarCollapsed((v) => {
+    try { localStorage.setItem("vending-sidebar-collapsed", v ? "0" : "1"); } catch {}
+    return !v;
+  });
   const [modale, setModale] = useState<Modale | null>(null);
   const [periodo, setPeriodo] = useState<string>("mese-corrente");
   const [importRisultato, setImportRisultato] = useState<ImportRisultato | null>(null);
@@ -1605,19 +1612,23 @@ export default function App() {
 
       <div className="flex flex-col md:flex-row min-h-screen">
         {/* SIDEBAR */}
-        <aside className="md:w-60 shrink-0 bg-[#1F1A12] text-stone-200 flex md:flex-col">
-          <div className="px-5 py-5 border-b border-white/10 hidden md:block">
-            <a href="/" className="flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-stone-200 transition mb-3">
-              <ArrowLeft size={12} /> Applicazioni Urban Homy
-            </a>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-md bg-[#CA8A04] flex items-center justify-center">
+        <aside className={`${sidebarCollapsed ? "md:w-14" : "md:w-60"} shrink-0 bg-[#1F1A12] text-stone-200 flex md:flex-col transition-all duration-200`}>
+          <div className={`px-5 py-5 border-b border-white/10 hidden md:flex flex-col ${sidebarCollapsed ? "items-center px-0 py-4" : ""}`}>
+            {!sidebarCollapsed && (
+              <a href="/" className="flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-stone-200 transition mb-3">
+                <ArrowLeft size={12} /> Applicazioni Urban Homy
+              </a>
+            )}
+            <div className={`flex items-center gap-2 ${sidebarCollapsed ? "justify-center" : ""}`}>
+              <div className="w-8 h-8 rounded-md bg-[#CA8A04] flex items-center justify-center shrink-0">
                 <ShoppingCart size={16} className="text-white" />
               </div>
-              <div>
-                <div className="font-[Fraunces] font-semibold text-white text-[15px] leading-none">Vending Machine</div>
-                <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy · incassi distributori</div>
-              </div>
+              {!sidebarCollapsed && (
+                <div>
+                  <div className="font-[Fraunces] font-semibold text-white text-[15px] leading-none">Vending Machine</div>
+                  <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy · incassi distributori</div>
+                </div>
+              )}
             </div>
           </div>
           <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-visible">
@@ -1635,12 +1646,13 @@ export default function App() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                title={sidebarCollapsed ? t.label : undefined}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${
                   tab === t.id ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
                 }`}
               >
                 <t.icon size={16} />
-                {t.label}
+                {!sidebarCollapsed && t.label}
               </button>
             ))}
 
@@ -1648,26 +1660,27 @@ export default function App() {
             <div className="md:mt-1">
               <button
                 onClick={() => setImpostazioniAperte((v) => !v)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                title={sidebarCollapsed ? "Impostazioni" : undefined}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${
                   TAB_IMPOSTAZIONI.includes(tab) ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
                 }`}
               >
                 <Settings size={16} />
-                Impostazioni
-                <ChevronDown size={14} className={`ml-auto transition-transform hidden md:block ${impostazioniAperte ? "rotate-180" : ""}`} />
+                {!sidebarCollapsed && <>Impostazioni<ChevronDown size={14} className={`ml-auto transition-transform hidden md:block ${impostazioniAperte ? "rotate-180" : ""}`} /></>}
               </button>
               {impostazioniAperte && (
-                <div className="flex md:flex-col gap-1 md:mt-1 md:pl-4 md:border-l md:border-white/10 md:ml-4">
+                <div className={`flex md:flex-col gap-1 md:mt-1 ${sidebarCollapsed ? "" : "md:pl-4 md:border-l md:border-white/10 md:ml-4"}`}>
                   {[{ id: "sedi", label: "Sedi", icon: MapPin }].map((t) => (
                     <button
                       key={t.id}
                       onClick={() => setTab(t.id)}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                      title={sidebarCollapsed ? t.label : undefined}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${
                         tab === t.id ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
                       }`}
                     >
                       <t.icon size={15} />
-                      {t.label}
+                      {!sidebarCollapsed && t.label}
                     </button>
                   ))}
                 </div>
@@ -1675,8 +1688,19 @@ export default function App() {
             </div>
             )}
           </nav>
-          <div className="px-5 py-3 text-[11px] text-stone-500 hidden md:block border-t border-white/10 mt-auto">
-            {strutture.filter((s) => s.attiva).length} sedi attive · {vendite.length} vendite registrate
+          <div className="hidden md:flex flex-col border-t border-white/10 mt-auto">
+            {!sidebarCollapsed && (
+              <div className="px-5 py-3 text-[11px] text-stone-500">
+                {strutture.filter((s) => s.attiva).length} sedi attive · {vendite.length} vendite registrate
+              </div>
+            )}
+            <button
+              onClick={toggleSidebar}
+              className="flex items-center justify-center py-2.5 text-stone-500 hover:text-stone-300 hover:bg-white/5 transition"
+              title={sidebarCollapsed ? "Espandi menu" : "Comprimi menu"}
+            >
+              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
           </div>
         </aside>
 
