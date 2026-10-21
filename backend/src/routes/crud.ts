@@ -20,6 +20,8 @@ interface CrudOptions {
   modelName?: string;
   omit?: string[];
   hashFields?: string[];
+  /** Campi da rimuovere silenziosamente dall'input (POST/PUT/batch) prima del salvataggio */
+  stripFields?: string[];
   filter?: (req: Request) => Promise<AnyRecord | undefined> | AnyRecord | undefined;
 }
 
@@ -97,7 +99,14 @@ function serialize(data: unknown, omit?: string[]): unknown {
 }
 
 export function makeCrudRouter(delegate: PrismaDelegate, options: CrudOptions = {}): Router {
-  const { idPrefix, include, modelName, omit, hashFields = [], filter } = options;
+  const { idPrefix, include, modelName, omit, hashFields = [], stripFields = [], filter } = options;
+
+  function stripInputFields(data: AnyRecord): AnyRecord {
+    if (stripFields.length === 0) return data;
+    const out = { ...data };
+    for (const field of stripFields) delete out[field];
+    return out;
+  }
   const router = Router();
   const dateFields = modelName ? dateFieldsFor(modelName) : [];
 
@@ -124,7 +133,7 @@ export function makeCrudRouter(delegate: PrismaDelegate, options: CrudOptions = 
   router.post("/", async (req, res, next) => {
     try {
       const id = (req.body as AnyRecord).id ?? `${idPrefix}-${crypto.randomUUID()}`;
-      const data = await hashFieldsIn(serializeJsonFields(coerceDates({ ...(req.body as AnyRecord), id }, dateFields)), hashFields);
+      const data = await hashFieldsIn(serializeJsonFields(coerceDates(stripInputFields({ ...(req.body as AnyRecord), id }), dateFields)), hashFields);
       const item = await delegate.create({ data });
       res.status(201).json(serialize(item, omit));
     } catch (err) {
@@ -135,7 +144,7 @@ export function makeCrudRouter(delegate: PrismaDelegate, options: CrudOptions = 
   router.put("/:id", async (req, res, next) => {
     try {
       const { id: _id, ...rest } = req.body as AnyRecord;
-      const data = await hashFieldsIn(serializeJsonFields(coerceDates(rest, dateFields)), hashFields);
+      const data = await hashFieldsIn(serializeJsonFields(coerceDates(stripInputFields(rest), dateFields)), hashFields);
       const item = await delegate.update({ where: { id: req.params.id }, data });
       res.json(serialize(item, omit));
     } catch (err) {
@@ -159,7 +168,7 @@ export function makeCrudRouter(delegate: PrismaDelegate, options: CrudOptions = 
       const results = await Promise.allSettled(
         items.map(async (item) => {
           const id = (item.id as string) ?? `${idPrefix}-${crypto.randomUUID()}`;
-          const data = await hashFieldsIn(serializeJsonFields(coerceDates({ ...item, id }, dateFields)), hashFields);
+          const data = await hashFieldsIn(serializeJsonFields(coerceDates(stripInputFields({ ...item, id }), dateFields)), hashFields);
           try {
             return await delegate.create({ data });
           } catch {

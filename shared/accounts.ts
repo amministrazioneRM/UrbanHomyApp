@@ -190,17 +190,17 @@ function accessoVuoto(): AccessiMap {
 
 const DEFAULT_ACCOUNTS: UHAccount[] = [
   {
-    id: "ACC-1", nome: "Amministratore", email: "admin@urbanhomy.it", password: "admin123",
+    id: "ACC-1", nome: "Amministratore", email: "admin@urbanhomy.it",
     ruoloGlobale: "Amministratore",
     accessi: accessoVuoto(),
   },
   {
-    id: "ACC-5", nome: "Michele Antoci", email: "michele.antoci@urbanhomy.com", password: "urbanhomy123",
+    id: "ACC-5", nome: "Michele Antoci", email: "michele.antoci@urbanhomy.com",
     ruoloGlobale: "Amministratore",
     accessi: accessoVuoto(),
   },
   {
-    id: "ACC-2", nome: "Marco Bortolotti", email: "marco.b@urbanhomy.it", password: "manutenzione123",
+    id: "ACC-2", nome: "Marco Bortolotti", email: "marco.b@urbanhomy.it",
     ruoloGlobale: "Utente",
     accessi: {
       manutenzioni: { abilitato: true, ruoloId: ruoloAdminId("manutenzioni") },
@@ -208,7 +208,7 @@ const DEFAULT_ACCOUNTS: UHAccount[] = [
     },
   },
   {
-    id: "ACC-3", nome: "Maria Conti", email: "maria.c@urbanhomy.it", password: "reception123",
+    id: "ACC-3", nome: "Maria Conti", email: "maria.c@urbanhomy.it",
     ruoloGlobale: "Utente",
     accessi: {
       manutenzioni: { abilitato: false, ruoloId: ruoloUtenteId("manutenzioni") },
@@ -216,7 +216,7 @@ const DEFAULT_ACCOUNTS: UHAccount[] = [
     },
   },
   {
-    id: "ACC-4", nome: "Davide Russo", email: "davide.r@urbanhomy.it", password: "amministrazione123",
+    id: "ACC-4", nome: "Davide Russo", email: "davide.r@urbanhomy.it",
     ruoloGlobale: "Utente",
     accessi: {
       manutenzioni: { abilitato: false, ruoloId: ruoloUtenteId("manutenzioni") },
@@ -241,16 +241,12 @@ function migraAccount(a: UHAccount & { accessi: Record<string, AccessoApp & { ru
 }
 
 function loadAccounts(): UHAccount[] {
-  let raw: string | null = null;
-  try { raw = localStorage.getItem(ACCOUNTS_KEY); } catch (e) {}
-  if (!raw) {
-    saveAccounts(DEFAULT_ACCOUNTS);
-    return clone(DEFAULT_ACCOUNTS);
-  }
-  try { return JSON.parse(raw).map(migraAccount); } catch (e) { return clone(DEFAULT_ACCOUNTS); }
+  // Gli accounts sono gestiti esclusivamente dal backend.
+  // Il localStorage non viene più usato come fonte dati per gli utenti.
+  return [];
 }
-function saveAccounts(list: UHAccount[]): void {
-  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(list));
+function saveAccounts(_list: UHAccount[]): void {
+  // No-op: gli accounts non vengono più persistiti nel localStorage.
 }
 
 function loadRoles(): UHRuolo[] {
@@ -313,12 +309,15 @@ function loadSession(): UHAccount | null {
   if (!raw) return null;
   try {
     const sess = JSON.parse(raw);
-    const attuale = loadAccounts().find((a) => a.id === sess.id);
-    return attuale || null;
+    // La sessione contiene l'account completo restituito dal server al login.
+    // Non si cerca più nella cache locale degli accounts (rimossa).
+    if (sess && sess.id && sess.email) return sess as UHAccount;
+    return null;
   } catch (e) { return null; }
 }
 function saveSession(account: UHAccount): void {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ id: account.id }));
+  // Salva l'account completo (senza password) così loadSession() è autonomo.
+  localStorage.setItem(SESSION_KEY, JSON.stringify(account));
 }
 function clearSession(): void {
   localStorage.removeItem(SESSION_KEY);
@@ -329,14 +328,9 @@ function getToken(): string | null {
   try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; }
 }
 
-// Aggiorna/inserisce `account` nella cache locale di loadAccounts(), così
-// loadSession()/hasAccesso()/ruoloIn() (tutti sincroni, leggono solo la
-// cache) vedono subito il dato appena verificato dal server.
-function upsertAccountInCache(account: UHAccount): void {
-  const list = loadAccounts().filter((a) => a.id !== account.id);
-  list.push(account);
-  saveAccounts(list);
-}
+// No-op: la cache locale degli accounts è stata rimossa.
+// La sessione è ora salvata direttamente come oggetto completo in SESSION_KEY.
+function upsertAccountInCache(_account: UHAccount): void {}
 
 interface AuthResponse {
   token: string;

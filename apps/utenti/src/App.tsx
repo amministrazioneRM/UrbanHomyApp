@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ShieldCheck, Plus, Pencil, Trash2, X, ArrowLeft, Mail, Users, Grid3x3, Lock, Check, Copy, CalendarClock, Settings, ChevronDown, MapPin, MapPinOff
 } from "lucide-react";
@@ -12,7 +12,6 @@ interface AccountDraft {
   id: string | null;
   nome: string;
   email: string;
-  password: string;
   ruoloGlobale: "Amministratore" | "Utente";
   accessi: AccessiMap;
   // null = tutte le sedi; string[] = solo le sedi elencate
@@ -149,11 +148,15 @@ function pillCls(attivo: boolean): string {
 
 export default function App(): JSX.Element {
   const [session] = useState<UHAccount | null>(() => UHAccounts.loadSession());
-  const [accounts, setAccounts] = useSyncedResource(api.accounts, UHAccounts.loadAccounts());
+  const [accounts, setAccounts] = useState<UHAccount[]>([]);
+  useEffect(() => {
+    api.accounts.list().then(setAccounts).catch(() => {});
+  }, []);
   const [ruoli, setRuoli] = useSyncedResource(api.ruoli, UHAccounts.loadRoles());
   const [sostituti, setSostituti] = useSyncedResource(api.sostituti, UHAccounts.loadSostituti());
   const [sedi, setSedi] = useSyncedResource(api.sedi, UHAccounts.loadSedi());
   const [modale, setModale] = useState<ModaleUtente | null>(null);
+  const [erroreAccount, setErroreAccount] = useState<string | null>(null);
   const [modaleRuolo, setModaleRuolo] = useState<ModaleRuolo | null>(null);
   const [modaleSede, setModaleSede] = useState<ModaleSede | null>(null);
   const [vista, setVista] = useState<Vista>("utenti");
@@ -183,9 +186,8 @@ export default function App(): JSX.Element {
     );
   }
 
-  function persist(list: UHAccount[]): void {
-    UHAccounts.saveAccounts(list);
-    setAccounts(list);
+  function ricaricaAccounts(): void {
+    api.accounts.list().then(setAccounts).catch(() => {});
   }
   function persistRuoli(list: UHRuolo[]): void {
     UHAccounts.saveRoles(list);
@@ -201,16 +203,18 @@ export default function App(): JSX.Element {
   }
 
   function salva(dati: UHAccount): void {
-    if (dati.id) {
-      persist(accounts.map((a) => (a.id === dati.id ? dati : a)));
-    } else {
-      persist([{ ...dati, id: "ACC-" + Date.now() }, ...accounts]);
-    }
-    setModale(null);
+    setErroreAccount(null);
+    const promise = dati.id
+      ? api.accounts.update(dati.id, dati)
+      : api.accounts.create(dati);
+    promise
+      .then(() => { ricaricaAccounts(); setModale(null); })
+      .catch((err: Error) => setErroreAccount(err.message || "Salvataggio non riuscito"));
   }
   function elimina(id: string): void {
-    persist(accounts.filter((a) => a.id !== id));
-    setModale(null);
+    api.accounts.remove(id)
+      .then(() => { ricaricaAccounts(); setModale(null); })
+      .catch((err: Error) => setErroreAccount(err.message || "Eliminazione non riuscita"));
   }
 
   function salvaRuolo(dati: RuoloDraft): void {
@@ -227,21 +231,27 @@ export default function App(): JSX.Element {
     const alternativa =
       ruoli.find((r) => r.appId === ruolo.appId && r.id !== id && r.nome === "Utente") ||
       ruoli.find((r) => r.appId === ruolo.appId && r.id !== id);
-    persist(
-      accounts.map((a) => {
-        const acc = a.accessi && a.accessi[ruolo.appId];
-        if (!acc || acc.ruoloId !== id) return a;
-        return {
+    // Prima aggiorna gli account che usavano questo ruolo, poi elimina il ruolo
+    const appId = ruolo.appId as AppId;
+    const aggiornamenti = accounts
+      .filter((a) => a.accessi?.[appId]?.ruoloId === id)
+      .map((a) => {
+        const updated = {
           ...a,
           accessi: {
             ...a.accessi,
-            [ruolo.appId]: { abilitato: false, ruoloId: alternativa ? alternativa.id : acc.ruoloId },
+            [appId]: { abilitato: false, ruoloId: alternativa ? alternativa.id : a.accessi[appId]!.ruoloId },
           },
         };
+        return api.accounts.update(a.id, updated);
+      });
+    Promise.all(aggiornamenti)
+      .then(() => {
+        persistRuoli(ruoli.filter((r) => r.id !== id));
+        ricaricaAccounts();
+        setModaleRuolo(null);
       })
-    );
-    persistRuoli(ruoli.filter((r) => r.id !== id));
-    setModaleRuolo(null);
+      .catch((err: Error) => console.error("Eliminazione ruolo fallita:", err));
   }
   function duplicaRuolo(ruolo: UHRuolo): void {
     setModaleRuolo({
@@ -480,9 +490,7 @@ export default function App(): JSX.Element {
             </div>
           )}
 
-          <p className="text-center text-[11px] text-stone-400 mt-8">
-            Ambiente dimostrativo — utenti, ruoli e password sono salvati solo nel browser (localStorage), condivisi tra le app del portale su questo dispositivo.
-          </p>
+
         </main>
       </div>
 
@@ -498,7 +506,8 @@ export default function App(): JSX.Element {
           isProprioAccount={!!(modale.payload && session && modale.payload.id === session.id)}
           onSalva={salva}
           onElimina={modale.payload ? () => elimina(modale.payload!.id) : null}
-          onClose={() => setModale(null)}
+          onClose={() => { setModale(null); setErroreAccount(null); }}
+          errore={erroreAccount}
         />
       )}
 
@@ -539,15 +548,16 @@ interface UtenteFormProps {
   onSalva: (dati: UHAccount) => void;
   onElimina: (() => void) | null;
   onClose: () => void;
+  errore?: string | null;
 }
 
 function UtenteForm({
   esistente, ruoli, accounts, sostituti, sedi,
   onSalvaSostituto, onEliminaSostituto, isProprioAccount,
-  onSalva, onElimina, onClose,
+  onSalva, onElimina, onClose, errore,
 }: UtenteFormProps): JSX.Element {
   const vuoto: AccountDraft = {
-    id: null, nome: "", email: "", password: "", ruoloGlobale: "Utente",
+    id: null, nome: "", email: "", ruoloGlobale: "Utente",
     accessi: UHAccounts.accessoVuoto(),
     sediAbilitate: null,
   };
@@ -555,7 +565,6 @@ function UtenteForm({
     esistente
       ? {
           ...esistente,
-          password: "",
           accessi: { ...UHAccounts.accessoVuoto(), ...esistente.accessi },
           sediAbilitate: esistente.sediAbilitate ?? null,
         }
@@ -576,11 +585,9 @@ function UtenteForm({
 
   function submit(e: React.FormEvent<HTMLFormElement>): void {
     e.preventDefault();
-    if (!f.nome.trim() || !f.email.trim() || (!esistente && !f.password)) return;
-    const { password, ...senzaPassword } = f;
-    const dati = password ? f : senzaPassword;
+    if (!f.nome.trim() || !f.email.trim()) return;
     // cast: id is guaranteed non-null for existing, or we set it in salva()
-    onSalva(dati as UHAccount);
+    onSalva(f as UHAccount);
   }
 
   return (
@@ -589,14 +596,9 @@ function UtenteForm({
         <Field label="Nome e cognome">
           <input required className={inputCls} value={f.nome} onChange={(e) => upd({ nome: e.target.value })} placeholder="Es. Maria Conti" />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Email">
-            <input required type="email" className={inputCls} value={f.email} onChange={(e) => upd({ email: e.target.value })} placeholder="nome@urbanhomy.it" />
-          </Field>
-          <Field label={esistente ? "Nuova password (opzionale)" : "Password"}>
-            <input required={!esistente} className={inputCls} value={f.password} onChange={(e) => upd({ password: e.target.value })} placeholder={esistente ? "Lascia vuoto per non cambiarla" : "••••••••"} />
-          </Field>
-        </div>
+        <Field label="Email">
+          <input required type="email" className={inputCls} value={f.email} onChange={(e) => upd({ email: e.target.value })} placeholder="nome@urbanhomy.it" />
+        </Field>
 
         <Field label="Ruolo globale">
           <select className={inputCls} value={f.ruoloGlobale} onChange={(e) => upd({ ruoloGlobale: e.target.value as "Amministratore" | "Utente" })}>
@@ -728,6 +730,12 @@ function UtenteForm({
         {isProprioAccount && f.ruoloGlobale !== "Amministratore" && (
           <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
             Stai rimuovendo il tuo ruolo di amministratore globale: dopo il salvataggio non potrai più accedere a questa sezione.
+          </div>
+        )}
+
+        {errore && (
+          <div className="mt-3 text-xs text-rose-700 bg-rose-50 border border-rose-300 rounded-lg px-3 py-2">
+            {errore}
           </div>
         )}
 
