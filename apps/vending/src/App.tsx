@@ -1379,14 +1379,14 @@ function Tag({ children, className = "" }: TagProps) {
 
 function StatCard({ label, value, sub, icon: Icon, accent }: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 bg-white border border-stone-200 rounded-xl px-5 py-4 shadow-sm">
-      <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${accent}`}>
-        <Icon size={20} className="text-white" />
+    <div className="flex items-center gap-3 bg-white border border-stone-200 rounded-xl px-3 py-3 sm:px-5 sm:py-4 shadow-sm">
+      <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg flex items-center justify-center shrink-0 ${accent}`}>
+        <Icon size={18} className="text-white" />
       </div>
       <div className="min-w-0">
-        <div className="text-2xl font-bold text-stone-900 leading-none font-[Fraunces] truncate">{value}</div>
-        <div className="text-xs text-stone-500 mt-1 tracking-wide uppercase">{label}</div>
-        {sub && <div className="text-[11px] text-stone-400 mt-0.5">{sub}</div>}
+        <div className="text-lg sm:text-2xl font-bold text-stone-900 leading-none font-[Fraunces] truncate">{value}</div>
+        <div className="text-[10px] sm:text-xs text-stone-500 mt-1 tracking-wide uppercase">{label}</div>
+        {sub && <div className="text-[10px] sm:text-[11px] text-stone-400 mt-0.5 leading-tight">{sub}</div>}
       </div>
     </div>
   );
