@@ -203,10 +203,10 @@ model UtentiAccount {
   id              String  @id
   nome            String
   email           String
-  password        String
+  password        String?
   ruoloGlobale    String
   accessi         String   @db.NVarChar(Max)
-  sediAbilitate   String   @default("[]") @db.NVarChar(Max)
+  sediAbilitate   String?  @default("[]") @db.NVarChar(Max)
 
   @@map("utenti_accounts")
 }
