@@ -163,9 +163,9 @@ function durataOre(o: LockerOrdine): number {
   const fin = new Date(o.fine + "T" + o.oraFine);
   return Math.max(0, (fin.getTime() - ini.getTime()) / 3600000);
 }
-function fmtEuro(n: number): string { return "â‚¬ " + (n || 0).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtEuro(n: number): string { return "€ " + (n || 0).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtData(iso: string | undefined): string {
-  if (!iso) return "â€”";
+  if (!iso) return "—";
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" });
 }
@@ -353,7 +353,7 @@ function parseFoglioOrdini(
 
     const dataOrdine = excelDataToIso(dataOrdineRaw);
     // Se manca una colonna "ora" dedicata, l'orario si ricava dalla cella
-    // data quando questa Ã¨ un data/ora completo (es. "13/08/2026 12:30:21").
+    // data quando questa è un data/ora completo (es. "13/08/2026 12:30:21").
     const oraDa = (colonnaOra: unknown, cellaData: unknown): string =>
       excelOraToHHMM(colonnaOra) || (cellaData instanceof Date ? excelOraToHHMM(cellaData) : "");
     const oraOrdine = oraDa(trovaCampo(norm, CAMPI_ALIAS.oraOrdine), dataOrdineRaw) || "00:00";
@@ -501,7 +501,7 @@ export default function App() {
   }
   function salvaStruttura(dati: LockerStruttura) {
     // Il form assegna sempre l'id prima di chiamare onSalva: non basta
-    // controllare dati.id, occorre verificare se l'id Ã¨ giÃ  presente.
+    // controllare dati.id, occorre verificare se l'id è già presente.
     setStrutture((ss) =>
       ss.some((s) => s.id === dati.id)
         ? ss.map((s) => (s.id === dati.id ? dati : s))
@@ -547,7 +547,7 @@ export default function App() {
       const righeUniche = Array.from(mappa.values());
       const nomeSede = strutturaOf(strutturaId)?.nome ?? "";
       const ordiniApi = api.ordini as unknown as { batch(i: LockerOrdine[]): Promise<void>; remove(id: string): Promise<void> };
-      // Aggiorna subito lo stato locale per visibilitÃ  immediata
+      // Aggiorna subito lo stato locale per visibilità immediata
       if (modalita === "sostituzione") {
         setOrdini((os) => [...righeUniche, ...os.filter((o) => o.strutturaId !== strutturaId)]);
       } else {
@@ -609,8 +609,8 @@ export default function App() {
               <a href="/" className="flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-stone-200 transition mb-3"><ArrowLeft size={12} /> Applicazioni Urban Homy</a>
             )}
             {sidebarCollapsed && (
-              <a href="/" className="flex items-center justify-center w-full py-2.5 rounded-lg hover:bg-white/5 transition mb-1" title="Torna alla home">
-                <img src="data:image/png;base64,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" alt="Urban Homy Group" className="w-5 h-5 object-contain" />
+              <a href="/" className="flex items-center justify-center py-1.5 rounded-lg hover:bg-white/5 transition" title="Applicazioni Urban Homy">
+                <img src="data:image/png;base64,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" className="w-5 h-5 object-contain" alt="UH Group" />
               </a>
             )}
             <div className={`flex items-center gap-2 ${sidebarCollapsed ? "justify-center" : ""}`}>
@@ -618,7 +618,7 @@ export default function App() {
               {!sidebarCollapsed && (
                 <div>
                   <div className="font-[Fraunces] font-semibold text-white text-[15px] leading-none">Baggy Locker</div>
-                  <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy Â· incassi deposito bagagli</div>
+                  <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy · incassi deposito bagagli</div>
                 </div>
               )}
             </div>
@@ -653,7 +653,7 @@ export default function App() {
           <div className="hidden md:flex flex-col border-t border-white/10 mt-auto">
             {!sidebarCollapsed && (
               <div className="px-5 py-3 text-[11px] text-stone-500">
-                {strutture.filter((s) => s.attiva).length} sedi attive Â· {ordini.length} ordini importati
+                {strutture.filter((s) => s.attiva).length} sedi attive · {ordini.length} ordini importati
               </div>
             )}
             <button onClick={toggleSidebar} title={sidebarCollapsed ? "Espandi menu" : "Comprimi menu"}
@@ -769,7 +769,7 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
         const bucketOrdini = ordiniFiltrati.filter((o) => o.dataOrdine >= inizioIso && o.dataOrdine <= fineIso);
         const segmenti = segmentiDi(bucketOrdini);
         const tot = segmenti.reduce((s, seg) => s + seg.valore, 0);
-        arr.push({ key: inizioIso, label: fmtDataBreve(inizioIso), title: `${fmtData(inizioIso)} â€“ ${fmtData(fineIso)}`, totale: tot, segmenti });
+        arr.push({ key: inizioIso, label: fmtDataBreve(inizioIso), title: `${fmtData(inizioIso)} – ${fmtData(fineIso)}`, totale: tot, segmenti });
       }
       return arr;
     }
@@ -807,7 +807,7 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
     const conclusi = ordiniPeriodoFiltrati.filter((o) => o.stato === "Concluso");
     const perTipologia = new Map<string, Record<string, { pezzi: number; incasso: number }>>();
     conclusi.forEach((o) => {
-      const key = o.tipologia || "â€”";
+      const key = o.tipologia || "—";
       if (!perTipologia.has(key)) perTipologia.set(key, {});
       const bucket = perTipologia.get(key)!;
       if (!bucket[o.strutturaId]) bucket[o.strutturaId] = { pezzi: 0, incasso: 0 };
@@ -836,7 +836,7 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
       <header className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="font-[Fraunces] text-xl md:text-[28px] font-semibold text-stone-900">Cruscotto incassi</h1>
-          <p className="text-stone-500 text-xs sm:text-sm mt-1">Baggy Locker Â· Gruppo Urban Homy</p>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Baggy Locker · Gruppo Urban Homy</p>
         </div>
       </header>
       <div className="flex flex-wrap gap-2 mb-5">
@@ -878,7 +878,7 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
         <div className="flex items-end gap-1 h-32 overflow-x-auto">
           {perBucket.map((g) => {
             const segmentiValidi = g.segmenti.filter((seg) => seg.valore > 0);
-            const tooltip = `${g.title} Â· ${fmtEuro(g.totale)}` + segmentiValidi.map((seg) => `\n${seg.nome}: ${fmtEuro(seg.valore)}`).join("");
+            const tooltip = `${g.title} · ${fmtEuro(g.totale)}` + segmentiValidi.map((seg) => `\n${seg.nome}: ${fmtEuro(seg.valore)}`).join("");
             return (
               <div key={g.key} className="h-full flex-1 min-w-[8px] flex flex-col items-center justify-end gap-1.5 group relative">
                 <div className="text-[10px] text-stone-400 opacity-0 group-hover:opacity-100 transition font-mono-tag whitespace-nowrap">{fmtEuro(g.totale)}</div>
@@ -912,7 +912,7 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
               <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-stone-100">
                 <ShoppingCart size={12} className="text-stone-400 shrink-0" />
                 <span className="text-sm font-semibold text-stone-700">{fmtEuro(totVendite)}</span>
-                <span className="text-[11px] text-stone-400">vending machine Â· {venditeSede.length} vendite</span>
+                <span className="text-[11px] text-stone-400">vending machine · {venditeSede.length} vendite</span>
               </div>
             </button>
           );
@@ -938,7 +938,7 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
             {topTipologie.map((t) => {
               const valore = t[campoTipologie];
               const segmentiValidi = t.segmenti.map((seg) => ({ ...seg, valore: metricaTipologie === "incasso" ? seg.incasso : seg.pezzi })).filter((seg) => seg.valore > 0);
-              const tooltip = `${t.tipologia} Â· ${fmtTipologia(valore)}` + segmentiValidi.map((seg) => `\n${seg.nome}: ${fmtTipologia(seg.valore)}`).join("");
+              const tooltip = `${t.tipologia} · ${fmtTipologia(valore)}` + segmentiValidi.map((seg) => `\n${seg.nome}: ${fmtTipologia(seg.valore)}`).join("");
               return (
                 <div key={t.tipologia}>
                   <div className="flex items-center justify-between mb-1 gap-2">
@@ -1010,7 +1010,7 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
           <button
             onClick={() => {
               if (ordini.length === 0) return;
-              if (window.confirm(`Vuoi davvero cancellare tutti i ${ordini.length} ordini? L'operazione Ã¨ irreversibile.`)) {
+              if (window.confirm(`Vuoi davvero cancellare tutti i ${ordini.length} ordini? L'operazione è irreversibile.`)) {
                 onEliminaTutti();
               }
             }}
@@ -1021,7 +1021,7 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
           </button>
           <button onClick={() => fileInputRef.current?.click()} disabled={importRisultato?.loading}
             className="flex items-center gap-2 bg-white border border-stone-300 hover:border-[#1E8E6E] text-stone-700 text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition disabled:opacity-50">
-            <Upload size={16} /> {importRisultato?.loading ? "Importazioneâ€¦" : "Importa da Excel"}
+            <Upload size={16} /> {importRisultato?.loading ? "Importazione…" : "Importa da Excel"}
           </button>
         </div>
       </header>
@@ -1040,7 +1040,7 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
                   {importRisultato.scartati && importRisultato.scartati.length > 0 && (
                     <ul className="mt-1.5 text-xs text-emerald-700/80 list-disc list-inside space-y-0.5">
                       {importRisultato.scartati.slice(0, 8).map((s, i) => (<li key={i}>Riga {s.riga}: {s.motivo}</li>))}
-                      {importRisultato.scartati.length > 8 && <li>â€¦e altre {importRisultato.scartati.length - 8} righe.</li>}
+                      {importRisultato.scartati.length > 8 && <li>…e altre {importRisultato.scartati.length - 8} righe.</li>}
                     </ul>
                   )}
                 </>
@@ -1053,7 +1053,7 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
       <div className="flex flex-wrap gap-2 mb-5 items-center bg-white border border-stone-200 rounded-xl px-3 py-2.5">
         <div className="flex items-center gap-2 flex-1 min-w-[140px]">
           <Search size={15} className="text-stone-400 shrink-0" />
-          <input value={ricerca} onChange={(e) => setRicerca(e.target.value)} placeholder="Cerca per codice ordineâ€¦" className="text-sm outline-none w-full bg-transparent" />
+          <input value={ricerca} onChange={(e) => setRicerca(e.target.value)} placeholder="Cerca per codice ordine…" className="text-sm outline-none w-full bg-transparent" />
         </div>
         <select value={filtroStruttura} onChange={(e) => setFiltroStruttura(e.target.value)} className={inputCls + " w-auto text-xs"}>
           <option value="">Tutte le sedi</option>
@@ -1086,11 +1086,11 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
                 return (
                   <tr key={o.id} className="border-b border-stone-100 last:border-0 hover:bg-stone-50 transition cursor-pointer" onClick={() => onApri(o)}>
                     <td className="px-4 py-3 font-mono-tag font-semibold text-stone-900 whitespace-nowrap">{o.id}</td>
-                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{strutturaOf(o.strutturaId)?.nome ?? "â€”"}</td>
-                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{fmtData(o.dataOrdine)} Â· {o.oraOrdine}</td>
-                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap font-mono-tag">{o.oraInizio}â€“{o.oraFine}</td>
+                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{strutturaOf(o.strutturaId)?.nome ?? "—"}</td>
+                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{fmtData(o.dataOrdine)} · {o.oraOrdine}</td>
+                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap font-mono-tag">{o.oraInizio}–{o.oraFine}</td>
                     <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{o.tipologia.split(" - ")[0]}</td>
-                    <td className="px-4 py-3 text-stone-600">{o.numArmadio > 0 ? o.numArmadio : "â€”"}</td>
+                    <td className="px-4 py-3 text-stone-600">{o.numArmadio > 0 ? o.numArmadio : "—"}</td>
                     <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{o.provenienza}</td>
                     <td className="px-4 py-3 text-right font-semibold text-stone-900 whitespace-nowrap">{fmtEuro(o.prezzo)}</td>
                     <td className="px-4 py-3"><Tag className={statoColor[o.stato] + " border-transparent whitespace-nowrap"}>{StatoIcon && <StatoIcon size={11} />} {STATI_LABEL[o.stato]}</Tag></td>
@@ -1133,7 +1133,7 @@ function ImportaOrdiniForm({ strutture, onConferma, onClose }: ImportaOrdiniForm
             {strutture.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
           </select>
         </Field>
-        <FieldGroup label="ModalitÃ ">
+        <FieldGroup label="Modalità">
           <div className="grid gap-2">
             <button
               type="button" onClick={() => setModalita("sostituzione")}
@@ -1141,7 +1141,7 @@ function ImportaOrdiniForm({ strutture, onConferma, onClose }: ImportaOrdiniForm
             >
               <div className="text-sm font-semibold">Sostituzione</div>
               <div className={`text-xs mt-0.5 ${modalita === "sostituzione" ? "text-stone-300" : "text-stone-500"}`}>
-                Rimpiazza tutti gli ordini giÃ  presenti per questa sede con quelli del file.
+                Rimpiazza tutti gli ordini già presenti per questa sede con quelli del file.
               </div>
             </button>
             <button
@@ -1150,7 +1150,7 @@ function ImportaOrdiniForm({ strutture, onConferma, onClose }: ImportaOrdiniForm
             >
               <div className="text-sm font-semibold">Aggiunta</div>
               <div className={`text-xs mt-0.5 ${modalita === "aggiunta" ? "text-stone-300" : "text-stone-500"}`}>
-                Accoda gli ordini del file a quelli giÃ  presenti, senza toccarli.
+                Accoda gli ordini del file a quelli già presenti, senza toccarli.
               </div>
             </button>
           </div>
@@ -1210,10 +1210,10 @@ function OrdineForm({ esistente, strutture, onSalva, onElimina, onClose }: Ordin
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Tipologia armadio"><select className={inputCls} value={f.tipologia} onChange={(e) => upd({ tipologia: e.target.value })}>{TIPOLOGIE.map((t) => <option key={t} value={t}>{t}</option>)}</select></Field>
-          <Field label="NÂ° armadio"><input type="number" min="0" className={inputCls} value={String(f.numArmadio)} onChange={(e) => upd({ numArmadio: e.target.value })} placeholder="0" /></Field>
+          <Field label="N° armadio"><input type="number" min="0" className={inputCls} value={String(f.numArmadio)} onChange={(e) => upd({ numArmadio: e.target.value })} placeholder="0" /></Field>
         </div>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Prezzo (â‚¬)"><input required type="number" min="0" step="0.01" className={inputCls} value={String(f.prezzo)} onChange={(e) => upd({ prezzo: e.target.value })} placeholder="0.00" /></Field>
+          <Field label="Prezzo (€)"><input required type="number" min="0" step="0.01" className={inputCls} value={String(f.prezzo)} onChange={(e) => upd({ prezzo: e.target.value })} placeholder="0.00" /></Field>
           <Field label="Stato"><select className={inputCls} value={f.stato} onChange={(e) => upd({ stato: e.target.value })}>{STATI.map((s) => <option key={s} value={s}>{STATI_LABEL[s]}</option>)}</select></Field>
         </div>
         <Field label="Provenienza">
@@ -1285,7 +1285,7 @@ function Sedi({ strutture, ordini, locali, onNuova, onApri, onNuovoLocale, onApr
                     {nome}
                     {!sedeCentrale && <Tag className="bg-amber-50 text-amber-700 border-amber-300">Da collegare a una sede centrale</Tag>}
                   </div>
-                  <div className="text-xs text-stone-500 mt-0.5">{citta} Â· {nOrdini} ordini registrati Â· {totaleLockerSede} locker censiti in {localiSede.length} local{localiSede.length === 1 ? "e" : "i"}</div>
+                  <div className="text-xs text-stone-500 mt-0.5">{citta} · {nOrdini} ordini registrati · {totaleLockerSede} locker censiti in {localiSede.length} local{localiSede.length === 1 ? "e" : "i"}</div>
                 </div>
                 <Tag className={attiva ? "bg-emerald-50 text-emerald-700 border-emerald-300" : "bg-stone-50 text-stone-500 border-stone-300"}>{attiva ? "Servizio attivo" : "In arrivo"}</Tag>
                 <button onClick={() => onApri(s)} className="p-2 rounded-lg hover:bg-stone-100 text-stone-500 shrink-0"><Pencil size={15} /></button>
@@ -1310,7 +1310,7 @@ function Sedi({ strutture, ordini, locali, onNuova, onApri, onNuovoLocale, onApr
                             <div className="text-sm font-medium text-stone-900">{l.nome}</div>
                             <div className="flex flex-wrap gap-1.5 mt-1">
                               {TIPOLOGIE.map((t) => (Number(l.conteggi?.[t]) || 0) > 0 && (
-                                <span key={t} className="text-[11px] font-mono-tag text-stone-500 bg-stone-100 rounded px-1.5 py-0.5">{t.split(" - ")[0]} Ã— {l.conteggi[t]}</span>
+                                <span key={t} className="text-[11px] font-mono-tag text-stone-500 bg-stone-100 rounded px-1.5 py-0.5">{t.split(" - ")[0]} × {l.conteggi[t]}</span>
                               ))}
                               {totaleLocker(l.conteggi) === 0 && <span className="text-[11px] text-stone-400">Nessun locker indicato</span>}
                             </div>
@@ -1349,10 +1349,10 @@ function StrutturaForm({ esistente, onSalva, onElimina, onClose }: StrutturaForm
       <form onSubmit={submit}>
         <Field label="Sede centrale">
           <select required className={inputCls} value={f.sedeCentraleId} onChange={(e) => upd({ sedeCentraleId: e.target.value })}>
-            <option value="">Seleziona sedeâ€¦</option>
-            {sediCentrali.map((s) => <option key={s.id} value={s.id}>{s.nome}{s.citta ? ` â€” ${s.citta}` : ""}</option>)}
+            <option value="">Seleziona sede…</option>
+            {sediCentrali.map((s) => <option key={s.id} value={s.id}>{s.nome}{s.citta ? ` — ${s.citta}` : ""}</option>)}
           </select>
-          <span className="text-xs text-stone-400 mt-1.5 block">Le sedi si gestiscono centralmente nell'app "Utenti e accessi" (Impostazioni â†’ Sedi).</span>
+          <span className="text-xs text-stone-400 mt-1.5 block">Le sedi si gestiscono centralmente nell'app "Utenti e accessi" (Impostazioni → Sedi).</span>
         </Field>
         {sedeScelta && (
           <div className="border border-stone-200 rounded-lg px-3.5 py-2.5 mb-3 text-sm">
@@ -1396,7 +1396,7 @@ function LocaleForm({ esistente, prefill, strutture, onSalva, onElimina, onClose
     <Modal title={esistente ? "Modifica locale" : "Nuovo locale"} onClose={onClose}>
       <form onSubmit={submit}>
         <Field label="Sede"><select className={inputCls} value={f.strutturaId} onChange={(e) => upd({ strutturaId: e.target.value })}>{strutture.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}</select></Field>
-        <Field label="Nome locale"><input required className={inputCls} value={f.nome} onChange={(e) => upd({ nome: e.target.value })} placeholder="Es. Reception, Deposito piano terraâ€¦" /></Field>
+        <Field label="Nome locale"><input required className={inputCls} value={f.nome} onChange={(e) => upd({ nome: e.target.value })} placeholder="Es. Reception, Deposito piano terra…" /></Field>
         <FieldGroup label="Locker installati per tipologia">
           <div className="grid gap-2">
             {TIPOLOGIE.map((t) => (

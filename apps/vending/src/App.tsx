@@ -78,9 +78,9 @@ const nid = (p: string): string => `${p}-${_id++}`;
 
 /* ------------------------------------------------------------------ */
 /*  DATI DI PARTENZA                                                     */
-/*  Monfalcone Ã¨ l'unica sede con un distributore giÃ  attivo (export     */
-/*  reale del sistema di telemetria, maggioâ€“agosto 2026). Le altre tre   */
-/*  strutture del gruppo restano "in arrivo" finchÃ© non installano un    */
+/*  Monfalcone è l'unica sede con un distributore già attivo (export     */
+/*  reale del sistema di telemetria, maggio–agosto 2026). Le altre tre   */
+/*  strutture del gruppo restano "in arrivo" finché non installano un    */
 /*  distributore: si attivano dalla sezione Sedi quando succede.         */
 /* ------------------------------------------------------------------ */
 
@@ -142,7 +142,7 @@ const seedVendite: VendingVendita[] = [
   { id: "VEN-MFC-0978", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-11", ora: "15:33", prodotto: "Acqua naturale Dolomia 50cl", quantita: 1, prezzoUnitario: 1.5, metodoPagamento: "Carta", stato: "Completata" },
   { id: "VEN-MFC-0977", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-11", ora: "15:33", prodotto: "Acqua naturale Dolomia 50cl", quantita: 1, prezzoUnitario: 1.5, metodoPagamento: "Carta", stato: "Completata" },
   { id: "VEN-MFC-0976", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-11", ora: "14:06", prodotto: "Acqua Frizzante San Benedetto 50 cl", quantita: 1, prezzoUnitario: 1.5, metodoPagamento: "Carta", stato: "Completata" },
-  { id: "VEN-MFC-0975", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-11", ora: "14:06", prodotto: "Lion NestlÃ¨", quantita: 1, prezzoUnitario: 1.8, metodoPagamento: "Carta", stato: "Completata" },
+  { id: "VEN-MFC-0975", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-11", ora: "14:06", prodotto: "Lion Nestlè", quantita: 1, prezzoUnitario: 1.8, metodoPagamento: "Carta", stato: "Completata" },
   { id: "VEN-MFC-0974", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-10", ora: "21:07", prodotto: "Acqua Frizzante San Benedetto 50 cl", quantita: 1, prezzoUnitario: 1.5, metodoPagamento: "Carta", stato: "Completata" },
   { id: "VEN-MFC-0973", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-10", ora: "20:01", prodotto: "Acqua Naturale San Benedetto 50 cl", quantita: 1, prezzoUnitario: 1.5, metodoPagamento: "Carta", stato: "NonErogata" },
   { id: "VEN-MFC-0972", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-10", ora: "20:01", prodotto: "Acqua Naturale San Benedetto 50 cl", quantita: 1, prezzoUnitario: 1.5, metodoPagamento: "Carta", stato: "Completata" },
@@ -170,7 +170,7 @@ const seedVendite: VendingVendita[] = [
   { id: "VEN-MFC-0950", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-10", ora: "14:30", prodotto: "Golia Frutta vitamina C", quantita: 1, prezzoUnitario: 2.5, metodoPagamento: "Carta", stato: "Completata" },
   { id: "VEN-MFC-0949", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-10", ora: "13:36", prodotto: "Coca Cola Zero 450ml pet", quantita: 1, prezzoUnitario: 2.5, metodoPagamento: "Carta", stato: "Completata" },
   { id: "VEN-MFC-0948", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-10", ora: "13:36", prodotto: "Coca Cola Zero 450ml pet", quantita: 1, prezzoUnitario: 2.5, metodoPagamento: "Carta", stato: "Completata" },
-  { id: "VEN-MFC-0947", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-10", ora: "10:54", prodotto: "Lion NestlÃ¨", quantita: 1, prezzoUnitario: 1.8, metodoPagamento: "Carta", stato: "Completata" },
+  { id: "VEN-MFC-0947", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-10", ora: "10:54", prodotto: "Lion Nestlè", quantita: 1, prezzoUnitario: 1.8, metodoPagamento: "Carta", stato: "Completata" },
   { id: "VEN-MFC-0946", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-10", ora: "10:52", prodotto: "Fanta orange 450ml pet", quantita: 1, prezzoUnitario: 2.5, metodoPagamento: "Carta", stato: "Completata" },
   { id: "VEN-MFC-0945", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-10", ora: "08:31", prodotto: "Acqua naturale Dolomia 50cl", quantita: 1, prezzoUnitario: 1.5, metodoPagamento: "Carta", stato: "Completata" },
   { id: "VEN-MFC-0944", strutturaId: "VEN-4", macchinaId: "MAC-MFC-TCN70", macchinaNome: "", data: "2026-08-09", ora: "20:55", prodotto: "Acqua Frizzante San Benedetto 50 cl", quantita: 1, prezzoUnitario: 1.5, metodoPagamento: "Carta", stato: "Completata" },
@@ -1125,7 +1125,7 @@ const seedVendite: VendingVendita[] = [
 
 const oggi = new Date();
 
-const TIPI_MACCHINA = ["Snack", "Bevande fredde", "CaffÃ¨", "Misto"];
+const TIPI_MACCHINA = ["Snack", "Bevande fredde", "Caffè", "Misto"];
 const METODI_PAGAMENTO = ["Contante", "Carta", "App"];
 const metodoIcon: Record<string, LucideIcon> = { Contante: Banknote, Carta: CreditCard, App: Smartphone };
 
@@ -1137,7 +1137,7 @@ function coloreSede(strutture: VendingStruttura[], strutturaId: string): string 
   return PALETTE_SEDI[idx < 0 ? 0 : idx % PALETTE_SEDI.length];
 }
 
-// Non tutte le vendite tentate vanno a buon fine: la macchina puÃ² addebitare
+// Non tutte le vendite tentate vanno a buon fine: la macchina può addebitare
 // il pagamento senza erogare il prodotto (guasto/incastro), nel qual caso va
 // rimborsato il cliente. Solo le vendite "Completata" contano come incasso
 // reale ed entrano nelle statistiche.
@@ -1162,9 +1162,9 @@ const PERIODI = [
 
 function totaleVendita(v: VendingVendita): number { return (Number(v.prezzoUnitario) || 0) * (Number(v.quantita) || 0); }
 function incassato(v: VendingVendita): number { return v.stato === "Completata" ? totaleVendita(v) : 0; }
-function fmtEuro(n: number): string { return "â‚¬ " + (n || 0).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtEuro(n: number): string { return "€ " + (n || 0).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 function fmtData(iso: string | undefined | null): string {
-  if (!iso) return "â€”";
+  if (!iso) return "—";
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" });
 }
@@ -1199,7 +1199,7 @@ function inPeriodo(iso: string, periodoId: string): boolean {
 }
 
 /* ------------------------------------------------------------------ */
-/*  MACCHINE â€” censimento fisico per sede                               */
+/*  MACCHINE — censimento fisico per sede                               */
 /*  Censimento volutamente vuoto: si compila sede per sede dalla        */
 /*  sezione Sedi, indicando quali distributori sono installati.         */
 /* ------------------------------------------------------------------ */
@@ -1228,7 +1228,7 @@ const CAMPI_ALIAS_VENDITE = {
   data: ["data", "date", "data vendita", "giorno"],
   ora: ["ora", "time", "orario"],
   prodotto: ["prodotto", "articolo", "item", "product", "referenza", "descrizione"],
-  quantita: ["quantita", "qty", "pezzi", "quantitÃ ", "qta"],
+  quantita: ["quantita", "qty", "pezzi", "quantità", "qta"],
   prezzoUnitario: ["prezzo", "prezzo unitario", "importo unitario", "price", "importo", "totale eur"],
   metodoPagamento: ["pagamento", "metodo pagamento", "metodo di pagamento", "canale", "payment method", "tipo pagamento"],
   erogato: ["erogato", "dispensato", "delivered", "dispensed", "esito"],
@@ -1250,7 +1250,7 @@ function trovaCampo(rigaNorm: Record<string, unknown>, chiavi: string[]): unknow
   return undefined;
 }
 // Alcuni export dichiarano nel foglio una <dimension> sbagliata (es. A1:C1)
-// pur contenendo molte piÃ¹ righe/colonne: SheetJS si fida di "!ref" e
+// pur contenendo molte più righe/colonne: SheetJS si fida di "!ref" e
 // leggerebbe solo l'intestazione. Si ricalcola quindi l'intervallo dalle
 // celle effettivamente presenti.
 function ricalcolaIntervallo(foglio: Record<string, unknown>): void {
@@ -1302,7 +1302,7 @@ function matchMetodoPagamento(v: unknown): string {
   return METODI_PAGAMENTO.includes(v) ? v : "Contante";
 }
 // Interpreta valori si/no, true/false, 1/0 in colonne booleane del foglio.
-// Restituisce null se il valore non Ã¨ riconoscibile (campo assente/ambiguo).
+// Restituisce null se il valore non è riconoscibile (campo assente/ambiguo).
 function matchSiNo(v: unknown): boolean | null {
   const norm = normalizeTesto(v);
   if (["si", "yes", "true", "1", "ok"].includes(norm)) return true;
@@ -1345,7 +1345,7 @@ function parseFoglioVendite(righeGrezze: Record<string, unknown>[], strutture: V
 
     const data = excelDataToIso(dataRaw);
     // Senza colonna "ora" dedicata, l'orario si ricava dalla cella data
-    // quando questa Ã¨ un data/ora completo.
+    // quando questa è un data/ora completo.
     const ora = excelOraToHHMM(trovaCampo(norm, CAMPI_ALIAS_VENDITE.ora))
       || (dataRaw instanceof Date ? excelOraToHHMM(dataRaw) : "") || "00:00";
     const quantitaRaw = trovaCampo(norm, CAMPI_ALIAS_VENDITE.quantita);
@@ -1426,7 +1426,7 @@ function Field({ label, children }: FieldProps) {
 }
 
 // Come Field, ma con un <div> invece di <label>: da usare quando il contenuto
-// ha piÃ¹ di un controllo interattivo, altrimenti un click su un input
+// ha più di un controllo interattivo, altrimenti un click su un input
 // attiverebbe anche il focus/toggle del primo elemento interno.
 function FieldGroup({ label, children }: FieldProps) {
   return (
@@ -1525,7 +1525,7 @@ export default function App() {
       ricalcolaIntervallo(foglio);
       const righe = XLSX.utils.sheet_to_json(foglio, { defval: "" }) as Record<string, unknown>[];
       if (macchine.length === 0) {
-        setImportRisultato({ loading: false, errore: "Nessuna macchina vending censita. Aggiungi almeno una macchina nelle Impostazioni â†’ Sedi prima di importare." });
+        setImportRisultato({ loading: false, errore: "Nessuna macchina vending censita. Aggiungi almeno una macchina nelle Impostazioni → Sedi prima di importare." });
         return;
       }
       const { vendite: righeValide, scartati } = parseFoglioVendite(righe, strutture, macchine);
@@ -1541,7 +1541,7 @@ export default function App() {
         ? (strutturaOf(struttureCoinvolte[0])?.nome ?? "")
         : `${struttureCoinvolte.length} sedi`;
 
-      // Aggiorna subito lo stato locale per visibilitÃ  immediata
+      // Aggiorna subito lo stato locale per visibilità immediata
       if (modalita === "sostituzione") {
         setVendite((vs) => [...righeValide, ...vs.filter((v) => !struttureCoinvolte.includes(v.strutturaId))]);
       } else {
@@ -1620,8 +1620,8 @@ export default function App() {
               </a>
             )}
             {sidebarCollapsed && (
-              <a href="/" className="flex items-center justify-center w-full py-2.5 rounded-lg hover:bg-white/5 transition mb-1" title="Torna alla home">
-                <img src="data:image/png;base64,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" alt="Urban Homy Group" className="w-5 h-5 object-contain" />
+              <a href="/" className="flex items-center justify-center py-1.5 rounded-lg hover:bg-white/5 transition" title="Applicazioni Urban Homy">
+                <img src="data:image/png;base64,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" className="w-5 h-5 object-contain" alt="UH Group" />
               </a>
             )}
             <div className={`flex items-center gap-2 ${sidebarCollapsed ? "justify-center" : ""}`}>
@@ -1631,7 +1631,7 @@ export default function App() {
               {!sidebarCollapsed && (
                 <div>
                   <div className="font-[Fraunces] font-semibold text-white text-[15px] leading-none">Vending Machine</div>
-                  <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy Â· incassi distributori</div>
+                  <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy · incassi distributori</div>
                 </div>
               )}
             </div>
@@ -1696,7 +1696,7 @@ export default function App() {
           <div className="hidden md:flex flex-col border-t border-white/10 mt-auto">
             {!sidebarCollapsed && (
               <div className="px-5 py-3 text-[11px] text-stone-500">
-                {strutture.filter((s) => s.attiva).length} sedi attive Â· {vendite.length} vendite registrate
+                {strutture.filter((s) => s.attiva).length} sedi attive · {vendite.length} vendite registrate
               </div>
             )}
             <button
@@ -1795,7 +1795,7 @@ export default function App() {
 function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, strutturaOf }: DashboardProps) {
   // Le card sede fungono da filtro: si parte con tutte le sedi (con macchine
   // attive) selezionate, e un click le include/esclude dai totali, dal
-  // grafico e dagli articoli piÃ¹ venduti qui sotto.
+  // grafico e dagli articoli più venduti qui sotto.
   const [sediSelezionate, setSediSelezionate] = useState<Set<string>>(() => new Set(strutture.map((s) => s.id)));
   useEffect(() => {
     setSediSelezionate((prev) => {
@@ -1843,7 +1843,7 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
   const [raggruppamento, setRaggruppamento] = useState<string>("giorno");
 
   // Ogni sede selezionata ha un colore fisso (assegnato per posizione tra
-  // tutte le sedi, non solo quelle selezionate, cosÃ¬ un colore non cambia
+  // tutte le sedi, non solo quelle selezionate, così un colore non cambia
   // quando si include/esclude un'altra sede) per impilare le barre.
   const sediPerSegmenti = useMemo(() => strutture.filter((s) => sediSelezionate.has(s.id)), [strutture, sediSelezionate]);
   function segmentiDi(bucketVendite) {
@@ -1867,7 +1867,7 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
         const bucketVendite = venditeFiltrate.filter((v) => v.data >= inizioIso && v.data <= fineIso);
         const segmenti = segmentiDi(bucketVendite);
         const tot = segmenti.reduce((s, seg) => s + seg.valore, 0);
-        arr.push({ key: inizioIso, label: fmtDataBreve(inizioIso), title: `${fmtData(inizioIso)} â€“ ${fmtData(fineIso)}`, totale: tot, segmenti });
+        arr.push({ key: inizioIso, label: fmtDataBreve(inizioIso), title: `${fmtData(inizioIso)} – ${fmtData(fineIso)}`, totale: tot, segmenti });
       }
       return arr;
     }
@@ -1903,14 +1903,14 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
 
   // Pezzi e incasso (solo vendite completate) per articolo, con la
   // ripartizione per sede per colorare i segmenti della barra come nel
-  // grafico Andamento. Si tengono entrambe le metriche giÃ  calcolate cosÃ¬
+  // grafico Andamento. Si tengono entrambe le metriche già calcolate così
   // il toggle "pezzi/incasso" non deve ricalcolare nulla, solo riordinare.
   const [metricaArticoli, setMetricaArticoli] = useState<string>("pezzi");
   const topArticoliBase = useMemo(() => {
     const completate = venditePeriodoFiltrate.filter((v) => v.stato === "Completata");
     const perProdotto = new Map<string, Record<string, { pezzi: number; incasso: number }>>();
     completate.forEach((v) => {
-      const key = v.prodotto || "â€”";
+      const key = v.prodotto || "—";
       if (!perProdotto.has(key)) perProdotto.set(key, {});
       const bucket = perProdotto.get(key);
       if (!bucket[v.strutturaId]) bucket[v.strutturaId] = { pezzi: 0, incasso: 0 };
@@ -1945,7 +1945,7 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
       <header className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="font-[Fraunces] text-xl md:text-[28px] font-semibold text-stone-900">Cruscotto incassi</h1>
-          <p className="text-stone-500 text-xs sm:text-sm mt-1">Vending Machine Â· Gruppo Urban Homy</p>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Vending Machine · Gruppo Urban Homy</p>
         </div>
       </header>
 
@@ -2006,7 +2006,7 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
         <div className="flex items-end gap-1 h-32 overflow-x-auto">
           {perBucket.map((g) => {
             const segmentiValidi = g.segmenti.filter((seg) => seg.valore > 0);
-            const tooltip = `${g.title} Â· ${fmtEuro(g.totale)}` + segmentiValidi.map((seg) => `\n${seg.nome}: ${fmtEuro(seg.valore)}`).join("");
+            const tooltip = `${g.title} · ${fmtEuro(g.totale)}` + segmentiValidi.map((seg) => `\n${seg.nome}: ${fmtEuro(seg.valore)}`).join("");
             return (
               <div key={g.key} className="h-full flex-1 min-w-[8px] flex flex-col items-center justify-end gap-1.5 group relative">
                 <div className="text-[10px] text-stone-400 opacity-0 group-hover:opacity-100 transition font-mono-tag whitespace-nowrap">{fmtEuro(g.totale)}</div>
@@ -2026,7 +2026,7 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
         </div>
       </div>
 
-      <p className="text-xs text-stone-400 mb-2">Clicca una sede per includerla o escluderla dai totali, dal grafico qui sopra e dagli articoli piÃ¹ venduti qui sotto.</p>
+      <p className="text-xs text-stone-400 mb-2">Clicca una sede per includerla o escluderla dai totali, dal grafico qui sopra e dagli articoli più venduti qui sotto.</p>
       <div className="grid sm:grid-cols-2 gap-4 mb-6">
         {strutture.map((s) => {
           const diSede = venditePeriodo.filter((v) => v.strutturaId === s.id);
@@ -2056,7 +2056,7 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
 
       <div className="bg-white border border-stone-200 rounded-xl shadow-sm px-5 py-4">
         <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-          <h2 className="font-[Fraunces] font-semibold text-stone-900">Articoli piÃ¹ venduti</h2>
+          <h2 className="font-[Fraunces] font-semibold text-stone-900">Articoli più venduti</h2>
           <div className="flex gap-1.5">
             {[
               { id: "pezzi", label: "Pezzi venduti" },
@@ -2084,7 +2084,7 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
               const segmentiValidi = a.segmenti
                 .map((seg) => ({ ...seg, valore: metricaArticoli === "incasso" ? seg.incasso : seg.pezzi }))
                 .filter((seg) => seg.valore > 0);
-              const tooltip = `${a.prodotto} Â· ${fmtArticolo(valore)}` + segmentiValidi.map((seg) => `\n${seg.nome}: ${fmtArticolo(seg.valore)}`).join("");
+              const tooltip = `${a.prodotto} · ${fmtArticolo(valore)}` + segmentiValidi.map((seg) => `\n${seg.nome}: ${fmtArticolo(seg.valore)}`).join("");
               return (
                 <div key={a.prodotto}>
                   <div className="flex items-center justify-between mb-1 gap-2">
@@ -2155,7 +2155,7 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
           <button
             onClick={() => {
               if (vendite.length === 0) return;
-              if (window.confirm(`Vuoi davvero cancellare tutte le ${vendite.length} vendite? L'operazione Ã¨ irreversibile.`)) {
+              if (window.confirm(`Vuoi davvero cancellare tutte le ${vendite.length} vendite? L'operazione è irreversibile.`)) {
                 onEliminaTutte();
               }
             }}
@@ -2169,7 +2169,7 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
             disabled={importRisultato?.loading}
             className="flex items-center gap-2 bg-white border border-stone-300 hover:border-[#CA8A04] text-stone-700 text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition disabled:opacity-50"
           >
-            <Upload size={16} /> {importRisultato?.loading ? "Importazioneâ€¦" : "Importa da Excel"}
+            <Upload size={16} /> {importRisultato?.loading ? "Importazione…" : "Importa da Excel"}
           </button>
         </div>
       </header>
@@ -2187,7 +2187,7 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
                       {importRisultato.scartati.slice(0, 10).map((s, i) => (
                         <li key={i}>Riga {s.riga}: {s.motivo}</li>
                       ))}
-                      {importRisultato.scartati.length > 10 && <li>â€¦e altre {importRisultato.scartati.length - 10} righe.</li>}
+                      {importRisultato.scartati.length > 10 && <li>…e altre {importRisultato.scartati.length - 10} righe.</li>}
                     </ul>
                   )}
                 </>
@@ -2203,7 +2203,7 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
                       {importRisultato.scartati.slice(0, 8).map((s, i) => (
                         <li key={i}>Riga {s.riga}: {s.motivo}</li>
                       ))}
-                      {importRisultato.scartati.length > 8 && <li>â€¦e altre {importRisultato.scartati.length - 8} righe.</li>}
+                      {importRisultato.scartati.length > 8 && <li>…e altre {importRisultato.scartati.length - 8} righe.</li>}
                     </ul>
                   )}
                 </>
@@ -2223,7 +2223,7 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
       <div className="flex flex-wrap gap-2 mb-5 items-center bg-white border border-stone-200 rounded-xl px-3 py-2.5">
         <div className="flex items-center gap-2 flex-1 min-w-[140px]">
           <Search size={15} className="text-stone-400 shrink-0" />
-          <input value={ricerca} onChange={(e) => setRicerca(e.target.value)} placeholder="Cerca per prodottoâ€¦" className="text-sm outline-none w-full bg-transparent" />
+          <input value={ricerca} onChange={(e) => setRicerca(e.target.value)} placeholder="Cerca per prodotto…" className="text-sm outline-none w-full bg-transparent" />
         </div>
         <select value={filtroStruttura} onChange={(e) => setFiltroStruttura(e.target.value)} className={inputCls + " w-auto text-xs"}>
           <option value="">Tutte le sedi</option>
@@ -2255,7 +2255,7 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
                 <th className="px-4 py-3">Sede</th>
                 <th className="px-4 py-3">Macchina</th>
                 <th className="px-4 py-3">Prodotto</th>
-                <th className="px-4 py-3 text-right">QuantitÃ </th>
+                <th className="px-4 py-3 text-right">Quantità</th>
                 <th className="px-4 py-3 text-right">Prezzo unitario</th>
                 <th className="px-4 py-3 text-right">Totale</th>
                 <th className="px-4 py-3">Pagamento</th>
@@ -2269,9 +2269,9 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
                 const StatoIcon = statoVenditaIcon[v.stato];
                 return (
                   <tr key={v.id} className="border-b border-stone-100 last:border-0 hover:bg-stone-50 transition cursor-pointer" onClick={() => onApri(v)}>
-                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{fmtData(v.data)} Â· {v.ora}</td>
-                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{strutturaOf(v.strutturaId)?.nome ?? "â€”"}</td>
-                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{macchinaOf(v.macchinaId)?.nome ?? v.macchinaNome ?? "â€”"}</td>
+                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{fmtData(v.data)} · {v.ora}</td>
+                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{strutturaOf(v.strutturaId)?.nome ?? "—"}</td>
+                    <td className="px-4 py-3 text-stone-600 whitespace-nowrap">{macchinaOf(v.macchinaId)?.nome ?? v.macchinaNome ?? "—"}</td>
                     <td className="px-4 py-3 text-stone-900 font-medium">{v.prodotto}</td>
                     <td className="px-4 py-3 text-right text-stone-600">{v.quantita}</td>
                     <td className="px-4 py-3 text-right text-stone-600">{fmtEuro(v.prezzoUnitario)}</td>
@@ -2327,7 +2327,7 @@ function ImportaVenditeForm({ onConferma, onClose }: ImportaVenditeFormProps) {
           La sede viene rilevata automaticamente dalla colonna <span className="font-semibold text-stone-700">Store</span> del file.
         </p>
 
-        <FieldGroup label="ModalitÃ ">
+        <FieldGroup label="Modalità">
           <div className="grid gap-2">
             <button
               type="button" onClick={() => setModalita("sostituzione")}
@@ -2337,7 +2337,7 @@ function ImportaVenditeForm({ onConferma, onClose }: ImportaVenditeFormProps) {
             >
               <div className="text-sm font-semibold">Sostituzione</div>
               <div className={`text-xs mt-0.5 ${modalita === "sostituzione" ? "text-stone-300" : "text-stone-500"}`}>
-                Rimpiazza le vendite giÃ  presenti per le sedi nel file con quelle nuove.
+                Rimpiazza le vendite già presenti per le sedi nel file con quelle nuove.
               </div>
             </button>
             <button
@@ -2348,7 +2348,7 @@ function ImportaVenditeForm({ onConferma, onClose }: ImportaVenditeFormProps) {
             >
               <div className="text-sm font-semibold">Aggiunta</div>
               <div className={`text-xs mt-0.5 ${modalita === "aggiunta" ? "text-stone-300" : "text-stone-500"}`}>
-                Accoda le vendite del file a quelle giÃ  presenti, senza toccarle.
+                Accoda le vendite del file a quelle già presenti, senza toccarle.
               </div>
             </button>
           </div>
@@ -2395,7 +2395,7 @@ function VenditaForm({ esistente, strutture, macchine, onSalva, onElimina, onClo
           </Field>
           <Field label="Macchina (opzionale)">
             <select className={inputCls} value={f.macchinaId} onChange={(e) => upd({ macchinaId: e.target.value })}>
-              <option value="">â€”</option>
+              <option value="">—</option>
               {macchineSede.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
             </select>
           </Field>
@@ -2415,10 +2415,10 @@ function VenditaForm({ esistente, strutture, macchine, onSalva, onElimina, onClo
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="QuantitÃ ">
+          <Field label="Quantità">
             <input required type="number" min="1" className={inputCls} value={f.quantita} onChange={(e) => upd({ quantita: e.target.value })} />
           </Field>
-          <Field label="Prezzo unitario (â‚¬)">
+          <Field label="Prezzo unitario (€)">
             <input required type="number" min="0" step="0.01" className={inputCls} value={f.prezzoUnitario} onChange={(e) => upd({ prezzoUnitario: e.target.value })} placeholder="0.00" />
           </Field>
         </div>
@@ -2496,7 +2496,7 @@ function Sedi({ strutture, vendite, macchine, onNuova, onApri, onNuovaMacchina, 
       <header className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Sedi</h1>
-          <p className="text-stone-500 text-xs sm:text-sm mt-1">Il servizio Ã¨ attivo quando la sede ha almeno una macchina configurata e attiva</p>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Il servizio è attivo quando la sede ha almeno una macchina configurata e attiva</p>
         </div>
         <button onClick={onNuova} className="flex items-center gap-2 bg-[#CA8A04] hover:bg-[#AB7204] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
           <Plus size={16} /> Nuova sede
@@ -2512,7 +2512,7 @@ function Sedi({ strutture, vendite, macchine, onNuova, onApri, onNuovaMacchina, 
           const aperta = espansa.has(s.id);
           const nome = sedeCentrale ? sedeCentrale.nome : s.nome;
           const citta = sedeCentrale ? sedeCentrale.citta : s.citta;
-          // Il servizio Ã¨ "attivo" se c'Ã¨ almeno una macchina configurata e
+          // Il servizio è "attivo" se c'è almeno una macchina configurata e
           // attiva in questa sede, non in base a un flag della sede stessa.
           const attiva = macchineSede.some((m) => m.attiva !== false);
           return (
@@ -2529,7 +2529,7 @@ function Sedi({ strutture, vendite, macchine, onNuova, onApri, onNuovaMacchina, 
                     )}
                   </div>
                   <div className="text-xs text-stone-500 mt-0.5">
-                    {citta} Â· {nVendite} vendite registrate Â· {macchineSede.length} macchin{macchineSede.length === 1 ? "a censita" : "e censite"}
+                    {citta} · {nVendite} vendite registrate · {macchineSede.length} macchin{macchineSede.length === 1 ? "a censita" : "e censite"}
                   </div>
                 </div>
                 <Tag className={attiva ? "bg-emerald-50 text-emerald-700 border-emerald-300" : "bg-stone-50 text-stone-500 border-stone-300"}>
@@ -2617,11 +2617,11 @@ function StrutturaForm({ esistente, onSalva, onElimina, onClose }: StrutturaForm
       <form onSubmit={submit}>
         <Field label="Sede centrale">
           <select required className={inputCls} value={f.sedeCentraleId} onChange={(e) => upd({ sedeCentraleId: e.target.value })}>
-            <option value="">Seleziona sedeâ€¦</option>
-            {sediCentrali.map((s) => <option key={s.id} value={s.id}>{s.nome}{s.citta ? ` â€” ${s.citta}` : ""}</option>)}
+            <option value="">Seleziona sede…</option>
+            {sediCentrali.map((s) => <option key={s.id} value={s.id}>{s.nome}{s.citta ? ` — ${s.citta}` : ""}</option>)}
           </select>
           <span className="text-xs text-stone-400 mt-1.5 block">
-            Le sedi si gestiscono centralmente nell'app "Utenti e accessi" (Impostazioni â†’ Sedi).
+            Le sedi si gestiscono centralmente nell'app "Utenti e accessi" (Impostazioni → Sedi).
           </span>
         </Field>
 
@@ -2685,7 +2685,7 @@ function MacchinaForm({ esistente, prefill, strutture, onSalva, onElimina, onClo
           </Field>
         </div>
         <Field label="Nome macchina">
-          <input required className={inputCls} value={f.nome} onChange={(e) => upd({ nome: e.target.value })} placeholder="Es. Distributore reception, Piano barâ€¦" />
+          <input required className={inputCls} value={f.nome} onChange={(e) => upd({ nome: e.target.value })} placeholder="Es. Distributore reception, Piano bar…" />
         </Field>
         <label className="flex items-center gap-2 text-sm font-medium text-stone-700 cursor-pointer mb-1">
           <input type="checkbox" className="accent-[#CA8A04]" checked={f.attiva !== false} onChange={(e) => upd({ attiva: e.target.checked })} />

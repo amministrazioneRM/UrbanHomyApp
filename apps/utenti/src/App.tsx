@@ -6,7 +6,7 @@ import UHAccounts from "./accounts";
 import { api, useSyncedResource } from "./api";
 import type { AppId, UHAccount, UHRuolo, UHSostituto, UHSede, AccessiMap, PermessiMap } from "./accounts";
 
-// â”€â”€ Local draft types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Local draft types ──────────────────────────────────────────────────────────
 
 interface AccountDraft {
   id: string | null;
@@ -46,7 +46,7 @@ interface SedeDraft {
   attiva: boolean;
 }
 
-// â”€â”€ Modal state types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Modal state types ─────────────────────────────────────────────────────────
 
 type ModaleUtente = { type: "nuovo" | "modifica"; payload: UHAccount | null };
 type ModaleRuolo = {
@@ -60,12 +60,12 @@ type ModaleSostituto = { type: "nuovo" | "modifica"; appId: AppId; payload: UHSo
 
 type Vista = "utenti" | "ruoli" | "sedi";
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function clone<T>(x: T): T { return JSON.parse(JSON.stringify(x)); }
 
 function formatDataIt(iso: string | undefined | null): string {
-  if (!iso) return "â€”";
+  if (!iso) return "—";
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 }
@@ -77,7 +77,7 @@ function statoSostituzione(sost: UHSostituto): { label: string; className: strin
   return { label: "Attiva ora", className: "bg-emerald-50 text-emerald-700 border-emerald-300" };
 }
 
-// â”€â”€ UI primitives â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── UI primitives ─────────────────────────────────────────────────────────────
 
 interface TagProps {
   children: React.ReactNode;
@@ -145,7 +145,7 @@ function pillCls(attivo: boolean): string {
   }`;
 }
 
-// â”€â”€ App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App(): JSX.Element {
   const [session] = useState<UHAccount | null>(() => UHAccounts.loadSession());
@@ -174,7 +174,7 @@ export default function App(): JSX.Element {
           <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900 mb-2">Accesso non disponibile</h1>
           <p className="text-stone-500 text-sm mb-6">
             {session
-              ? "Questa sezione Ã¨ riservata agli amministratori del portale."
+              ? "Questa sezione è riservata agli amministratori del portale."
               : "Devi accedere dalla home page del portale per usare questa applicazione."}
           </p>
           <a href="/" className="inline-flex items-center gap-2 bg-[#241B3A] hover:bg-[#1a1329] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
@@ -373,11 +373,7 @@ export default function App(): JSX.Element {
                 {accounts.length} utenti · {ruoli.length} ruoli · {sedi.length} sedi
               </div>
             )}
-            <button
-              onClick={toggleSidebar}
-              className="flex items-center justify-center py-2.5 text-stone-500 hover:text-stone-300 hover:bg-white/5 transition"
-              title={sidebarCollapsed ? "Espandi menu" : "Comprimi menu"}
-            >
+            <button onClick={toggleSidebar} className="flex items-center justify-center py-2.5 text-stone-500 hover:text-stone-300 hover:bg-white/5 transition" title={sidebarCollapsed ? "Espandi menu" : "Comprimi menu"}>
               {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
             </button>
           </div>
@@ -392,7 +388,7 @@ export default function App(): JSX.Element {
               </h1>
               <p className="text-stone-500 text-sm mt-1">
                 {vista === "utenti"
-                  ? "Chi puÃ² accedere al portale e con quale ruolo, applicazione per applicazione"
+                  ? "Chi può accedere al portale e con quale ruolo, applicazione per applicazione"
                   : vista === "ruoli"
                     ? "Per ciascuna applicazione, i ruoli disponibili e i permessi per ciascun modulo"
                     : "Anagrafica delle sedi e strutture del gruppo, condivisa tra le applicazioni del portale"}
@@ -434,7 +430,7 @@ export default function App(): JSX.Element {
                         const ruolo = UHAccounts.ruoloIn(a, app.id);
                         return (
                           <Tag key={app.id} className={ha ? ruoloBadge(ruolo) : "bg-stone-50 text-stone-300 border-stone-200"}>
-                            {app.nome}{ha ? ` Â· ${ruolo}` : " Â· nessun accesso"}
+                            {app.nome}{ha ? ` · ${ruolo}` : " · nessun accesso"}
                           </Tag>
                         );
                       })}
@@ -504,7 +500,7 @@ export default function App(): JSX.Element {
           )}
 
           <p className="text-center text-[11px] text-stone-400 mt-8">
-            Ambiente dimostrativo â€” utenti, ruoli e password sono salvati solo nel browser (localStorage), condivisi tra le app del portale su questo dispositivo.
+            Ambiente dimostrativo — utenti, ruoli e password sono salvati solo nel browser (localStorage), condivisi tra le app del portale su questo dispositivo.
           </p>
         </main>
       </div>
@@ -548,7 +544,7 @@ export default function App(): JSX.Element {
   );
 }
 
-// â”€â”€ UtenteForm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── UtenteForm ────────────────────────────────────────────────────────────────
 
 interface UtenteFormProps {
   esistente: UHAccount | null;
@@ -617,7 +613,7 @@ function UtenteForm({
             <input required type="email" className={inputCls} value={f.email} onChange={(e) => upd({ email: e.target.value })} placeholder="nome@urbanhomy.it" />
           </Field>
           <Field label={esistente ? "Nuova password (opzionale)" : "Password"}>
-            <input required={!esistente} className={inputCls} value={f.password} onChange={(e) => upd({ password: e.target.value })} placeholder={esistente ? "Lascia vuoto per non cambiarla" : "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"} />
+            <input required={!esistente} className={inputCls} value={f.password} onChange={(e) => upd({ password: e.target.value })} placeholder={esistente ? "Lascia vuoto per non cambiarla" : "••••••••"} />
           </Field>
         </div>
 
@@ -657,7 +653,7 @@ function UtenteForm({
                   />
                   <MapPin size={12} className="text-stone-400 shrink-0" />
                   {sede.nome}
-                  {sede.citta && <span className="text-stone-400 text-xs">Â· {sede.citta}</span>}
+                  {sede.citta && <span className="text-stone-400 text-xs">· {sede.citta}</span>}
                 </label>
               ))}
               {sedi.filter((s) => s.attiva).length === 0 && (
@@ -724,7 +720,7 @@ function UtenteForm({
                                   <span className="font-medium text-stone-700 truncate">{nomeSostituto}</span>
                                   <Tag className={stato.className}>{stato.label}</Tag>
                                   <span className="text-stone-400 whitespace-nowrap flex items-center gap-1">
-                                    <CalendarClock size={11} /> {formatDataIt(s.dataInizio)}â€“{formatDataIt(s.dataFine)}
+                                    <CalendarClock size={11} /> {formatDataIt(s.dataInizio)}–{formatDataIt(s.dataFine)}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
@@ -750,7 +746,7 @@ function UtenteForm({
 
         {isProprioAccount && f.ruoloGlobale !== "Amministratore" && (
           <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
-            Stai rimuovendo il tuo ruolo di amministratore globale: dopo il salvataggio non potrai piÃ¹ accedere a questa sezione.
+            Stai rimuovendo il tuo ruolo di amministratore globale: dopo il salvataggio non potrai più accedere a questa sezione.
           </div>
         )}
 
@@ -788,7 +784,7 @@ function UtenteForm({
   );
 }
 
-// â”€â”€ RuoloCard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── RuoloCard ─────────────────────────────────────────────────────────────────
 
 interface RuoloCardProps {
   ruolo: UHRuolo;
@@ -842,7 +838,7 @@ function RuoloCard({ ruolo, moduli, onModifica, onElimina, onDuplica }: RuoloCar
                   <td key={p.id} className="text-center py-1.5 px-2">
                     {ruolo.permessi[m.id]?.[p.id as keyof typeof ruolo.permessi[string]]
                       ? <Check size={14} className="inline text-emerald-600" />
-                      : <span className="text-stone-300">â€”</span>}
+                      : <span className="text-stone-300">—</span>}
                   </td>
                 ))}
               </tr>
@@ -854,7 +850,7 @@ function RuoloCard({ ruolo, moduli, onModifica, onElimina, onDuplica }: RuoloCar
   );
 }
 
-// â”€â”€ RuoloForm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── RuoloForm ─────────────────────────────────────────────────────────────────
 
 interface RuoloFormProps {
   esistente: UHRuolo | null;
@@ -908,7 +904,7 @@ function RuoloForm({ esistente, prefill, appId, onSalva, onElimina, onClose }: R
     <Modal title={esistente ? "Modifica ruolo" : prefill ? "Duplica ruolo" : "Nuovo ruolo"} onClose={onClose} wide>
       <form onSubmit={submit}>
         <Field label="Nome ruolo">
-          <input required className={inputCls} value={f.nome} onChange={(e) => setF((p) => ({ ...p, nome: e.target.value }))} placeholder="Es. Receptionist, Tecnico esternoâ€¦" />
+          <input required className={inputCls} value={f.nome} onChange={(e) => setF((p) => ({ ...p, nome: e.target.value }))} placeholder="Es. Receptionist, Tecnico esterno…" />
         </Field>
 
         <div className="mt-2 pt-3 border-t border-stone-200">
@@ -964,7 +960,7 @@ function RuoloForm({ esistente, prefill, appId, onSalva, onElimina, onClose }: R
   );
 }
 
-// â”€â”€ SostitutoForm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SostitutoForm ─────────────────────────────────────────────────────────────
 
 interface SostitutoFormProps {
   esistente: UHSostituto | null;
@@ -989,8 +985,8 @@ function SostitutoForm({
   const sostitutiDisponibili = accounts.filter((a) => a.id !== titolareId);
 
   const errore: string | null =
-    !f.sostitutoId ? "Seleziona chi farÃ  da sostituto."
-    : f.dataFine < f.dataInizio ? "La data di fine non puÃ² precedere la data di inizio."
+    !f.sostitutoId ? "Seleziona chi farà da sostituto."
+    : f.dataFine < f.dataInizio ? "La data di fine non può precedere la data di inizio."
     : null;
 
   function submit(e: React.FormEvent<HTMLFormElement>): void {
@@ -1008,7 +1004,7 @@ function SostitutoForm({
 
         <Field label="Sostituto">
           <select required className={inputCls} value={f.sostitutoId} onChange={(e) => upd({ sostitutoId: e.target.value })}>
-            <option value="">Seleziona utenteâ€¦</option>
+            <option value="">Seleziona utente…</option>
             {sostitutiDisponibili.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
           </select>
         </Field>
@@ -1023,7 +1019,7 @@ function SostitutoForm({
         </div>
 
         <Field label="Note (facoltativo)">
-          <input className={inputCls} value={f.note} onChange={(e) => upd({ note: e.target.value })} placeholder="Es. Ferie, trasfertaâ€¦" />
+          <input className={inputCls} value={f.note} onChange={(e) => upd({ note: e.target.value })} placeholder="Es. Ferie, trasferta…" />
         </Field>
 
         {errore && (
@@ -1046,7 +1042,7 @@ function SostitutoForm({
   );
 }
 
-// â”€â”€ SedeCard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SedeCard ──────────────────────────────────────────────────────────────────
 
 interface SedeCardProps {
   sede: UHSede;
@@ -1084,7 +1080,7 @@ function SedeCard({ sede, onModifica, onElimina }: SedeCardProps): JSX.Element {
   );
 }
 
-// â”€â”€ SedeForm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── SedeForm ──────────────────────────────────────────────────────────────────
 
 interface SedeFormProps {
   esistente: UHSede | null;
@@ -1117,13 +1113,13 @@ function SedeForm({ esistente, onSalva, onElimina, onClose }: SedeFormProps): JS
               {UHAccounts.TIPI_SEDE.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </Field>
-          <Field label="CittÃ ">
+          <Field label="Città">
             <input className={inputCls} value={f.citta} onChange={(e) => upd({ citta: e.target.value })} placeholder="Es. Trieste" />
           </Field>
         </div>
 
         <Field label="Indirizzo (facoltativo)">
-          <input className={inputCls} value={f.indirizzo} onChange={(e) => upd({ indirizzo: e.target.value })} placeholder="Via, numero civicoâ€¦" />
+          <input className={inputCls} value={f.indirizzo} onChange={(e) => upd({ indirizzo: e.target.value })} placeholder="Via, numero civico…" />
         </Field>
 
         <label className="flex items-center gap-2 text-sm font-medium text-stone-800 mb-1">
