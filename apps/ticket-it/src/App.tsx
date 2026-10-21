@@ -387,7 +387,7 @@ export default function App() {
 
       <div className="flex flex-col md:flex-row min-h-screen">
         {/* SIDEBAR */}
-        <aside className="md:w-60 shrink-0 bg-[#1B2340] text-stone-200 flex md:flex-col">
+        <aside className="md:w-60 shrink-0 bg-[#1B2340] text-stone-200 flex md:flex-col md:sticky md:top-0 md:h-screen">
           <div className="px-5 py-5 border-b border-white/10 hidden md:block">
             <a href="/" className="flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-stone-200 transition mb-3">
               <ArrowLeft size={12} /> Applicazioni Urban Homy
@@ -402,7 +402,7 @@ export default function App() {
               </div>
             </div>
           </div>
-          <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-visible">
+          <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-y-auto md:flex-1">
             <a
               href="/"
               className="md:hidden flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap text-stone-400 hover:text-stone-200 hover:bg-white/5 transition"
