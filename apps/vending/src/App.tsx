@@ -57,11 +57,11 @@ interface VenditeProps {
   strutturaOf: (id: string) => VendingStruttura | undefined;
   macchinaOf: (id: string) => VendingMacchina | undefined;
   onApri: (v: VendingVendita) => void;
-  onImportaFile: (file: File, strutturaId: string, modalita: string) => Promise<void>;
+  onImportaFile: (file: File, modalita: string) => Promise<void>;
   importRisultato: ImportRisultato | null; onChiudiImport: () => void;
   onEliminaTutte: () => void;
 }
-interface ImportaVenditeFormProps { strutture: VendingStruttura[]; onConferma: (strutturaId: string, modalita: string) => void; onClose: () => void; }
+interface ImportaVenditeFormProps { onConferma: (modalita: string) => void; onClose: () => void; }
 interface VenditaFormProps { esistente: VendingVendita; strutture: VendingStruttura[]; macchine: VendingMacchina[]; onSalva: (v: VendingVendita) => void; onElimina: () => void; onClose: () => void; }
 interface SediProps {
   strutture: VendingStruttura[]; vendite: VendingVendita[]; macchine: VendingMacchina[];
@@ -1223,7 +1223,8 @@ const METODO_ALIAS = {
   "app": "App", "mobile": "App", "satispay": "App", "app pagamento": "App", "qr": "App",
 };
 const CAMPI_ALIAS_VENDITE = {
-  macchinaNome: ["macchina", "distributore", "vending machine", "device", "erogatore", "colonnina"],
+  store: ["store", "sede", "struttura", "punto vendita", "negozio", "location", "store name", "nome sede"],
+  macchinaNome: ["vending", "macchina", "distributore", "vending machine", "device", "erogatore", "colonnina"],
   data: ["data", "date", "data vendita", "giorno"],
   ora: ["ora", "time", "orario"],
   prodotto: ["prodotto", "articolo", "item", "product", "referenza", "descrizione"],
@@ -1310,11 +1311,9 @@ function matchSiNo(v: unknown): boolean | null {
 }
 
 // Analizza le righe grezze lette dal foglio Excel (una per vendita) e le
-// converte nella forma usata dall'app, riconoscendo intestazioni di
-// colonna comuni indipendentemente da maiuscole/accenti/lingua. La sede è
-// scelta esplicitamente dall'utente prima dell'import (non dedotta dal
-// file), perché un export riguarda tipicamente un solo distributore/sede.
-function parseFoglioVendite(righeGrezze: Record<string, unknown>[], strutturaId: string, macchine: VendingMacchina[]): { vendite: VendingVendita[]; scartati: Array<{riga: number; motivo: string}> } {
+// converte nella forma usata dall'app. La sede viene rilevata automaticamente
+// dalla colonna Store, confrontando il valore con i nomi delle strutture censite.
+function parseFoglioVendite(righeGrezze: Record<string, unknown>[], strutture: VendingStruttura[], macchine: VendingMacchina[]): { vendite: VendingVendita[]; scartati: Array<{riga: number; motivo: string}> } {
   const risultato = { vendite: [], scartati: [] };
   righeGrezze.forEach((riga, idx) => {
     const norm: Record<string, unknown> = {};
@@ -1331,6 +1330,16 @@ function parseFoglioVendite(righeGrezze: Record<string, unknown>[], strutturaId:
       risultato.scartati.push({ riga: idx + 2, motivo: "data mancante" });
       return;
     }
+
+    // Rileva la struttura dalla colonna Store confrontando per nome normalizzato.
+    const storeRaw = trovaCampo(norm, CAMPI_ALIAS_VENDITE.store);
+    const storeNorm = normalizeTesto(storeRaw);
+    const struttura = strutture.find((s) => normalizeTesto(s.nome) === storeNorm);
+    if (!struttura) {
+      risultato.scartati.push({ riga: idx + 2, motivo: `sede non riconosciuta: "${storeRaw ?? ""}"` });
+      return;
+    }
+    const strutturaId = struttura.id;
 
     // Se la macchina non è ancora censita in Sedi, si conserva comunque il
     // nome grezzo del file per non perdere l'informazione in tabella.
@@ -1501,13 +1510,10 @@ export default function App() {
     setMacchine((ms) => ms.map((m) => (m.id === id ? { ...m, attiva: m.attiva === false } : m)));
   }
 
-  // Importa vendite da un file Excel (.xlsx/.xls/.csv) per una sede scelta
-  // esplicitamente dall'utente (un export riguarda tipicamente un solo
-  // distributore/sede, quindi non si tenta di dedurla dal file). L'utente
-  // sceglie anche la modalità: "sostituzione" rimpiazza solo le vendite già
-  // presenti per quella sede, "aggiunta" accoda le nuove senza toccare le
-  // altre.
-  async function importaVenditeDaFile(file, strutturaId, modalita) {
+  // Importa vendite da un file Excel (.xlsx/.xls/.csv). La sede viene rilevata
+  // automaticamente dalla colonna Store. L'utente sceglie solo se andare in
+  // sostituzione (rimpiazza le vendite delle sedi presenti nel file) o aggiunta.
+  async function importaVenditeDaFile(file, modalita) {
     setImportRisultato({ loading: true });
     try {
       const buf = await file.arrayBuffer();
@@ -1515,17 +1521,22 @@ export default function App() {
       const foglio = wb.Sheets[wb.SheetNames[0]];
       ricalcolaIntervallo(foglio);
       const righe = XLSX.utils.sheet_to_json(foglio, { defval: "" }) as Record<string, unknown>[];
-      const { vendite: righeValide, scartati } = parseFoglioVendite(righe, strutturaId, macchine);
+      const { vendite: righeValide, scartati } = parseFoglioVendite(righe, strutture, macchine);
 
       if (righeValide.length === 0) {
         setImportRisultato({ loading: false, errore: "Nessuna vendita valida trovata nel file.", scartati });
         return;
       }
 
-      const nomeSede = strutturaOf(strutturaId)?.nome ?? "";
+      // Strutture coinvolte nel file (per sostituzione e label)
+      const struttureCoinvolte = [...new Set(righeValide.map((v) => v.strutturaId))];
+      const nomeSede = struttureCoinvolte.length === 1
+        ? (strutturaOf(struttureCoinvolte[0])?.nome ?? "")
+        : `${struttureCoinvolte.length} sedi`;
+
       // Aggiorna subito lo stato locale per visibilità immediata
       if (modalita === "sostituzione") {
-        setVendite((vs) => [...righeValide, ...vs.filter((v) => v.strutturaId !== strutturaId)]);
+        setVendite((vs) => [...righeValide, ...vs.filter((v) => !struttureCoinvolte.includes(v.strutturaId))]);
       } else {
         setVendite((vs) => [...righeValide, ...vs]);
       }
@@ -1535,7 +1546,7 @@ export default function App() {
       });
       // Salva atomicamente al backend in background (garantisce persistenza al reload)
       if (modalita === "sostituzione") {
-        const daEliminare = vendite.filter((v) => v.strutturaId === strutturaId);
+        const daEliminare = vendite.filter((v) => struttureCoinvolte.includes(v.strutturaId));
         Promise.allSettled(daEliminare.map((v) => api.vendite.remove(v.id))).then(() => {
           api.vendite.batch(righeValide).catch((err: Error) => console.error("Batch save fallita:", err));
         });
@@ -2251,9 +2262,8 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
 
       {fileInAttesa && (
         <ImportaVenditeForm
-          strutture={strutture}
-          onConferma={(strutturaId, modalita) => {
-            onImportaFile(fileInAttesa, strutturaId, modalita);
+          onConferma={(modalita) => {
+            onImportaFile(fileInAttesa, modalita);
             setFileInAttesa(null);
           }}
           onClose={() => setFileInAttesa(null)}
@@ -2263,24 +2273,20 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
   );
 }
 
-function ImportaVenditeForm({ strutture, onConferma, onClose }: ImportaVenditeFormProps) {
-  const [strutturaId, setStrutturaId] = useState<string>(strutture.find((s) => s.attiva)?.id ?? strutture[0]?.id ?? "");
+function ImportaVenditeForm({ onConferma, onClose }: ImportaVenditeFormProps) {
   const [modalita, setModalita] = useState<string>("sostituzione");
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!strutturaId) return;
-    onConferma(strutturaId, modalita);
+    onConferma(modalita);
   }
 
   return (
     <Modal title="Importa vendite da Excel" onClose={onClose}>
       <form onSubmit={submit}>
-        <Field label="Per quale sede stai caricando queste vendite?">
-          <select required className={inputCls} value={strutturaId} onChange={(e) => setStrutturaId(e.target.value)}>
-            {strutture.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-          </select>
-        </Field>
+        <p className="text-sm text-stone-500 mb-4">
+          La sede viene rilevata automaticamente dalla colonna <span className="font-semibold text-stone-700">Store</span> del file.
+        </p>
 
         <FieldGroup label="Modalità">
           <div className="grid gap-2">
@@ -2292,7 +2298,7 @@ function ImportaVenditeForm({ strutture, onConferma, onClose }: ImportaVenditeFo
             >
               <div className="text-sm font-semibold">Sostituzione</div>
               <div className={`text-xs mt-0.5 ${modalita === "sostituzione" ? "text-stone-300" : "text-stone-500"}`}>
-                Rimpiazza tutte le vendite già presenti per questa sede con quelle del file.
+                Rimpiazza le vendite già presenti per le sedi nel file con quelle nuove.
               </div>
             </button>
             <button
@@ -2311,7 +2317,7 @@ function ImportaVenditeForm({ strutture, onConferma, onClose }: ImportaVenditeFo
 
         <div className="flex items-center justify-end gap-2 mt-5 pt-4 border-t border-stone-200">
           <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold text-stone-500 hover:bg-stone-100">Annulla</button>
-          <button type="submit" disabled={!strutturaId} className="px-4 py-2 rounded-lg text-sm font-semibold bg-[#CA8A04] hover:bg-[#AB7204] text-white disabled:opacity-50">Importa</button>
+          <button type="submit" className="px-4 py-2 rounded-lg text-sm font-semibold bg-[#CA8A04] hover:bg-[#AB7204] text-white">Importa</button>
         </div>
       </form>
     </Modal>
