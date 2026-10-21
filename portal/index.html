@@ -25,31 +25,9 @@
         <p class="text-stone-500 mt-2 text-sm">Accedi per usare le applicazioni aziendali</p>
       </div>
 
-      <form id="loginForm" class="bg-white border border-stone-200 rounded-2xl shadow-sm p-6">
-        <label class="block mb-3">
-          <span class="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Email</span>
-          <input id="loginEmail" type="email" required autocomplete="username"
-            class="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#C1622D]/40 focus:border-[#C1622D]"
-            placeholder="nome.cognome@urbanhomy.it" />
-        </label>
-        <label class="block mb-1">
-          <span class="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Password</span>
-          <input id="loginPassword" type="password" required autocomplete="current-password"
-            class="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#C1622D]/40 focus:border-[#C1622D]"
-            placeholder="••••••••" />
-        </label>
-        <div id="loginError" class="hidden text-xs font-medium text-rose-600 mt-2">Email o password non corrette.</div>
-        <button type="submit" class="w-full mt-4 bg-[#C1622D] hover:bg-[#a9531f] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
-          Accedi
-        </button>
-
-        <div class="flex items-center gap-3 my-4">
-          <div class="h-px bg-stone-200 flex-1"></div>
-          <span class="text-[11px] text-stone-400 uppercase tracking-wide">oppure</span>
-          <div class="h-px bg-stone-200 flex-1"></div>
-        </div>
-
-        <button type="button" id="msoLoginBtn" class="w-full flex items-center justify-center gap-2.5 bg-white border border-stone-300 hover:bg-stone-50 text-stone-700 text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
+      <!-- SSO Microsoft (metodo principale) -->
+      <div class="bg-white border border-stone-200 rounded-2xl shadow-sm p-6">
+        <button type="button" id="msoLoginBtn" class="w-full flex items-center justify-center gap-2.5 bg-[#1B2430] hover:bg-[#243040] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
           <svg width="16" height="16" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
           Accedi con Microsoft
         </button>
@@ -57,12 +35,38 @@
           SSO Microsoft non ancora configurato su questo portale.
         </div>
         <div id="msoError" class="hidden text-xs font-medium text-rose-600 mt-2"></div>
-      </form>
 
-      <p class="text-center text-[11px] text-stone-400 mt-5 leading-relaxed">
-        Il login è verificato su un database Postgres locale a scopo di sviluppo/demo, non ancora in produzione.<br>
-        Non inserire credenziali reali o riservate.
-      </p>
+        <!-- Accesso amministrativo (collassato) -->
+        <div class="mt-4 pt-4 border-t border-stone-100">
+          <button type="button" id="toggleAdminLogin"
+            class="w-full flex items-center justify-center gap-1.5 text-xs text-stone-400 hover:text-stone-600 transition">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Accesso amministrativo
+            <svg id="toggleAdminChevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="transition-transform"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+
+          <div id="adminLoginForm" class="hidden mt-4">
+            <form id="loginForm">
+              <label class="block mb-3">
+                <span class="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Email</span>
+                <input id="loginEmail" type="email" required autocomplete="username"
+                  class="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#C1622D]/40 focus:border-[#C1622D]"
+                  placeholder="nome.cognome@urbanhomy.it" />
+              </label>
+              <label class="block mb-1">
+                <span class="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Password</span>
+                <input id="loginPassword" type="password" required autocomplete="current-password"
+                  class="w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#C1622D]/40 focus:border-[#C1622D]"
+                  placeholder="••••••••" />
+              </label>
+              <div id="loginError" class="hidden text-xs font-medium text-rose-600 mt-2">Email o password non corrette.</div>
+              <button type="submit" class="w-full mt-4 bg-[#C1622D] hover:bg-[#a9531f] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
+                Accedi
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -158,7 +162,6 @@
         Non hai ancora accesso a nessuna applicazione. Contatta un amministratore del portale.
       </p>
 
-
     </div>
   </div>
 
@@ -176,6 +179,16 @@
     var cardVendingMachine = document.getElementById("cardVendingMachine");
     var cardUtenti = document.getElementById("cardUtenti");
     var nessunAccesso = document.getElementById("nessunAccesso");
+
+    // Toggle accesso amministrativo
+    var toggleAdminBtn = document.getElementById("toggleAdminLogin");
+    var adminLoginForm = document.getElementById("adminLoginForm");
+    var toggleChevron = document.getElementById("toggleAdminChevron");
+    toggleAdminBtn.addEventListener("click", function () {
+      var isOpen = !adminLoginForm.classList.contains("hidden");
+      adminLoginForm.classList.toggle("hidden", isOpen);
+      toggleChevron.style.transform = isOpen ? "" : "rotate(180deg)";
+    });
 
     function mostraLauncher(account) {
       utenteNome.textContent = account.nome;
@@ -196,6 +209,8 @@
       loginScreen.classList.add("hidden");
       launcher.classList.remove("hidden");
     }
+    window.mostraLauncher = mostraLauncher;
+
     function mostraLogin() {
       launcher.classList.add("hidden");
       loginScreen.classList.remove("hidden");
@@ -225,17 +240,13 @@
 
   <!-- ------------------------------------------------------------------ -->
   <!--  LOGIN CON MICROSOFT (SSO) — richiede una App Registration Entra ID -->
-  <!--  Vedi istruzioni di configurazione nel README del progetto.         -->
   <!-- ------------------------------------------------------------------ -->
   <script type="module">
     import * as msal from "https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/+esm";
 
-    // ---- CONFIGURAZIONE: sostituisci questi due valori con quelli della
-    // tua App Registration su Microsoft Entra ID (Azure AD). Vedi il README
-    // di urban-homy-home per la guida passo-passo.
     var MSAL_CONFIG = {
       clientId: window.__UH_MSAL_CLIENT_ID__ || "REPLACE_WITH_YOUR_CLIENT_ID",
-      tenantId: window.__UH_MSAL_TENANT_ID__ || "REPLACE_WITH_YOUR_TENANT_ID", // oppure "organizations" per qualsiasi account aziendale/scuola Microsoft
+      tenantId: window.__UH_MSAL_TENANT_ID__ || "REPLACE_WITH_YOUR_TENANT_ID",
     };
 
     var msoBtn = document.getElementById("msoLoginBtn");
