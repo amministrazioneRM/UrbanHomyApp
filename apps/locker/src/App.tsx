@@ -641,7 +641,7 @@ export default function App() {
         </aside>
         <main className="flex-1 min-w-0 px-4 md:px-8 py-6 md:py-8">
           {tab === "dashboard" && <Dashboard ordini={ordini} ordiniPeriodo={ordiniPeriodo} vendingStrutture={vendingStrutture} vendingVendite={vendingVendite} strutture={strutture} periodo={periodo} setPeriodo={setPeriodo} strutturaOf={strutturaOf} onNuovo={() => setModale({ type: "nuovoOrdine", payload: null })} />}
-          {tab === "ordini" && <Ordini ordini={ordini} strutture={strutture} strutturaOf={strutturaOf} onApri={(o) => setModale({ type: "modificaOrdine", payload: o })} onNuovo={() => setModale({ type: "nuovoOrdine", payload: null })} onImportaFile={importaOrdiniDaFile} importRisultato={importRisultato} onChiudiImport={() => setImportRisultato(null)} />}
+          {tab === "ordini" && <Ordini ordini={ordini} strutture={strutture} strutturaOf={strutturaOf} onApri={(o) => setModale({ type: "modificaOrdine", payload: o })} onNuovo={() => setModale({ type: "nuovoOrdine", payload: null })} onImportaFile={importaOrdiniDaFile} importRisultato={importRisultato} onChiudiImport={() => setImportRisultato(null)} onEliminaTutti={() => setOrdini([])} />}
           {tab === "sedi" && <Sedi strutture={strutture} ordini={ordini} locali={locali} onNuova={() => setModale({ type: "nuovaSede", payload: null })} onApri={(s) => setModale({ type: "modificaSede", payload: s })} onNuovoLocale={(strutturaId) => setModale({ type: "nuovoLocale", payload: null, prefill: { strutturaId } })} onApriLocale={(l) => setModale({ type: "modificaLocale", payload: l })} onEliminaLocale={eliminaLocale} />}
         </main>
       </div>
@@ -948,10 +948,11 @@ interface OrdiniProps {
   onImportaFile: (f: File, strutturaId: string, modalita: string) => Promise<void>;
   importRisultato: ImportRisultato | null;
   onChiudiImport: () => void;
+  onEliminaTutti: () => void;
 }
 interface ImportaOrdiniFormProps { strutture: LockerStruttura[]; onConferma: (strutturaId: string, modalita: string) => void; onClose: () => void; }
 
-function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile, importRisultato, onChiudiImport }: OrdiniProps) {
+function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile, importRisultato, onChiudiImport, onEliminaTutti }: OrdiniProps) {
   const [filtroStruttura, setFiltroStruttura] = useState("");
   const [filtroStato, setFiltroStato] = useState("");
   const [filtroPeriodo, setFiltroPeriodo] = useState("tutto");
@@ -983,6 +984,18 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
         </div>
         <div className="flex items-center gap-2">
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={onFileScelto} />
+          <button
+            onClick={() => {
+              if (ordini.length === 0) return;
+              if (window.confirm(`Vuoi davvero cancellare tutti i ${ordini.length} ordini? L'operazione è irreversibile.`)) {
+                onEliminaTutti();
+              }
+            }}
+            disabled={ordini.length === 0}
+            className="flex items-center gap-2 bg-white border border-stone-300 hover:border-rose-400 hover:text-rose-600 text-stone-500 text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition disabled:opacity-30"
+          >
+            <Trash2 size={16} /> Cancella tutto
+          </button>
           <button onClick={() => fileInputRef.current?.click()} disabled={importRisultato?.loading}
             className="flex items-center gap-2 bg-white border border-stone-300 hover:border-[#1E8E6E] text-stone-700 text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition disabled:opacity-50">
             <Upload size={16} /> {importRisultato?.loading ? "Importazione…" : "Importa da Excel"}

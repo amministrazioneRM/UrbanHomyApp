@@ -1331,21 +1331,17 @@ function parseFoglioVendite(righeGrezze: Record<string, unknown>[], strutture: V
       return;
     }
 
-    // Rileva la struttura dalla colonna Store confrontando per nome normalizzato.
+    // Rileva la macchina dalla colonna Store; dalla macchina si ricava la sede.
     const storeRaw = trovaCampo(norm, CAMPI_ALIAS_VENDITE.store);
-    const storeNorm = normalizeTesto(storeRaw);
-    const struttura = strutture.find((s) => normalizeTesto(s.nome) === storeNorm);
-    if (!struttura) {
-      risultato.scartati.push({ riga: idx + 2, motivo: `sede non riconosciuta: "${storeRaw ?? ""}"` });
+    const storeNorm = normalizeTesto(storeRaw).trim();
+    const macchinaMatch = macchine.find((m) => normalizeTesto(m.nome).trim() === storeNorm);
+    if (!macchinaMatch) {
+      const nomiDisponibili = macchine.map((m) => m.nome).join(", ");
+      risultato.scartati.push({ riga: idx + 2, motivo: `vending non riconosciuta: "${storeRaw ?? ""}" (disponibili: ${nomiDisponibili || "nessuna"})` });
       return;
     }
-    const strutturaId = struttura.id;
-
-    // Se la macchina non è ancora censita in Sedi, si conserva comunque il
-    // nome grezzo del file per non perdere l'informazione in tabella.
-    const macchinaNomeRaw = trovaCampo(norm, CAMPI_ALIAS_VENDITE.macchinaNome);
-    const macchinaNomeGrezzo = macchinaNomeRaw ? String(macchinaNomeRaw).trim() : "";
-    const macchinaMatch = macchine.find((m) => m.strutturaId === strutturaId && normalizeTesto(m.nome) === normalizeTesto(macchinaNomeRaw));
+    const strutturaId = macchinaMatch.strutturaId;
+    const macchinaNomeGrezzo = "";
 
     const data = excelDataToIso(dataRaw);
     // Senza colonna "ora" dedicata, l'orario si ricava dalla cella data
@@ -1362,7 +1358,7 @@ function parseFoglioVendite(righeGrezze: Record<string, unknown>[], strutture: V
     const stato = rimborso === true ? "Rimborsata" : erogato === false ? "NonErogata" : "Completata";
 
     risultato.vendite.push({
-      id: nid("VEN"), strutturaId, macchinaId: macchinaMatch?.id ?? null, macchinaNome: macchinaMatch ? "" : macchinaNomeGrezzo,
+      id: nid("VEN"), strutturaId, macchinaId: macchinaMatch.id, macchinaNome: macchinaNomeGrezzo,
       data, ora, prodotto: String(prodotto).trim(), quantita, prezzoUnitario, metodoPagamento, stato,
     });
   });
@@ -1521,6 +1517,10 @@ export default function App() {
       const foglio = wb.Sheets[wb.SheetNames[0]];
       ricalcolaIntervallo(foglio);
       const righe = XLSX.utils.sheet_to_json(foglio, { defval: "" }) as Record<string, unknown>[];
+      if (macchine.length === 0) {
+        setImportRisultato({ loading: false, errore: "Nessuna macchina vending censita. Aggiungi almeno una macchina nelle Impostazioni → Sedi prima di importare." });
+        return;
+      }
       const { vendite: righeValide, scartati } = parseFoglioVendite(righe, strutture, macchine);
 
       if (righeValide.length === 0) {
@@ -2151,7 +2151,17 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
             {importRisultato.errore ? <AlertTriangle size={16} className="shrink-0 mt-0.5" /> : <CheckCircle2 size={16} className="shrink-0 mt-0.5" />}
             <div className="flex-1">
               {importRisultato.errore ? (
-                <div className="font-medium">{importRisultato.errore}</div>
+                <>
+                  <div className="font-medium">{importRisultato.errore}</div>
+                  {importRisultato.scartati && importRisultato.scartati.length > 0 && (
+                    <ul className="mt-1.5 text-xs text-rose-700/80 list-disc list-inside space-y-0.5">
+                      {importRisultato.scartati.slice(0, 10).map((s, i) => (
+                        <li key={i}>Riga {s.riga}: {s.motivo}</li>
+                      ))}
+                      {importRisultato.scartati.length > 10 && <li>…e altre {importRisultato.scartati.length - 10} righe.</li>}
+                    </ul>
+                  )}
+                </>
               ) : (
                 <>
                   <div className="font-medium">
