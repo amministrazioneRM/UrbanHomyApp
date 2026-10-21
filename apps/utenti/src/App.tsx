@@ -1,12 +1,12 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import {
-  ShieldCheck, Plus, Pencil, Trash2, X, ArrowLeft, Mail, Users, Grid3x3, Lock, Check, Copy, CalendarClock, Settings, ChevronDown, MapPin, MapPinOff
+  ShieldCheck, Plus, Pencil, Trash2, X, ArrowLeft, Mail, Users, Grid3x3, Lock, Check, Copy, CalendarClock, Settings, ChevronDown, ChevronLeft, ChevronRight, MapPin, MapPinOff
 } from "lucide-react";
 import UHAccounts from "./accounts";
 import { api, useSyncedResource } from "./api";
 import type { AppId, UHAccount, UHRuolo, UHSostituto, UHSede, AccessiMap, PermessiMap } from "./accounts";
 
-// ── Local draft types ──────────────────────────────────────────────────────────
+// â”€â”€ Local draft types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface AccountDraft {
   id: string | null;
@@ -46,7 +46,7 @@ interface SedeDraft {
   attiva: boolean;
 }
 
-// ── Modal state types ─────────────────────────────────────────────────────────
+// â”€â”€ Modal state types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 type ModaleUtente = { type: "nuovo" | "modifica"; payload: UHAccount | null };
 type ModaleRuolo = {
@@ -60,12 +60,12 @@ type ModaleSostituto = { type: "nuovo" | "modifica"; appId: AppId; payload: UHSo
 
 type Vista = "utenti" | "ruoli" | "sedi";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function clone<T>(x: T): T { return JSON.parse(JSON.stringify(x)); }
 
 function formatDataIt(iso: string | undefined | null): string {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 }
@@ -77,7 +77,7 @@ function statoSostituzione(sost: UHSostituto): { label: string; className: strin
   return { label: "Attiva ora", className: "bg-emerald-50 text-emerald-700 border-emerald-300" };
 }
 
-// ── UI primitives ─────────────────────────────────────────────────────────────
+// â”€â”€ UI primitives â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface TagProps {
   children: React.ReactNode;
@@ -145,7 +145,7 @@ function pillCls(attivo: boolean): string {
   }`;
 }
 
-// ── App ───────────────────────────────────────────────────────────────────────
+// â”€â”€ App â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function App(): JSX.Element {
   const [session] = useState<UHAccount | null>(() => UHAccounts.loadSession());
@@ -160,6 +160,8 @@ export default function App(): JSX.Element {
   const [appRuoliSel, setAppRuoliSel] = useState<AppId>(UHAccounts.APPS[0].id);
   const TAB_IMPOSTAZIONI: Vista[] = ["ruoli", "sedi"];
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(vista));
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => { try { return localStorage.getItem("utenti-sidebar-collapsed") === "1"; } catch { return false; } });
+  const toggleSidebar = () => setSidebarCollapsed((v) => { try { localStorage.setItem("utenti-sidebar-collapsed", v ? "0" : "1"); } catch {} return !v; });
 
   if (!session || !UHAccounts.isAdminGlobale(session)) {
     return (
@@ -172,7 +174,7 @@ export default function App(): JSX.Element {
           <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900 mb-2">Accesso non disponibile</h1>
           <p className="text-stone-500 text-sm mb-6">
             {session
-              ? "Questa sezione è riservata agli amministratori del portale."
+              ? "Questa sezione Ã¨ riservata agli amministratori del portale."
               : "Devi accedere dalla home page del portale per usare questa applicazione."}
           </p>
           <a href="/" className="inline-flex items-center gap-2 bg-[#241B3A] hover:bg-[#1a1329] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
@@ -288,7 +290,7 @@ export default function App(): JSX.Element {
 
       <div className="flex flex-col md:flex-row min-h-screen">
         {/* SIDEBAR */}
-        <aside className="md:w-60 shrink-0 bg-[#241B3A] text-stone-200 flex md:flex-col">
+        <aside className={`${sidebarCollapsed ? "md:w-14" : "md:w-60"} shrink-0 bg-[#241B3A] text-stone-200 flex md:flex-col md:sticky md:top-0 md:h-screen transition-all duration-200`}>
           <div className="px-5 py-5 border-b border-white/10 hidden md:block">
             <a href="/" className="flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-stone-200 transition mb-3">
               <ArrowLeft size={12} /> Applicazioni Urban Homy
@@ -299,11 +301,11 @@ export default function App(): JSX.Element {
               </div>
               <div>
                 <div className="font-[Fraunces] font-semibold text-white text-[15px] leading-none">Utenti e accessi</div>
-                <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy · utenti</div>
+                <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy Â· utenti</div>
               </div>
             </div>
           </div>
-          <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-visible">
+          <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-y-auto md:flex-1 shrink-0">
             <a
               href="/"
               className="md:hidden flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap text-stone-400 hover:text-stone-200 hover:bg-white/5 transition"
@@ -313,26 +315,27 @@ export default function App(): JSX.Element {
             </a>
             <button
               onClick={() => setVista("utenti")}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+              title={sidebarCollapsed ? "Utenti" : undefined}
+              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${
                 vista === "utenti" ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
               }`}
             >
               <Users size={16} />
-              Utenti
+              {!sidebarCollapsed && "Utenti"}
             </button>
 
             <div className="md:mt-1">
               <button
                 onClick={() => setImpostazioniAperte((v) => !v)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                title={sidebarCollapsed ? "Impostazioni" : undefined}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${
                   TAB_IMPOSTAZIONI.includes(vista) ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
                 }`}
               >
                 <Settings size={16} />
-                Impostazioni
-                <ChevronDown size={14} className={`ml-auto transition-transform hidden md:block ${impostazioniAperte ? "rotate-180" : ""}`} />
+                {!sidebarCollapsed && <>Impostazioni<ChevronDown size={14} className={`ml-auto transition-transform hidden md:block ${impostazioniAperte ? "rotate-180" : ""}`} /></>}
               </button>
-              {impostazioniAperte && (
+              {!sidebarCollapsed && impostazioniAperte && (
                 <div className="flex md:flex-col gap-1 md:mt-1 md:pl-4 md:border-l md:border-white/10 md:ml-4">
                   {(
                     [
@@ -355,8 +358,19 @@ export default function App(): JSX.Element {
               )}
             </div>
           </nav>
-          <div className="mt-auto px-5 py-3 text-[11px] text-stone-500 hidden md:block border-t border-white/10">
-            {accounts.length} utenti · {ruoli.length} ruoli · {sedi.length} sedi
+          <div className="hidden md:flex flex-col border-t border-white/10 mt-auto">
+            {!sidebarCollapsed && (
+              <div className="px-5 py-3 text-[11px] text-stone-500">
+                {accounts.length} utenti · {ruoli.length} ruoli · {sedi.length} sedi
+              </div>
+            )}
+            <button
+              onClick={toggleSidebar}
+              className="flex items-center justify-center py-2.5 text-stone-500 hover:text-stone-300 hover:bg-white/5 transition"
+              title={sidebarCollapsed ? "Espandi menu" : "Comprimi menu"}
+            >
+              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
           </div>
         </aside>
 
@@ -369,7 +383,7 @@ export default function App(): JSX.Element {
               </h1>
               <p className="text-stone-500 text-sm mt-1">
                 {vista === "utenti"
-                  ? "Chi può accedere al portale e con quale ruolo, applicazione per applicazione"
+                  ? "Chi puÃ² accedere al portale e con quale ruolo, applicazione per applicazione"
                   : vista === "ruoli"
                     ? "Per ciascuna applicazione, i ruoli disponibili e i permessi per ciascun modulo"
                     : "Anagrafica delle sedi e strutture del gruppo, condivisa tra le applicazioni del portale"}
@@ -411,7 +425,7 @@ export default function App(): JSX.Element {
                         const ruolo = UHAccounts.ruoloIn(a, app.id);
                         return (
                           <Tag key={app.id} className={ha ? ruoloBadge(ruolo) : "bg-stone-50 text-stone-300 border-stone-200"}>
-                            {app.nome}{ha ? ` · ${ruolo}` : " · nessun accesso"}
+                            {app.nome}{ha ? ` Â· ${ruolo}` : " Â· nessun accesso"}
                           </Tag>
                         );
                       })}
@@ -481,7 +495,7 @@ export default function App(): JSX.Element {
           )}
 
           <p className="text-center text-[11px] text-stone-400 mt-8">
-            Ambiente dimostrativo — utenti, ruoli e password sono salvati solo nel browser (localStorage), condivisi tra le app del portale su questo dispositivo.
+            Ambiente dimostrativo â€” utenti, ruoli e password sono salvati solo nel browser (localStorage), condivisi tra le app del portale su questo dispositivo.
           </p>
         </main>
       </div>
@@ -525,7 +539,7 @@ export default function App(): JSX.Element {
   );
 }
 
-// ── UtenteForm ────────────────────────────────────────────────────────────────
+// â”€â”€ UtenteForm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface UtenteFormProps {
   esistente: UHAccount | null;
@@ -594,7 +608,7 @@ function UtenteForm({
             <input required type="email" className={inputCls} value={f.email} onChange={(e) => upd({ email: e.target.value })} placeholder="nome@urbanhomy.it" />
           </Field>
           <Field label={esistente ? "Nuova password (opzionale)" : "Password"}>
-            <input required={!esistente} className={inputCls} value={f.password} onChange={(e) => upd({ password: e.target.value })} placeholder={esistente ? "Lascia vuoto per non cambiarla" : "••••••••"} />
+            <input required={!esistente} className={inputCls} value={f.password} onChange={(e) => upd({ password: e.target.value })} placeholder={esistente ? "Lascia vuoto per non cambiarla" : "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"} />
           </Field>
         </div>
 
@@ -634,7 +648,7 @@ function UtenteForm({
                   />
                   <MapPin size={12} className="text-stone-400 shrink-0" />
                   {sede.nome}
-                  {sede.citta && <span className="text-stone-400 text-xs">· {sede.citta}</span>}
+                  {sede.citta && <span className="text-stone-400 text-xs">Â· {sede.citta}</span>}
                 </label>
               ))}
               {sedi.filter((s) => s.attiva).length === 0 && (
@@ -701,7 +715,7 @@ function UtenteForm({
                                   <span className="font-medium text-stone-700 truncate">{nomeSostituto}</span>
                                   <Tag className={stato.className}>{stato.label}</Tag>
                                   <span className="text-stone-400 whitespace-nowrap flex items-center gap-1">
-                                    <CalendarClock size={11} /> {formatDataIt(s.dataInizio)}–{formatDataIt(s.dataFine)}
+                                    <CalendarClock size={11} /> {formatDataIt(s.dataInizio)}â€“{formatDataIt(s.dataFine)}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
@@ -727,7 +741,7 @@ function UtenteForm({
 
         {isProprioAccount && f.ruoloGlobale !== "Amministratore" && (
           <div className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
-            Stai rimuovendo il tuo ruolo di amministratore globale: dopo il salvataggio non potrai più accedere a questa sezione.
+            Stai rimuovendo il tuo ruolo di amministratore globale: dopo il salvataggio non potrai piÃ¹ accedere a questa sezione.
           </div>
         )}
 
@@ -765,7 +779,7 @@ function UtenteForm({
   );
 }
 
-// ── RuoloCard ─────────────────────────────────────────────────────────────────
+// â”€â”€ RuoloCard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface RuoloCardProps {
   ruolo: UHRuolo;
@@ -819,7 +833,7 @@ function RuoloCard({ ruolo, moduli, onModifica, onElimina, onDuplica }: RuoloCar
                   <td key={p.id} className="text-center py-1.5 px-2">
                     {ruolo.permessi[m.id]?.[p.id as keyof typeof ruolo.permessi[string]]
                       ? <Check size={14} className="inline text-emerald-600" />
-                      : <span className="text-stone-300">—</span>}
+                      : <span className="text-stone-300">â€”</span>}
                   </td>
                 ))}
               </tr>
@@ -831,7 +845,7 @@ function RuoloCard({ ruolo, moduli, onModifica, onElimina, onDuplica }: RuoloCar
   );
 }
 
-// ── RuoloForm ─────────────────────────────────────────────────────────────────
+// â”€â”€ RuoloForm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface RuoloFormProps {
   esistente: UHRuolo | null;
@@ -885,7 +899,7 @@ function RuoloForm({ esistente, prefill, appId, onSalva, onElimina, onClose }: R
     <Modal title={esistente ? "Modifica ruolo" : prefill ? "Duplica ruolo" : "Nuovo ruolo"} onClose={onClose} wide>
       <form onSubmit={submit}>
         <Field label="Nome ruolo">
-          <input required className={inputCls} value={f.nome} onChange={(e) => setF((p) => ({ ...p, nome: e.target.value }))} placeholder="Es. Receptionist, Tecnico esterno…" />
+          <input required className={inputCls} value={f.nome} onChange={(e) => setF((p) => ({ ...p, nome: e.target.value }))} placeholder="Es. Receptionist, Tecnico esternoâ€¦" />
         </Field>
 
         <div className="mt-2 pt-3 border-t border-stone-200">
@@ -941,7 +955,7 @@ function RuoloForm({ esistente, prefill, appId, onSalva, onElimina, onClose }: R
   );
 }
 
-// ── SostitutoForm ─────────────────────────────────────────────────────────────
+// â”€â”€ SostitutoForm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface SostitutoFormProps {
   esistente: UHSostituto | null;
@@ -966,8 +980,8 @@ function SostitutoForm({
   const sostitutiDisponibili = accounts.filter((a) => a.id !== titolareId);
 
   const errore: string | null =
-    !f.sostitutoId ? "Seleziona chi farà da sostituto."
-    : f.dataFine < f.dataInizio ? "La data di fine non può precedere la data di inizio."
+    !f.sostitutoId ? "Seleziona chi farÃ  da sostituto."
+    : f.dataFine < f.dataInizio ? "La data di fine non puÃ² precedere la data di inizio."
     : null;
 
   function submit(e: React.FormEvent<HTMLFormElement>): void {
@@ -985,7 +999,7 @@ function SostitutoForm({
 
         <Field label="Sostituto">
           <select required className={inputCls} value={f.sostitutoId} onChange={(e) => upd({ sostitutoId: e.target.value })}>
-            <option value="">Seleziona utente…</option>
+            <option value="">Seleziona utenteâ€¦</option>
             {sostitutiDisponibili.map((a) => <option key={a.id} value={a.id}>{a.nome}</option>)}
           </select>
         </Field>
@@ -1000,7 +1014,7 @@ function SostitutoForm({
         </div>
 
         <Field label="Note (facoltativo)">
-          <input className={inputCls} value={f.note} onChange={(e) => upd({ note: e.target.value })} placeholder="Es. Ferie, trasferta…" />
+          <input className={inputCls} value={f.note} onChange={(e) => upd({ note: e.target.value })} placeholder="Es. Ferie, trasfertaâ€¦" />
         </Field>
 
         {errore && (
@@ -1023,7 +1037,7 @@ function SostitutoForm({
   );
 }
 
-// ── SedeCard ──────────────────────────────────────────────────────────────────
+// â”€â”€ SedeCard â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface SedeCardProps {
   sede: UHSede;
@@ -1061,7 +1075,7 @@ function SedeCard({ sede, onModifica, onElimina }: SedeCardProps): JSX.Element {
   );
 }
 
-// ── SedeForm ──────────────────────────────────────────────────────────────────
+// â”€â”€ SedeForm â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface SedeFormProps {
   esistente: UHSede | null;
@@ -1094,13 +1108,13 @@ function SedeForm({ esistente, onSalva, onElimina, onClose }: SedeFormProps): JS
               {UHAccounts.TIPI_SEDE.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </Field>
-          <Field label="Città">
+          <Field label="CittÃ ">
             <input className={inputCls} value={f.citta} onChange={(e) => upd({ citta: e.target.value })} placeholder="Es. Trieste" />
           </Field>
         </div>
 
         <Field label="Indirizzo (facoltativo)">
-          <input className={inputCls} value={f.indirizzo} onChange={(e) => upd({ indirizzo: e.target.value })} placeholder="Via, numero civico…" />
+          <input className={inputCls} value={f.indirizzo} onChange={(e) => upd({ indirizzo: e.target.value })} placeholder="Via, numero civicoâ€¦" />
         </Field>
 
         <label className="flex items-center gap-2 text-sm font-medium text-stone-800 mb-1">

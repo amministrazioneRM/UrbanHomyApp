@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useEffect } from "react";
+﻿import React, { useState, useMemo, useEffect } from "react";
 import {
   LifeBuoy, Ticket as TicketIcon, Plus, ChevronDown, X, AlertTriangle,
   CheckCircle2, Clock3, Loader2, Trash2, Pencil, LayoutGrid, Search,
   Monitor, Package, Wifi, KeyRound, HelpCircle, Camera, Ban,
-  Users, UserCog, Mail, Settings, Filter, ArrowLeft, Building2, UserCheck
+  Users, UserCog, Mail, Settings, Filter, ArrowLeft, Building2, UserCheck,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import type { UHAccount } from "./accounts";
 import UHAccounts from "./accounts";
@@ -45,7 +46,7 @@ interface Ticket {
 }
 
 /* ------------------------------------------------------------------ */
-/*  DATI DI PARTENZA — Gruppo Urban Homy                               */
+/*  DATI DI PARTENZA â€” Gruppo Urban Homy                               */
 /* ------------------------------------------------------------------ */
 
 let _id = 1000;
@@ -82,7 +83,7 @@ const seedTicket: Ticket[] = [
   },
   {
     id: "TIC-2", strutturaId: "STR-2", reparto: "Reception",
-    titolo: "Gestionale prenotazioni non si connette", descrizione: "Il PMS perde la connessione internet più volte al giorno.",
+    titolo: "Gestionale prenotazioni non si connette", descrizione: "Il PMS perde la connessione internet piÃ¹ volte al giorno.",
     categoria: "Rete", priorita: "Urgente", stato: "In corso",
     dataCreazione: dPlus(-2), scadenza: dPlus(0), richiedente: "Elena Fabris", note: "Verifica router in corso con il fornitore.", foto: [],
   },
@@ -148,7 +149,7 @@ const categoriaIcon: Record<string, React.ComponentType<{ size?: number; classNa
 };
 
 function fmtData(iso: string): string {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" });
 }
@@ -156,7 +157,7 @@ function isScaduto(t: Ticket): boolean {
   return t.stato !== "Risolto" && t.stato !== "Chiuso" && t.scadenza < oggi.toISOString().slice(0, 10);
 }
 
-const FILTRO_RAPIDO_LABEL: Record<string, string> = { aperti: "Ticket aperti", urgenti: "Alta priorità", scaduti: "Scaduti", incorso: "In corso" };
+const FILTRO_RAPIDO_LABEL: Record<string, string> = { aperti: "Ticket aperti", urgenti: "Alta prioritÃ ", scaduti: "Scaduti", incorso: "In corso" };
 function matchFiltroRapido(t: Ticket, tipo: string): boolean {
   switch (tipo) {
     case "aperti": return t.stato === "Aperto";
@@ -287,6 +288,8 @@ export default function App() {
   const [utenteCorrenteId, setUtenteCorrenteId] = useState<string>(() => localStorage.getItem("uhit_utenteCorrenteId") || "");
   const TAB_IMPOSTAZIONI = ["utenti"];
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(tab));
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => { try { return localStorage.getItem("ticketit-sidebar-collapsed") === "1"; } catch { return false; } });
+  const toggleSidebar = () => setSidebarCollapsed((v) => { try { localStorage.setItem("ticketit-sidebar-collapsed", v ? "0" : "1"); } catch {} return !v; });
   const [modale, setModale] = useState<ModaleState | null>(null);
   const [filtroRapido, setFiltroRapido] = useState<FiltroRapidoState | null>(null);
 
@@ -304,7 +307,7 @@ export default function App() {
   }
 
   const strutturaOf = (id: string): TicketStruttura | undefined => strutture.find((s) => s.id === id);
-  const luogoLabel = (t: Ticket): string => `${strutturaOf(t.strutturaId)?.nome ?? "—"} · ${t.reparto}`;
+  const luogoLabel = (t: Ticket): string => `${strutturaOf(t.strutturaId)?.nome ?? "â€”"} Â· ${t.reparto}`;
 
   /* -------- CRUD ticket -------- */
   function salvaTicket(dati: Ticket) {
@@ -387,7 +390,7 @@ export default function App() {
 
       <div className="flex flex-col md:flex-row min-h-screen">
         {/* SIDEBAR */}
-        <aside className="md:w-60 shrink-0 bg-[#1B2340] text-stone-200 flex md:flex-col md:sticky md:top-0 md:h-screen">
+        <aside className={`${sidebarCollapsed ? "md:w-14" : "md:w-60"} shrink-0 bg-[#1B2340] text-stone-200 flex md:flex-col md:sticky md:top-0 md:h-screen transition-all duration-200`}>
           <div className="px-5 py-5 border-b border-white/10 hidden md:block">
             <a href="/" className="flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-stone-200 transition mb-3">
               <ArrowLeft size={12} /> Applicazioni Urban Homy
@@ -398,11 +401,11 @@ export default function App() {
               </div>
               <div>
                 <div className="font-[Fraunces] font-semibold text-white text-[15px] leading-none">Ticket</div>
-                <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy · assistenza IT</div>
+                <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy Â· assistenza IT</div>
               </div>
             </div>
           </div>
-          <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-y-auto md:flex-1">
+          <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-y-auto md:flex-1 shrink-0">
             <a
               href="/"
               className="md:hidden flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap text-stone-400 hover:text-stone-200 hover:bg-white/5 transition"
@@ -417,12 +420,13 @@ export default function App() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                title={sidebarCollapsed ? t.label : undefined}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${
                   tab === t.id ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
                 }`}
               >
                 <t.icon size={16} />
-                {t.label}
+                {!sidebarCollapsed && t.label}
               </button>
             ))}
 
@@ -430,15 +434,15 @@ export default function App() {
             <div className="md:mt-1">
               <button
                 onClick={() => setImpostazioniAperte((v) => !v)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                title={sidebarCollapsed ? "Impostazioni" : undefined}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${
                   TAB_IMPOSTAZIONI.includes(tab) ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
                 }`}
               >
                 <Settings size={16} />
-                Impostazioni
-                <ChevronDown size={14} className={`ml-auto transition-transform hidden md:block ${impostazioniAperte ? "rotate-180" : ""}`} />
+                {!sidebarCollapsed && <>Impostazioni<ChevronDown size={14} className={`ml-auto transition-transform hidden md:block ${impostazioniAperte ? "rotate-180" : ""}`} /></>}
               </button>
-              {impostazioniAperte && (
+              {!sidebarCollapsed && impostazioniAperte && (
                 <div className="flex md:flex-col gap-1 md:mt-1 md:pl-4 md:border-l md:border-white/10 md:ml-4">
                   {[{ id: "utenti", label: "Utenti", icon: Users }].map((t) => (
                     <button
@@ -457,6 +461,7 @@ export default function App() {
             </div>
             )}
           </nav>
+          {!sidebarCollapsed && (
           <div className="mt-auto px-3 py-3 border-t border-white/10">
             <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-500 px-2 mb-1.5">Accesso come</div>
             <select
@@ -471,8 +476,20 @@ export default function App() {
               {utenti.map((u) => <option key={u.id} value={u.id} className="text-stone-800">{u.nome}</option>)}
             </select>
           </div>
-          <div className="px-5 py-3 text-[11px] text-stone-500 hidden md:block border-t border-white/10">
-            {strutture.length} sedi · {utenti.length} utenti
+          )}
+          <div className="hidden md:flex flex-col border-t border-white/10 mt-auto">
+            {!sidebarCollapsed && (
+              <div className="px-5 py-3 text-[11px] text-stone-500">
+                {strutture.length} sedi · {utenti.length} utenti
+              </div>
+            )}
+            <button
+              onClick={toggleSidebar}
+              className="flex items-center justify-center py-2.5 text-stone-500 hover:text-stone-300 hover:bg-white/5 transition"
+              title={sidebarCollapsed ? "Espandi menu" : "Comprimi menu"}
+            >
+              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
           </div>
         </aside>
 
@@ -565,7 +582,7 @@ function Dashboard({ stats, ticket, luogoLabel, onApri, onNuovo, onFiltroRapido 
       <header className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="font-[Fraunces] text-xl md:text-[28px] font-semibold text-stone-900">Cruscotto ticket IT</h1>
-          <p className="text-stone-500 text-xs sm:text-sm mt-1">Gruppo Urban Homy · tutte le sedi</p>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Gruppo Urban Homy Â· tutte le sedi</p>
         </div>
         <button onClick={onNuovo} className="flex items-center gap-2 bg-[#2D6BC1] hover:bg-[#25569c] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
           <Plus size={16} /> Nuovo ticket
@@ -574,7 +591,7 @@ function Dashboard({ stats, ticket, luogoLabel, onApri, onNuovo, onFiltroRapido 
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <StatCard label="Ticket aperti" value={stats.aperti} icon={TicketIcon} accent="bg-[#1B2340]" onClick={() => onFiltroRapido("aperti")} />
-        <StatCard label="Alta priorità" value={stats.urgenti} icon={AlertTriangle} accent="bg-[#2D6BC1]" onClick={() => onFiltroRapido("urgenti")} />
+        <StatCard label="Alta prioritÃ " value={stats.urgenti} icon={AlertTriangle} accent="bg-[#2D6BC1]" onClick={() => onFiltroRapido("urgenti")} />
         <StatCard label="Scaduti" value={stats.scaduti} icon={Clock3} accent="bg-rose-600" onClick={() => onFiltroRapido("scaduti")} />
         <StatCard label="In corso" value={stats.inCorso} icon={Loader2} accent="bg-teal-600" onClick={() => onFiltroRapido("incorso")} />
       </div>
@@ -665,7 +682,7 @@ function TicketList({ ticket, filtroRapido, strutture, utenti, utenteCorrente, l
         <div>
           <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Ticket</h1>
           <p className="text-stone-500 text-xs sm:text-sm mt-1">
-            {utenteCorrente ? <>Connesso come <span className="font-semibold text-stone-700">{utenteCorrente.nome}</span> · {utenteCorrente.reparto}</> : "Richieste di assistenza IT del gruppo"}
+            {utenteCorrente ? <>Connesso come <span className="font-semibold text-stone-700">{utenteCorrente.nome}</span> Â· {utenteCorrente.reparto}</> : "Richieste di assistenza IT del gruppo"}
           </p>
         </div>
         <button onClick={onNuovo} className="flex items-center gap-2 bg-[#2D6BC1] hover:bg-[#25569c] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
@@ -709,7 +726,7 @@ function TicketList({ ticket, filtroRapido, strutture, utenti, utenteCorrente, l
       <div className="flex flex-wrap gap-2 mb-5 items-center bg-white border border-stone-200 rounded-xl px-3 py-2.5">
         <div className="flex items-center gap-2 flex-1 min-w-[160px]">
           <Search size={15} className="text-stone-400 shrink-0" />
-          <input value={ricerca} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRicerca(e.target.value)} placeholder="Cerca per titolo o descrizione…" className="text-sm outline-none w-full bg-transparent" />
+          <input value={ricerca} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRicerca(e.target.value)} placeholder="Cerca per titolo o descrizioneâ€¦" className="text-sm outline-none w-full bg-transparent" />
         </div>
         <select value={filtroStruttura} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFiltroStruttura(e.target.value)} className={inputCls + " w-auto text-xs"}>
           <option value="">Tutte le sedi</option>
@@ -751,8 +768,8 @@ function TicketList({ ticket, filtroRapido, strutture, utenti, utenteCorrente, l
                     {scaduto && <Tag className="bg-rose-600 text-white border-transparent">In ritardo</Tag>}
                     {t.foto?.length > 0 && <Tag className="bg-stone-50 text-stone-500 border-stone-300"><Camera size={10} /> {t.foto.length}</Tag>}
                   </div>
-                  <div className="text-xs text-stone-500 mt-0.5">{luogoLabel(t)} · richiesto da {t.richiedente || "—"}</div>
-                  <div className="text-xs text-stone-400 mt-1 font-mono-tag">{t.id} · scadenza {fmtData(t.scadenza)}</div>
+                  <div className="text-xs text-stone-500 mt-0.5">{luogoLabel(t)} Â· richiesto da {t.richiedente || "â€”"}</div>
+                  <div className="text-xs text-stone-400 mt-1 font-mono-tag">{t.id} Â· scadenza {fmtData(t.scadenza)}</div>
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -866,7 +883,7 @@ function TicketForm({ esistente, strutture, utenti, utenteCorrente, onSalva, onE
               {CATEGORIE.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </Field>
-          <Field label="Priorità">
+          <Field label="PrioritÃ ">
             <select className={inputCls} value={f.priorita} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => upd({ priorita: e.target.value })}>
               {PRIORITA.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
@@ -901,9 +918,9 @@ function TicketForm({ esistente, strutture, utenti, utenteCorrente, onSalva, onE
             value={f.richiedente === "" ? "" : (utenti.some((u) => u.nome === f.richiedente) ? f.richiedente : "__altro__")}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => upd({ richiedente: e.target.value === "__altro__" ? "altro:" : e.target.value })}
           >
-            <option value="">— non specificato —</option>
-            {utenti.map((u) => <option key={u.id} value={u.nome}>{u.nome} · {u.reparto}</option>)}
-            <option value="__altro__">Altro (inserisci manualmente)…</option>
+            <option value="">â€” non specificato â€”</option>
+            {utenti.map((u) => <option key={u.id} value={u.nome}>{u.nome} Â· {u.reparto}</option>)}
+            <option value="__altro__">Altro (inserisci manualmente)â€¦</option>
           </select>
           {f.richiedente !== "" && !utenti.some((u) => u.nome === f.richiedente) && (
             <input
@@ -931,7 +948,7 @@ function TicketForm({ esistente, strutture, utenti, utenteCorrente, onSalva, onE
               <input type="file" accept="image/*" multiple className="hidden" onChange={aggiungiFoto} />
             </label>
           </div>
-          {caricamento && <div className="text-xs text-stone-400 mt-1.5">Caricamento in corso…</div>}
+          {caricamento && <div className="text-xs text-stone-400 mt-1.5">Caricamento in corsoâ€¦</div>}
         </Field>
 
         <Field label="Note">
@@ -973,7 +990,7 @@ function Utenti({ utenti, strutture, ticket, onNuovo, onApri }: UtentiProps) {
       <header className="flex items-start justify-between mb-5 flex-wrap gap-3">
         <div>
           <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Utenti</h1>
-          <p className="text-stone-500 text-xs sm:text-sm mt-1">Personale che può aprire ticket di assistenza IT</p>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Personale che puÃ² aprire ticket di assistenza IT</p>
         </div>
         <button onClick={onNuovo} className="flex items-center gap-2 bg-[#2D6BC1] hover:bg-[#25569c] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
           <Plus size={16} /> Nuovo utente
@@ -992,7 +1009,7 @@ function Utenti({ utenti, strutture, ticket, onNuovo, onApri }: UtentiProps) {
                 <div className="font-semibold text-sm text-stone-900">{u.nome}</div>
                 <div className="text-xs text-stone-500 mt-0.5 flex items-center gap-3 flex-wrap">
                   <span className="flex items-center gap-1"><Mail size={11} /> {u.email}</span>
-                  <span className="flex items-center gap-1"><Building2 size={11} /> {strutturaOf(u.strutturaId)?.nome ?? "—"} · {u.reparto}</span>
+                  <span className="flex items-center gap-1"><Building2 size={11} /> {strutturaOf(u.strutturaId)?.nome ?? "â€”"} Â· {u.reparto}</span>
                 </div>
               </div>
               <Tag className="bg-stone-50 text-stone-500 border-stone-300"><TicketIcon size={10} /> {nTicket} ticket</Tag>

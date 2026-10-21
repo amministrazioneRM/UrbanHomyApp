@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+﻿import React, { useState, useMemo, useEffect } from "react";
 import {
   Building2, MapPin, Wrench, CalendarClock, Plus, ChevronDown, ChevronRight,
   ChevronLeft, X, AlertTriangle, CheckCircle2, Clock3, Trash2, Pencil, LayoutGrid,
@@ -40,7 +40,7 @@ type Modale =
 const APP_ID = "manutenzioni";
 
 /* ------------------------------------------------------------------ */
-/*  DATI DI PARTENZA — Gruppo Urban Homy                               */
+/*  DATI DI PARTENZA â€” Gruppo Urban Homy                               */
 /*  (Hotello Trieste, Hotello Padova, Urban Homy Gorizia B&B,          */
 /*   Urban Homy Monfalcone albergo)                                    */
 /* ------------------------------------------------------------------ */
@@ -87,12 +87,12 @@ const seedCamere = [
   { id: "CAM-11", zonaId: "ZON-10", numero: "201", tipo: "Suite" },
 ];
 
-// Il censimento è volutamente parziale: la piattaforma è pensata per
+// Il censimento Ã¨ volutamente parziale: la piattaforma Ã¨ pensata per
 // completare l'inventario struttura per struttura, zona per zona.
 const seedOggetti = [
   { id: "OBJ-1", strutturaId: "STR-1", zonaId: "ZON-1", camereId: "CAM-1", nome: "Letti a castello (x2)", categoria: "Arredo", codiceCespite: "TS-AR-001", condizione: "Buono", ultimaVerifica: null },
   { id: "OBJ-2", strutturaId: "STR-1", zonaId: "ZON-1", camereId: "CAM-1", nome: "Climatizzatore", categoria: "Impianto", codiceCespite: "TS-IM-001", condizione: "Da verificare", ultimaVerifica: null },
-  { id: "OBJ-3", strutturaId: "STR-1", zonaId: "ZON-3", camereId: null, nome: "Macchina caffè reception", categoria: "Attrezzatura", codiceCespite: "TS-AT-001", condizione: "Buono", ultimaVerifica: null },
+  { id: "OBJ-3", strutturaId: "STR-1", zonaId: "ZON-3", camereId: null, nome: "Macchina caffÃ¨ reception", categoria: "Attrezzatura", codiceCespite: "TS-AT-001", condizione: "Buono", ultimaVerifica: null },
   { id: "OBJ-4", strutturaId: "STR-1", zonaId: "ZON-4", camereId: null, nome: "Frigorifero cucina comune", categoria: "Elettrodomestico", codiceCespite: "TS-EL-001", condizione: "Da sostituire", ultimaVerifica: null },
   { id: "OBJ-5", strutturaId: "STR-2", zonaId: "ZON-5", camereId: "CAM-4", nome: "Armadietti con lucchetto", categoria: "Arredo", codiceCespite: "PD-AR-001", condizione: "Buono", ultimaVerifica: null },
   { id: "OBJ-6", strutturaId: "STR-2", zonaId: "ZON-6", camereId: null, nome: "TV area comune", categoria: "Elettrodomestico", codiceCespite: "PD-EL-001", condizione: "Guasto", ultimaVerifica: null },
@@ -151,9 +151,9 @@ const seedManutenzioni = [
   },
 ];
 
-// tempoRegistrato, materiali e storico non vivono più annidati dentro ogni
+// tempoRegistrato, materiali e storico non vivono piÃ¹ annidati dentro ogni
 // manutenzione: sono collezioni proprie, ciascuna riga referenzia la sua
-// manutenzione tramite manutenzioneId — lo stesso shape che avranno le
+// manutenzione tramite manutenzioneId â€” lo stesso shape che avranno le
 // tabelle figlie nel futuro schema SQL Server.
 const seedTempiRegistrati = [
   { id: "TMP-1", manutenzioneId: "MNT-2", manutentoreId: "MAN-6", minuti: 45, data: dPlus(-3), note: "Diagnosi guasto" },
@@ -168,8 +168,8 @@ const seedMateriali = [
 ];
 
 const seedStorico = [
-  { id: "LOG-seed-1", manutenzioneId: "MNT-6", data: new Date(dPlus(-4)).toISOString(), utenteId: "MAN-1", dettagli: ["Stato: In accettazione → Completata"] },
-  { id: "LOG-seed-2", manutenzioneId: "MNT-7", data: new Date(dPlus(-2)).toISOString(), utenteId: "MAN-1", dettagli: ["Stato: In corso → Completata"] },
+  { id: "LOG-seed-1", manutenzioneId: "MNT-6", data: new Date(dPlus(-4)).toISOString(), utenteId: "MAN-1", dettagli: ["Stato: In accettazione â†’ Completata"] },
+  { id: "LOG-seed-2", manutenzioneId: "MNT-7", data: new Date(dPlus(-2)).toISOString(), utenteId: "MAN-1", dettagli: ["Stato: In corso â†’ Completata"] },
 ];
 
 const seedDitte = [
@@ -185,7 +185,7 @@ const seedDitte = [
     ],
   },
   { id: "DIT-3", ragioneSociale: "Sicurezza FVG Srl", piva: "IT00856781234", indirizzo: "Via Udine 8, Udine (UD)", telefono: "+39 0432 555 333", email: "info@sicurezzafvg.it", referente: "Sig.ra Giulia Moretti", specializzazioni: ["Antincendio", "Sicurezza"], strutture: [], attivo: true, dataFineContratto: "2026-07-31", approvatoreId: "MAN-1", note: "Ispezioni semestrali obbligatorie per legge. Contratto in scadenza, da rinnovare.", tariffe: [] },
-  { id: "DIT-4", ragioneSociale: "Elettro Trieste Srl", piva: "IT00834567890", indirizzo: "Via San Nicolò 3, Trieste (TS)", telefono: "+39 040 555 444", email: "info@elettrotrieste.it", referente: "Sig. Stefano Kovac", specializzazioni: ["Elettrico"], strutture: ["STR-1", "STR-2"], attivo: true, dataFineContratto: "2027-01-31", approvatoreId: "MAN-1", note: "", tariffe: [] },
+  { id: "DIT-4", ragioneSociale: "Elettro Trieste Srl", piva: "IT00834567890", indirizzo: "Via San NicolÃ² 3, Trieste (TS)", telefono: "+39 040 555 444", email: "info@elettrotrieste.it", referente: "Sig. Stefano Kovac", specializzazioni: ["Elettrico"], strutture: ["STR-1", "STR-2"], attivo: true, dataFineContratto: "2027-01-31", approvatoreId: "MAN-1", note: "", tariffe: [] },
 ];
 
 const seedManutentori = [
@@ -254,7 +254,7 @@ const condIcon: Record<string, LucideIcon> = {
 };
 
 function fmtData(iso: string | undefined | null): string {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" });
 }
@@ -273,9 +273,9 @@ function tempoTotale(manutenzioneId: string, tempiRegistrati: TempoRegistrato[])
   return tempiRegistrati.filter((t) => t.manutenzioneId === manutenzioneId).reduce((s, t) => s + (t.minuti || 0), 0);
 }
 function fmtDataOra(iso: string | undefined | null): string {
-  if (!iso) return "—";
+  if (!iso) return "â€”";
   const d = new Date(iso);
-  return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" }) + " · " + d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString("it-IT", { day: "2-digit", month: "short", year: "numeric" }) + " Â· " + d.toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" });
 }
 function contrattoScaduto(ditta: Ditta | null | undefined): boolean {
   return !!(ditta && ditta.dataFineContratto && ditta.dataFineContratto < oggi.toISOString().slice(0, 10));
@@ -283,8 +283,8 @@ function contrattoScaduto(ditta: Ditta | null | undefined): boolean {
 function tariffaScaduta(tariffa: TariffaJson | null | undefined): boolean {
   return !!(tariffa && tariffa.scadenza && tariffa.scadenza < oggi.toISOString().slice(0, 10));
 }
-// Un manutentore esterno è utilizzabile per nuovi interventi solo se collegato
-// a una ditta attiva e con contratto non scaduto. Il personale interno è
+// Un manutentore esterno Ã¨ utilizzabile per nuovi interventi solo se collegato
+// a una ditta attiva e con contratto non scaduto. Il personale interno Ã¨
 // sempre disponibile (se attivo).
 function manutentoreDisponibile(m: Manutentore, ditte: Ditta[]): boolean {
   if (m.eliminato) return false;
@@ -299,7 +299,7 @@ function manutentoreDisponibile(m: Manutentore, ditte: Ditta[]): boolean {
 const CAMPI_TRACCIATI = [
   ["titolo", "Titolo"],
   ["descrizione", "Descrizione"],
-  ["priorita", "Priorità"],
+  ["priorita", "PrioritÃ "],
   ["stato", "Stato"],
   ["scadenza", "Scadenza"],
   ["note", "Note"],
@@ -319,15 +319,15 @@ function creaDettagliModifica(prima: ConTempoRegistrato, dopo: ConTempoRegistrat
   CAMPI_TRACCIATI.forEach(([campo, label]) => {
     const v1 = prima[campo] || "";
     const v2 = dopo[campo] || "";
-    if (v1 !== v2) dettagli.push(`${label}: ${v1 || "—"} → ${v2 || "—"}`);
+    if (v1 !== v2) dettagli.push(`${label}: ${v1 || "â€”"} â†’ ${v2 || "â€”"}`);
   });
   if (prima.strutturaId !== dopo.strutturaId || prima.zonaId !== dopo.zonaId || prima.camereId !== dopo.camereId || prima.oggettoId !== dopo.oggettoId) {
     dettagli.push("Posizione (struttura/zona/camera/oggetto) modificata");
   }
 
   if (prima.assegnatoId !== dopo.assegnatoId || prima.assegnatoLibero !== dopo.assegnatoLibero) {
-    const etichetta = (m) => nomeManutentoreId(m.assegnatoId, manutentori) || m.assegnatoLibero || "—";
-    dettagli.push(`Assegnato a: ${etichetta(prima)} → ${etichetta(dopo)}`);
+    const etichetta = (m) => nomeManutentoreId(m.assegnatoId, manutentori) || m.assegnatoLibero || "â€”";
+    dettagli.push(`Assegnato a: ${etichetta(prima)} â†’ ${etichetta(dopo)}`);
   }
 
   const tempoPrima = prima.tempoRegistrato || [];
@@ -336,20 +336,20 @@ function creaDettagliModifica(prima: ConTempoRegistrato, dopo: ConTempoRegistrat
   const idDopo = new Set(tempoDopo.map((t) => t.id));
   tempoDopo.forEach((t) => {
     if (!idPrima.has(t.id)) {
-      dettagli.push(`Aggiunto tempo: ${fmtDurata(t.minuti)} (${nomeManutentoreId(t.manutentoreId, manutentori) || "—"})`);
+      dettagli.push(`Aggiunto tempo: ${fmtDurata(t.minuti)} (${nomeManutentoreId(t.manutentoreId, manutentori) || "â€”"})`);
     } else {
       const t0 = tempoPrima.find((x) => x.id === t.id);
       if (t0 && (t0.minuti !== t.minuti || t0.note !== t.note)) {
-        dettagli.push(`Modificato tempo di ${nomeManutentoreId(t.manutentoreId, manutentori) || "—"}: ${fmtDurata(t0.minuti)} → ${fmtDurata(t.minuti)}`);
+        dettagli.push(`Modificato tempo di ${nomeManutentoreId(t.manutentoreId, manutentori) || "â€”"}: ${fmtDurata(t0.minuti)} â†’ ${fmtDurata(t.minuti)}`);
       }
     }
   });
   tempoPrima.forEach((t) => {
-    if (!idDopo.has(t.id)) dettagli.push(`Rimosso tempo: ${fmtDurata(t.minuti)} (${nomeManutentoreId(t.manutentoreId, manutentori) || "—"})`);
+    if (!idDopo.has(t.id)) dettagli.push(`Rimosso tempo: ${fmtDurata(t.minuti)} (${nomeManutentoreId(t.manutentoreId, manutentori) || "â€”"})`);
   });
 
   if ((prima.foto || []).length !== (dopo.foto || []).length) {
-    dettagli.push(`Foto: ${(prima.foto || []).length} → ${(dopo.foto || []).length}`);
+    dettagli.push(`Foto: ${(prima.foto || []).length} â†’ ${(dopo.foto || []).length}`);
   }
   return dettagli;
 }
@@ -420,7 +420,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 // Come Field, ma con un <div> invece di <label>: usarlo quando il contenuto
-// include più di un controllo interattivo (es. una lista con pulsanti), perché
+// include piÃ¹ di un controllo interattivo (es. una lista con pulsanti), perchÃ©
 // un <label> attiverebbe automaticamente il primo pulsante/input al suo interno
 // a ogni click, anche su testo semplice.
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
@@ -456,6 +456,8 @@ export default function App() {
   const [utenteCorrenteId, setUtenteCorrenteId] = useState<string>(() => localStorage.getItem("uh_utenteCorrenteId") || "");
   const TAB_IMPOSTAZIONI = ["censimento", "team", "ditte", "figure", "strutture"];
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(tab));
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => { try { return localStorage.getItem("manut-sidebar-collapsed") === "1"; } catch { return false; } });
+  const toggleSidebar = () => setSidebarCollapsed((v) => { try { localStorage.setItem("manut-sidebar-collapsed", v ? "0" : "1"); } catch {} return !v; });
   const [modale, setModale] = useState<Modale | null>(null);
   const [filtroRapido, setFiltroRapido] = useState<{ tipo: string; token: number } | null>(null);
 
@@ -486,17 +488,17 @@ export default function App() {
   const oggettiDi = (zonaId, camereId) => oggetti.filter((o) => o.zonaId === zonaId && (camereId ? o.camereId === camereId : true) && !o.eliminato);
 
   const luogoLabel = (m) => {
-    const str = strutturaOf(m.strutturaId)?.nome ?? "—";
-    const zn = zonaOf(m.zonaId)?.nome ?? "—";
+    const str = strutturaOf(m.strutturaId)?.nome ?? "â€”";
+    const zn = zonaOf(m.zonaId)?.nome ?? "â€”";
     const cm = m.camereId ? cameraOf(m.camereId)?.numero : null;
-    return `${str} · ${zn}${cm ? ` · Camera ${cm}` : ""}`;
+    return `${str} Â· ${zn}${cm ? ` Â· Camera ${cm}` : ""}`;
   };
 
   /* -------- CRUD manutenzioni -------- */
   // Un "assegnatoLibero" (nome digitato a mano, non presente tra i manutentori)
   // non deve mai finire salvato come testo libero: al salvataggio viene
   // trasformato in un vero manutentore (riusando quello esistente se il nome
-  // corrisponde, altrimenti creandone uno nuovo di tipo "Esterno"), così ogni
+  // corrisponde, altrimenti creandone uno nuovo di tipo "Esterno"), cosÃ¬ ogni
   // intervento referenzia sempre un manutentoreId reale.
   function risolviAssegnatoLibero(dati) {
     if (dati.assegnatoId) return dati;
@@ -517,7 +519,7 @@ export default function App() {
     return { ...dati, assegnatoId, assegnatoLibero: null };
   }
 
-  // tempoRegistrato/materiali/storico arrivano dal form come liste già
+  // tempoRegistrato/materiali/storico arrivano dal form come liste giÃ 
   // complete per questo intervento: si sincronizzano le collezioni flat
   // sostituendo tutte le righe esistenti per manutenzioneId con quelle nuove.
   function salvaManutenzione(dati, nuoviTempi, nuoviMateriali, nuovoStorico) {
@@ -559,7 +561,7 @@ export default function App() {
       return { ...m, stato, dataApprovazione };
     }));
     const utenteId = utenteCorrente ? utenteCorrente.id : null;
-    const voceStorico = { id: `LOG-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, manutenzioneId: id, data: new Date().toISOString(), utenteId, dettagli: [`Stato: ${target.stato} → ${stato}`] };
+    const voceStorico = { id: `LOG-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, manutenzioneId: id, data: new Date().toISOString(), utenteId, dettagli: [`Stato: ${target.stato} â†’ ${stato}`] };
     setStoricoModifiche((vs) => [voceStorico, ...vs]);
   }
   function creaInterventoDaOggetto(oggetto, titoloSuggerito) {
@@ -624,11 +626,11 @@ export default function App() {
     setModale(null);
   }
   // Soft-delete: NON si scollegano i tecnici (dittaId resta intatto). Se si
-  // azzerasse dittaId, gli interventi già completati e fatturati da questa
+  // azzerasse dittaId, gli interventi giÃ  completati e fatturati da questa
   // ditta nei mesi passati perderebbero il collegamento e sparirebbero dal
   // gruppo "da fatturare" del Report, finendo scambiati per lavoro interno.
   // I tecnici restano semplicemente "non disponibili" per nuovi interventi
-  // (manutentoreDisponibile controlla già ditta.eliminato).
+  // (manutentoreDisponibile controlla giÃ  ditta.eliminato).
   function eliminaDitta(id) {
     setDitte((ds) => ds.map((d) => (d.id === id ? { ...d, eliminato: true } : d)));
     setModale(null);
@@ -647,7 +649,7 @@ export default function App() {
     setFigureProfessionali((fs) => fs.map((f) => (f.id === id ? { ...f, eliminato: true } : f)));
   }
 
-  /* -------- visibilità in base all'utente "connesso" -------- */
+  /* -------- visibilitÃ  in base all'utente "connesso" -------- */
   const utenteCorrente = manutentori.find((m) => m.id === utenteCorrenteId) || null;
   const accessoLimitatoUtente = !!(utenteCorrente && utenteCorrente.tipo === "Esterno" && utenteCorrente.visibilita === "assegnati");
 
@@ -725,7 +727,7 @@ export default function App() {
 
       <div className="flex flex-col md:flex-row min-h-screen">
         {/* SIDEBAR */}
-        <aside className="md:w-60 shrink-0 bg-[#1B2430] text-stone-200 flex md:flex-col md:sticky md:top-0 md:h-screen">
+        <aside className={`${sidebarCollapsed ? "md:w-14" : "md:w-60"} shrink-0 bg-[#1B2430] text-stone-200 flex md:flex-col md:sticky md:top-0 md:h-screen transition-all duration-200`}>
           <div className="px-5 py-5 border-b border-white/10 hidden md:block">
             <a href="/" className="flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-stone-200 transition mb-3">
               <ChevronLeft size={12} /> Applicazioni Urban Homy
@@ -736,11 +738,11 @@ export default function App() {
               </div>
               <div>
                 <div className="font-[Fraunces] font-semibold text-white text-[15px] leading-none">Manutenzioni</div>
-                <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy · manutenzioni</div>
+                <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy Â· manutenzioni</div>
               </div>
             </div>
           </div>
-          <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-y-auto md:flex-1">
+          <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-y-auto md:flex-1 shrink-0">
             <a
               href="/"
               className="md:hidden flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap text-stone-400 hover:text-stone-200 hover:bg-white/5 transition"
@@ -758,12 +760,13 @@ export default function App() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                title={sidebarCollapsed ? t.label : undefined}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${
                   tab === t.id ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
                 }`}
               >
                 <t.icon size={16} />
-                {t.label}
+                {!sidebarCollapsed && t.label}
               </button>
             ))}
 
@@ -771,15 +774,15 @@ export default function App() {
             <div className="md:mt-1">
               <button
                 onClick={() => setImpostazioniAperte((v) => !v)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
+                title={sidebarCollapsed ? "Impostazioni" : undefined}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${
                   TAB_IMPOSTAZIONI.includes(tab) ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
                 }`}
               >
                 <Settings size={16} />
-                Impostazioni
-                <ChevronDown size={14} className={`ml-auto transition-transform hidden md:block ${impostazioniAperte ? "rotate-180" : ""}`} />
+                {!sidebarCollapsed && <>Impostazioni<ChevronDown size={14} className={`ml-auto transition-transform hidden md:block ${impostazioniAperte ? "rotate-180" : ""}`} /></>}
               </button>
-              {impostazioniAperte && (
+              {!sidebarCollapsed && impostazioniAperte && (
                 <div className="flex md:flex-col gap-1 md:mt-1 md:pl-4 md:border-l md:border-white/10 md:ml-4">
                   {[
                     { id: "censimento", label: "Censimento", icon: ClipboardCheck },
@@ -804,6 +807,7 @@ export default function App() {
             </div>
             )}
           </nav>
+          {!sidebarCollapsed && (
           <div className="mt-auto px-3 py-3 border-t border-white/10">
             <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-500 px-2 mb-1.5">Accesso come</div>
             <select
@@ -823,8 +827,20 @@ export default function App() {
               </optgroup>
             </select>
           </div>
-          <div className="px-5 py-3 text-[11px] text-stone-500 hidden md:block border-t border-white/10">
-            {struttureAttive.length} strutture · {censimento.totale} elementi censiti
+          )}
+          <div className="hidden md:flex flex-col border-t border-white/10 mt-auto">
+            {!sidebarCollapsed && (
+              <div className="px-5 py-3 text-[11px] text-stone-500">
+                {struttureAttive.length} strutture · {censimento.totale} elementi censiti
+              </div>
+            )}
+            <button
+              onClick={toggleSidebar}
+              className="flex items-center justify-center py-2.5 text-stone-500 hover:text-stone-300 hover:bg-white/5 transition"
+              title={sidebarCollapsed ? "Espandi menu" : "Comprimi menu"}
+            >
+              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
           </div>
         </aside>
 
@@ -1042,7 +1058,7 @@ function Dashboard({ stats, censimento, manutenzioni, luogoLabel, onApri, onNuov
       <header className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
           <h1 className="font-[Fraunces] text-xl md:text-[28px] font-semibold text-stone-900">Cruscotto manutenzioni</h1>
-          <p className="text-stone-500 text-xs sm:text-sm mt-1">Gruppo Urban Homy · tutte le strutture</p>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Gruppo Urban Homy Â· tutte le strutture</p>
         </div>
         <button onClick={onNuova} className="flex items-center gap-2 bg-[#C1622D] hover:bg-[#a9531f] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
           <Plus size={16} /> Nuovo intervento
@@ -1051,7 +1067,7 @@ function Dashboard({ stats, censimento, manutenzioni, luogoLabel, onApri, onNuov
 
       <div className={`grid grid-cols-2 ${puoApprovare ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-3 mb-6`}>
         <StatCard label="Ordini aperti" value={stats.aperte} icon={ClipboardList} accent="bg-[#1B2430]" onClick={() => onFiltroRapido("aperti")} />
-        <StatCard label="Alta priorità" value={stats.urgenti} icon={AlertTriangle} accent="bg-[#C1622D]" onClick={() => onFiltroRapido("urgenti")} />
+        <StatCard label="Alta prioritÃ " value={stats.urgenti} icon={AlertTriangle} accent="bg-[#C1622D]" onClick={() => onFiltroRapido("urgenti")} />
         <StatCard label="Scaduti" value={stats.scadute} icon={Clock3} accent="bg-rose-600" onClick={() => onFiltroRapido("scaduti")} />
         <StatCard label="Programmati attivi" value={stats.programmate} icon={Repeat} accent="bg-teal-600" onClick={() => onFiltroRapido("programmati")} />
         {puoApprovare && <StatCard label="In approvazione" value={stats.inApprovazione} icon={ShieldCheck} accent="bg-amber-500" onClick={onVaiApprovazioni} />}
@@ -1064,7 +1080,7 @@ function Dashboard({ stats, censimento, manutenzioni, luogoLabel, onApri, onNuov
         <div className="flex-1">
           <div className="font-[Fraunces] font-semibold text-stone-900">Censimento in corso</div>
           <div className="text-xs text-stone-500 mt-0.5">
-            {censimento.verificati} di {censimento.totale} elementi verificati · {censimento.criticita} criticità rilevate
+            {censimento.verificati} di {censimento.totale} elementi verificati Â· {censimento.criticita} criticitÃ  rilevate
           </div>
         </div>
         <div className="w-32 h-2 rounded-full bg-stone-100 overflow-hidden hidden sm:block">
@@ -1112,7 +1128,7 @@ function Dashboard({ stats, censimento, manutenzioni, luogoLabel, onApri, onNuov
 
 const FILTRO_RAPIDO_LABEL = {
   aperti: "Ordini aperti",
-  urgenti: "Alta priorità",
+  urgenti: "Alta prioritÃ ",
   scaduti: "Scaduti",
   programmati: "Programmati attivi",
 };
@@ -1157,10 +1173,10 @@ function Manutenzioni({ manutenzioni, filtroRapido, strutture, manutentori, uten
 
   const tipoManutentoreOf = (id) => manutentori.find((mm) => mm.id === id)?.tipo || null;
 
-  // Permesso: un tecnico esterno può essere limitato a vedere solo i propri interventi assegnati
+  // Permesso: un tecnico esterno puÃ² essere limitato a vedere solo i propri interventi assegnati
   const accessoLimitato = !!(utenteCorrente && utenteCorrente.tipo === "Esterno" && utenteCorrente.visibilita === "assegnati");
 
-  // Vista rapida derivata dai filtri attivi, disponibile quando si è "loggati" come un manutentore
+  // Vista rapida derivata dai filtri attivi, disponibile quando si Ã¨ "loggati" come un manutentore
   const vista = accessoLimitato
     ? "miei"
     : utenteCorrente
@@ -1211,7 +1227,7 @@ function Manutenzioni({ manutenzioni, filtroRapido, strutture, manutentori, uten
         <div>
           <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Interventi</h1>
           <p className="text-stone-500 text-xs sm:text-sm mt-1">
-            {utenteCorrente ? <>Connesso come <span className="font-semibold text-stone-700">{utenteCorrente.nome}</span> · {utenteCorrente.tipo}</> : "Riparazioni singole e manutenzioni programmate"}
+            {utenteCorrente ? <>Connesso come <span className="font-semibold text-stone-700">{utenteCorrente.nome}</span> Â· {utenteCorrente.tipo}</> : "Riparazioni singole e manutenzioni programmate"}
           </p>
         </div>
         <button onClick={onNuova} className="flex items-center gap-2 bg-[#C1622D] hover:bg-[#a9531f] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
@@ -1232,7 +1248,7 @@ function Manutenzioni({ manutenzioni, filtroRapido, strutture, manutentori, uten
       {accessoLimitato ? (
         <div className="flex items-center gap-2 mb-4 bg-amber-50 border border-amber-300 text-amber-800 text-xs font-medium rounded-lg px-3.5 py-2.5">
           <ShieldAlert size={14} className="shrink-0" />
-          Come ditta esterna con visibilità limitata, vedi solo gli interventi assegnati a te. L'amministratore può cambiare questo permesso nella scheda del manutentore.
+          Come ditta esterna con visibilitÃ  limitata, vedi solo gli interventi assegnati a te. L'amministratore puÃ² cambiare questo permesso nella scheda del manutentore.
         </div>
       ) : utenteCorrente ? (
         <div className="flex gap-2 mb-4">
@@ -1261,7 +1277,7 @@ function Manutenzioni({ manutenzioni, filtroRapido, strutture, manutentori, uten
       <div className="flex flex-wrap gap-2 mb-5 items-center bg-white border border-stone-200 rounded-xl px-3 py-2.5">
         <div className="flex items-center gap-2 flex-1 min-w-[160px]">
           <Search size={15} className="text-stone-400 shrink-0" />
-          <input value={ricerca} onChange={(e) => setRicerca(e.target.value)} placeholder="Cerca per titolo o descrizione…" className="text-sm outline-none w-full bg-transparent" />
+          <input value={ricerca} onChange={(e) => setRicerca(e.target.value)} placeholder="Cerca per titolo o descrizioneâ€¦" className="text-sm outline-none w-full bg-transparent" />
         </div>
         <select value={filtroStruttura} onChange={(e) => setFiltroStruttura(e.target.value)} className={inputCls + " w-auto text-xs"}>
           <option value="">Tutte le strutture</option>
@@ -1318,7 +1334,7 @@ function Manutenzioni({ manutenzioni, filtroRapido, strutture, manutentori, uten
                     {m.foto?.length > 0 && <Tag className="bg-stone-50 text-stone-500 border-stone-300"><Camera size={10} /> {m.foto.length}</Tag>}
                   </div>
                   <div className="text-xs text-stone-500 mt-0.5">{luogoLabel(m)}</div>
-                  <div className="text-xs text-stone-400 mt-1 font-mono-tag">{m.id} · scadenza {fmtData(m.scadenza)}{m.ricorrenza ? ` · ogni ${m.ricorrenza.intervallo} ${m.ricorrenza.unita}` : ""}</div>
+                  <div className="text-xs text-stone-400 mt-1 font-mono-tag">{m.id} Â· scadenza {fmtData(m.scadenza)}{m.ricorrenza ? ` Â· ogni ${m.ricorrenza.intervallo} ${m.ricorrenza.unita}` : ""}</div>
                   {m.foto?.length > 0 && (
                     <div className="flex gap-1.5 mt-2">
                       {m.foto.slice(0, 4).map((src, i) => (
@@ -1354,7 +1370,7 @@ function Manutenzioni({ manutenzioni, filtroRapido, strutture, manutentori, uten
 }
 
 /* ------------------------------------------------------------------ */
-/*  CALENDARIO — vista mensile con filtro strutture                     */
+/*  CALENDARIO â€” vista mensile con filtro strutture                     */
 /* ------------------------------------------------------------------ */
 
 const MESI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
@@ -1389,7 +1405,7 @@ function Calendario({ manutenzioni, strutture, utenteCorrente, luogoLabel, onApr
   }, [elenco]);
 
   const primoDelMese = new Date(anno, mese, 1);
-  const offsetLunedi = (primoDelMese.getDay() + 6) % 7; // 0 = lunedì
+  const offsetLunedi = (primoDelMese.getDay() + 6) % 7; // 0 = lunedÃ¬
   const giorniNelMese = new Date(anno, mese + 1, 0).getDate();
   const celle = [];
   for (let i = 0; i < offsetLunedi; i++) celle.push(null);
@@ -1493,7 +1509,7 @@ function Calendario({ manutenzioni, strutture, utenteCorrente, luogoLabel, onApr
 }
 
 /* ------------------------------------------------------------------ */
-/*  APPROVAZIONI — interventi completati in attesa di verifica          */
+/*  APPROVAZIONI â€” interventi completati in attesa di verifica          */
 /* ------------------------------------------------------------------ */
 
 function Approvazioni({ manutenzioni, manutentori, ditte, tempiRegistrati, luogoLabel, cambiaStato, onApri }: {
@@ -1538,8 +1554,8 @@ function Approvazioni({ manutenzioni, manutentori, ditte, tempiRegistrati, luogo
                     <Tag className={priColor[m.priorita]}>{m.priorita}</Tag>
                     {tempoTotale(m.id, tempiRegistrati) > 0 && <Tag className="bg-teal-50 text-teal-700 border-teal-300"><Clock3 size={9} /> {fmtDurata(tempoTotale(m.id, tempiRegistrati))}</Tag>}
                   </div>
-                  <div className="text-xs text-stone-500 mt-0.5">{luogoLabel(m)} · assegnato a {nomeManutentoreId(m.assegnatoId, manutentori) || "—"}</div>
-                  <div className="text-xs text-stone-400 mt-1 font-mono-tag">{m.id} · scadenza {fmtData(m.scadenza)}</div>
+                  <div className="text-xs text-stone-500 mt-0.5">{luogoLabel(m)} Â· assegnato a {nomeManutentoreId(m.assegnatoId, manutentori) || "â€”"}</div>
+                  <div className="text-xs text-stone-400 mt-1 font-mono-tag">{m.id} Â· scadenza {fmtData(m.scadenza)}</div>
                   <div className="text-xs text-amber-700 mt-1 font-medium">Da approvare da: {approvatoreDi(m) || "Amministrazione interna"}</div>
                 </div>
                 <div className="flex gap-2 shrink-0">
@@ -1572,7 +1588,7 @@ function Approvazioni({ manutenzioni, manutentori, ditte, tempiRegistrati, luogo
 }
 
 /* ------------------------------------------------------------------ */
-/*  REPORT — interventi approvati nel mese e fatture da ricevere        */
+/*  REPORT â€” interventi approvati nel mese e fatture da ricevere        */
 /* ------------------------------------------------------------------ */
 
 function Report({ manutenzioni, manutentori, ditte, tempiRegistrati, materiali, luogoLabel, onApri }: {
@@ -1590,7 +1606,7 @@ function Report({ manutenzioni, manutentori, ditte, tempiRegistrati, materiali, 
   const dittaDi = (tecnico) => (tecnico && tecnico.tipo === "Esterno" && tecnico.dittaId ? ditte.find((d) => d.id === tecnico.dittaId) || null : null);
 
   // Solo la tariffa che corrisponde esattamente alla figura professionale del
-  // tecnico, e non scaduta, è valida: niente fallback su "la prima della
+  // tecnico, e non scaduta, Ã¨ valida: niente fallback su "la prima della
   // lista" che produrrebbe un costo plausibile ma sbagliato.
   const tariffaApplicabile = (tecnico, ditta) => {
     if (!ditta) return null;
@@ -1670,11 +1686,11 @@ function Report({ manutenzioni, manutentori, ditte, tempiRegistrati, materiali, 
         <StatCard label="Approvati nel mese" value={completatiMese.length} icon={CheckCircle2} accent="bg-[#1B2430]" />
         <StatCard label="Da fatturare (esterni)" value={daFatturare.length} icon={Receipt} accent="bg-amber-500" />
         <StatCard label="Interni (non fatturabili)" value={interni.length} icon={UserCog} accent="bg-teal-600" />
-        <StatCard label="Totale stimato" value={`€ ${totaleStimato.toFixed(2)}`} icon={FileText} accent="bg-[#C1622D]" />
+        <StatCard label="Totale stimato" value={`â‚¬ ${totaleStimato.toFixed(2)}`} icon={FileText} accent="bg-[#C1622D]" />
       </div>
 
       <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-2.5 flex items-center gap-1.5">
-        <Receipt size={14} /> Fatture da ricevere · per ditta esterna
+        <Receipt size={14} /> Fatture da ricevere Â· per ditta esterna
       </h2>
       {gruppiDitta.length === 0 ? (
         <div className="text-center py-10 text-stone-400 text-sm bg-white border border-dashed border-stone-300 rounded-xl mb-6">
@@ -1692,25 +1708,25 @@ function Report({ manutenzioni, manutentori, ditte, tempiRegistrati, materiali, 
                     <span className="font-semibold text-sm text-stone-800 truncate">{ditta.ragioneSociale}</span>
                     <Tag className="bg-stone-100 text-stone-500 border-stone-300">{interventi.length} {interventi.length === 1 ? "intervento" : "interventi"}</Tag>
                   </div>
-                  <span className="font-mono-tag text-sm font-semibold text-stone-800 shrink-0">€ {totaleDitta.toFixed(2)}</span>
+                  <span className="font-mono-tag text-sm font-semibold text-stone-800 shrink-0">â‚¬ {totaleDitta.toFixed(2)}</span>
                 </div>
                 <div className="divide-y divide-stone-100">
                   {interventi.map((m) => (
                     <button key={m.id} type="button" onClick={() => onApri(m)} className="w-full text-left px-5 py-3 hover:bg-stone-50 transition flex items-center justify-between gap-3 flex-wrap">
                       <div className="min-w-0">
                         <div className="text-sm font-medium text-stone-800 truncate">{m.titolo}</div>
-                        <div className="text-xs text-stone-500 mt-0.5">{luogoLabel(m)} · assegnato a {nomeManutentoreId(m.assegnatoId, manutentori) || "—"} · approvato il {fmtData(m.dataApprovazione)}</div>
+                        <div className="text-xs text-stone-500 mt-0.5">{luogoLabel(m)} Â· assegnato a {nomeManutentoreId(m.assegnatoId, manutentori) || "â€”"} Â· approvato il {fmtData(m.dataApprovazione)}</div>
                       </div>
                       <div className="flex items-center gap-3 shrink-0 text-xs">
                         {tempoTotale(m.id, tempiRegistrati) > 0 && <Tag className="bg-teal-50 text-teal-700 border-teal-300"><Clock3 size={9} /> {fmtDurata(tempoTotale(m.id, tempiRegistrati))}</Tag>}
                         {tariffaMancante(m) && (
-                          <Tag className="bg-rose-50 text-rose-700 border-rose-300" title="Nessuna tariffa valida per la figura professionale del tecnico: il costo manodopera è 0 finché non viene aggiunta o rinnovata in Ditte esterne.">
+                          <Tag className="bg-rose-50 text-rose-700 border-rose-300" title="Nessuna tariffa valida per la figura professionale del tecnico: il costo manodopera Ã¨ 0 finchÃ© non viene aggiunta o rinnovata in Ditte esterne.">
                             <AlertTriangle size={9} /> Tariffa mancante
                           </Tag>
                         )}
-                        <span className="font-mono-tag text-stone-600">manodopera € {costoManodopera(m).toFixed(2)}</span>
-                        <span className="font-mono-tag text-stone-600">materiali € {costoMateriali(m).toFixed(2)}</span>
-                        <span className="font-mono-tag font-semibold text-stone-800">€ {costoTotale(m).toFixed(2)}</span>
+                        <span className="font-mono-tag text-stone-600">manodopera â‚¬ {costoManodopera(m).toFixed(2)}</span>
+                        <span className="font-mono-tag text-stone-600">materiali â‚¬ {costoMateriali(m).toFixed(2)}</span>
+                        <span className="font-mono-tag font-semibold text-stone-800">â‚¬ {costoTotale(m).toFixed(2)}</span>
                       </div>
                     </button>
                   ))}
@@ -1722,7 +1738,7 @@ function Report({ manutenzioni, manutentori, ditte, tempiRegistrati, materiali, 
       )}
 
       <h2 className="text-sm font-semibold uppercase tracking-wide text-stone-500 mb-2.5 flex items-center gap-1.5">
-        <UserCog size={14} /> Interventi interni completati · non generano fatture
+        <UserCog size={14} /> Interventi interni completati Â· non generano fatture
       </h2>
       {interni.length === 0 ? (
         <div className="text-center py-10 text-stone-400 text-sm bg-white border border-dashed border-stone-300 rounded-xl">
@@ -1734,7 +1750,7 @@ function Report({ manutenzioni, manutentori, ditte, tempiRegistrati, materiali, 
             <button key={m.id} type="button" onClick={() => onApri(m)} className="w-full text-left px-5 py-3 hover:bg-stone-50 transition flex items-center justify-between gap-3 flex-wrap">
               <div className="min-w-0">
                 <div className="text-sm font-medium text-stone-800 truncate">{m.titolo}</div>
-                <div className="text-xs text-stone-500 mt-0.5">{luogoLabel(m)} · assegnato a {nomeManutentoreId(m.assegnatoId, manutentori) || "—"} · approvato il {fmtData(m.dataApprovazione)}</div>
+                <div className="text-xs text-stone-500 mt-0.5">{luogoLabel(m)} Â· assegnato a {nomeManutentoreId(m.assegnatoId, manutentori) || "â€”"} Â· approvato il {fmtData(m.dataApprovazione)}</div>
               </div>
               {tempoTotale(m.id, tempiRegistrati) > 0 && <Tag className="bg-teal-50 text-teal-700 border-teal-300 shrink-0"><Clock3 size={9} /> {fmtDurata(tempoTotale(m.id, tempiRegistrati))}</Tag>}
             </button>
@@ -1746,7 +1762,7 @@ function Report({ manutenzioni, manutentori, ditte, tempiRegistrati, materiali, 
 }
 
 /* ------------------------------------------------------------------ */
-/*  TEAM — censimento manutentori interni ed esterni                    */
+/*  TEAM â€” censimento manutentori interni ed esterni                    */
 /* ------------------------------------------------------------------ */
 
 function Team({ manutentori, ditte, figureProfessionali, strutture, manutenzioni, tempiRegistrati, utenteCorrente, luogoLabel, cambiaStato, onNuovo, onApri, onApriIntervento }: {
@@ -1794,7 +1810,7 @@ function Team({ manutentori, ditte, figureProfessionali, strutture, manutenzioni
         <div>
           <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Manutentori</h1>
           <p className="text-stone-500 text-xs sm:text-sm mt-1">
-            {utenteCorrente ? <>Connesso come <span className="font-semibold text-stone-700">{utenteCorrente.nome}</span> · {utenteCorrente.tipo}</> : "Censimento del personale interno e delle ditte esterne"}
+            {utenteCorrente ? <>Connesso come <span className="font-semibold text-stone-700">{utenteCorrente.nome}</span> Â· {utenteCorrente.tipo}</> : "Censimento del personale interno e delle ditte esterne"}
           </p>
         </div>
         <button onClick={onNuovo} className="flex items-center gap-2 bg-[#C1622D] hover:bg-[#a9531f] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
@@ -1842,7 +1858,7 @@ function Team({ manutentori, ditte, figureProfessionali, strutture, manutenzioni
                       {scaduta && <Tag className="bg-rose-600 text-white border-transparent">In ritardo</Tag>}
                     </div>
                     <div className="text-xs text-stone-500 mt-0.5">{luogoLabel(m)}</div>
-                    <div className="text-xs text-stone-400 mt-1 font-mono-tag">scadenza {fmtData(m.scadenza)}{m.ricorrenza ? ` · ogni ${m.ricorrenza.intervallo} ${m.ricorrenza.unita}` : ""}</div>
+                    <div className="text-xs text-stone-400 mt-1 font-mono-tag">scadenza {fmtData(m.scadenza)}{m.ricorrenza ? ` Â· ogni ${m.ricorrenza.intervallo} ${m.ricorrenza.unita}` : ""}</div>
                   </div>
                 </div>
                 <select
@@ -1861,7 +1877,7 @@ function Team({ manutentori, ditte, figureProfessionali, strutture, manutenzioni
           <div className="flex flex-wrap gap-2 mb-5 items-center bg-white border border-stone-200 rounded-xl px-3 py-2.5">
             <div className="flex items-center gap-2 flex-1 min-w-[160px]">
               <Search size={15} className="text-stone-400 shrink-0" />
-              <input value={ricerca} onChange={(e) => setRicerca(e.target.value)} placeholder="Cerca per nome, ruolo o specializzazione…" className="text-sm outline-none w-full bg-transparent" />
+              <input value={ricerca} onChange={(e) => setRicerca(e.target.value)} placeholder="Cerca per nome, ruolo o specializzazioneâ€¦" className="text-sm outline-none w-full bg-transparent" />
             </div>
             <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} className={inputCls + " w-auto text-xs"}>
               <option value="">Interni ed esterni</option>
@@ -1897,7 +1913,7 @@ function Team({ manutentori, ditte, figureProfessionali, strutture, manutenzioni
                         )}
                       </div>
                       <div className="text-xs text-stone-500 mt-0.5">
-                        {figuraOf(m.figuraProfessionaleId)}{ditta && <span className="text-stone-400"> · {ditta.ragioneSociale}</span>}
+                        {figuraOf(m.figuraProfessionaleId)}{ditta && <span className="text-stone-400"> Â· {ditta.ragioneSociale}</span>}
                       </div>
                       <div className="flex flex-wrap gap-1 mt-2">
                         <Tag className={m.tipo === "Interno" ? "bg-teal-50 text-teal-700 border-teal-300" : "bg-[#C1622D]/10 text-[#C1622D] border-[#C1622D]/30"}>{m.tipo}</Tag>
@@ -2004,17 +2020,17 @@ function ManutentoreForm({ esistente, prefill, strutture, ditte, manutentori, fi
           </Field>
           <Field label="Figura professionale">
             <select required className={inputCls} value={f.figuraProfessionaleId} onChange={(e) => upd({ figuraProfessionaleId: e.target.value })}>
-              <option value="" disabled>— seleziona una figura —</option>
+              <option value="" disabled>â€” seleziona una figura â€”</option>
               {figureProfessionali.filter((fig) => !fig.eliminato || fig.id === f.figuraProfessionaleId).map((fig) => <option key={fig.id} value={fig.id}>{fig.nome}{fig.eliminato ? " (eliminata)" : ""}</option>)}
             </select>
-            <span className="text-xs text-stone-400 mt-1.5 block">Le figure si gestiscono in Impostazioni · Figure professionali.</span>
+            <span className="text-xs text-stone-400 mt-1.5 block">Le figure si gestiscono in Impostazioni Â· Figure professionali.</span>
           </Field>
         </div>
 
         {f.tipo === "Esterno" && (
           <Field label="Ditta di appartenenza">
             <select required className={inputCls} value={f.dittaId || ""} onChange={(e) => upd({ dittaId: e.target.value || null })}>
-              <option value="" disabled>— seleziona una ditta —</option>
+              <option value="" disabled>â€” seleziona una ditta â€”</option>
               {ditte
                 .filter((d) => !d.eliminato || d.id === f.dittaId)
                 .map((d) => <option key={d.id} value={d.id}>{d.ragioneSociale}{d.eliminato ? " (eliminata)" : contrattoScaduto(d) ? " (contratto scaduto)" : ""}</option>)}
@@ -2022,9 +2038,9 @@ function ManutentoreForm({ esistente, prefill, strutture, ditte, manutentori, fi
             {!f.dittaId ? (
               <span className="text-xs text-rose-600 mt-1.5 block">Obbligatoria: un tecnico esterno deve essere collegato a una ditta per poter essere attivo e utilizzabile.</span>
             ) : ditte.find((d) => d.id === f.dittaId)?.eliminato ? (
-              <span className="text-xs text-rose-600 mt-1.5 block">Questa ditta è stata eliminata: il tecnico non sarà associabile a nuovi interventi finché non viene collegato a un'altra ditta.</span>
+              <span className="text-xs text-rose-600 mt-1.5 block">Questa ditta Ã¨ stata eliminata: il tecnico non sarÃ  associabile a nuovi interventi finchÃ© non viene collegato a un'altra ditta.</span>
             ) : contrattoScaduto(ditte.find((d) => d.id === f.dittaId)) ? (
-              <span className="text-xs text-rose-600 mt-1.5 block">Il contratto di questa ditta è scaduto: il tecnico non sarà associabile a nuovi interventi finché il contratto non viene rinnovato.</span>
+              <span className="text-xs text-rose-600 mt-1.5 block">Il contratto di questa ditta Ã¨ scaduto: il tecnico non sarÃ  associabile a nuovi interventi finchÃ© il contratto non viene rinnovato.</span>
             ) : (
               <span className="text-xs text-stone-400 mt-1.5 block">Le ditte si gestiscono nella sezione "Ditte esterne" dell'Anagrafica.</span>
             )}
@@ -2034,28 +2050,28 @@ function ManutentoreForm({ esistente, prefill, strutture, ditte, manutentori, fi
         {f.tipo === "Interno" && (
           <Field label="Sostituto per approvazioni">
             <select className={inputCls} value={f.sostitutoId || ""} onChange={(e) => upd({ sostitutoId: e.target.value || null })}>
-              <option value="">— nessun sostituto —</option>
+              <option value="">â€” nessun sostituto â€”</option>
               {manutentori.filter((m) => m.tipo === "Interno" && m.id !== f.id && (!m.eliminato || m.id === f.sostitutoId)).map((m) => <option key={m.id} value={m.id}>{m.nome}{m.eliminato ? " (eliminato)" : ""}</option>)}
             </select>
-            <span className="text-xs text-stone-400 mt-1.5 block">Se questa persona è approvatore di una ditta, il sostituto potrà vedere e gestire le approvazioni al suo posto (es. in caso di assenza).</span>
+            <span className="text-xs text-stone-400 mt-1.5 block">Se questa persona Ã¨ approvatore di una ditta, il sostituto potrÃ  vedere e gestire le approvazioni al suo posto (es. in caso di assenza).</span>
           </Field>
         )}
 
         {f.tipo === "Esterno" && (
-          <Field label="Visibilità interventi">
+          <Field label="VisibilitÃ  interventi">
             <div className="grid gap-1.5">
               <label className={`flex items-start gap-2.5 border rounded-lg px-3 py-2.5 cursor-pointer transition ${f.visibilita === "tutti" ? "border-[#C1622D] bg-[#C1622D]/5" : "border-stone-300"}`}>
                 <input type="radio" name="visibilita" className="mt-0.5 accent-[#C1622D]" checked={f.visibilita === "tutti"} onChange={() => upd({ visibilita: "tutti" })} />
                 <span>
                   <span className="block text-sm font-medium text-stone-800">Vede tutti gli interventi</span>
-                  <span className="block text-xs text-stone-500">Ha visibilità su tutte le strutture e su tutti gli interventi, come il personale interno.</span>
+                  <span className="block text-xs text-stone-500">Ha visibilitÃ  su tutte le strutture e su tutti gli interventi, come il personale interno.</span>
                 </span>
               </label>
               <label className={`flex items-start gap-2.5 border rounded-lg px-3 py-2.5 cursor-pointer transition ${f.visibilita === "assegnati" ? "border-[#C1622D] bg-[#C1622D]/5" : "border-stone-300"}`}>
                 <input type="radio" name="visibilita" className="mt-0.5 accent-[#C1622D]" checked={f.visibilita === "assegnati"} onChange={() => upd({ visibilita: "assegnati" })} />
                 <span>
                   <span className="block text-sm font-medium text-stone-800">Vede solo gli interventi assegnati a lui</span>
-                  <span className="block text-xs text-stone-500">Accedendo, questo tecnico vedrà esclusivamente gli interventi a lui assegnati, non l'intero elenco.</span>
+                  <span className="block text-xs text-stone-500">Accedendo, questo tecnico vedrÃ  esclusivamente gli interventi a lui assegnati, non l'intero elenco.</span>
                 </span>
               </label>
             </div>
@@ -2064,7 +2080,7 @@ function ManutentoreForm({ esistente, prefill, strutture, ditte, manutentori, fi
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Telefono">
-            <input className={inputCls} value={f.telefono} onChange={(e) => upd({ telefono: e.target.value })} placeholder="+39 …" />
+            <input className={inputCls} value={f.telefono} onChange={(e) => upd({ telefono: e.target.value })} placeholder="+39 â€¦" />
           </Field>
           <Field label="Email">
             <input type="email" className={inputCls} value={f.email} onChange={(e) => upd({ email: e.target.value })} placeholder="nome@esempio.it" />
@@ -2089,7 +2105,7 @@ function ManutentoreForm({ esistente, prefill, strutture, ditte, manutentori, fi
         </Field>
 
         <Field label="Note">
-          <textarea className={inputCls} rows={2} value={f.note} onChange={(e) => upd({ note: e.target.value })} placeholder="Contratti, orari, condizioni particolari…" />
+          <textarea className={inputCls} rows={2} value={f.note} onChange={(e) => upd({ note: e.target.value })} placeholder="Contratti, orari, condizioni particolariâ€¦" />
         </Field>
 
         <label className="flex items-center gap-2 mb-1 cursor-pointer select-none">
@@ -2116,7 +2132,7 @@ function ManutentoreForm({ esistente, prefill, strutture, ditte, manutentori, fi
 }
 
 /* ------------------------------------------------------------------ */
-/*  DITTE ESTERNE — anagrafica aziende + tecnici collegati              */
+/*  DITTE ESTERNE â€” anagrafica aziende + tecnici collegati              */
 /* ------------------------------------------------------------------ */
 
 function DitteEsterne({ ditte, manutentori, figureProfessionali, strutture, onNuova, onApri, onNuovoTecnico, onApriTecnico }: {
@@ -2136,7 +2152,7 @@ function DitteEsterne({ ditte, manutentori, figureProfessionali, strutture, onNu
   const figuraOf = (id) => figureProfessionali.find((f) => f.id === id)?.nome || "";
   const strutturaLabel = (ids) => (!ids || ids.length === 0 ? "Tutte le strutture" : ids.map((id) => strutture.find((s) => s.id === id)?.nome).filter(Boolean).join(", "));
 
-  // Include anche i tecnici la cui ditta è stata eliminata: restano visibili
+  // Include anche i tecnici la cui ditta Ã¨ stata eliminata: restano visibili
   // e riassegnabili invece di sparire silenziosamente dalla schermata.
   const tecniciSenzaDitta = manutentori.filter(
     (m) => m.tipo === "Esterno" && !m.eliminato && (!m.dittaId || ditte.find((d) => d.id === m.dittaId)?.eliminato)
@@ -2161,7 +2177,7 @@ function DitteEsterne({ ditte, manutentori, figureProfessionali, strutture, onNu
 
       <div className="flex items-center gap-2 mb-5 bg-white border border-stone-200 rounded-xl px-3 py-2.5">
         <Search size={15} className="text-stone-400 shrink-0" />
-        <input value={ricerca} onChange={(e) => setRicerca(e.target.value)} placeholder="Cerca per ragione sociale, referente o specializzazione…" className="text-sm outline-none w-full bg-transparent" />
+        <input value={ricerca} onChange={(e) => setRicerca(e.target.value)} placeholder="Cerca per ragione sociale, referente o specializzazioneâ€¦" className="text-sm outline-none w-full bg-transparent" />
       </div>
 
       <div className="grid gap-3">
@@ -2188,7 +2204,7 @@ function DitteEsterne({ ditte, manutentori, figureProfessionali, strutture, onNu
                       <Tag className="bg-stone-50 text-stone-500 border-stone-300">Contratto fino al {fmtData(d.dataFineContratto)}</Tag>
                     )}
                   </div>
-                  <div className="text-xs text-stone-500 mt-0.5">{d.piva && <>P.IVA {d.piva} · </>}{d.indirizzo}</div>
+                  <div className="text-xs text-stone-500 mt-0.5">{d.piva && <>P.IVA {d.piva} Â· </>}{d.indirizzo}</div>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {d.specializzazioni.map((s) => <Tag key={s} className="bg-stone-50 text-stone-500 border-stone-300"><Star size={9} /> {s}</Tag>)}
                   </div>
@@ -2258,7 +2274,7 @@ function DitteEsterne({ ditte, manutentori, figureProfessionali, strutture, onNu
 }
 
 /* ------------------------------------------------------------------ */
-/*  FIGURE PROFESSIONALI — anagrafica dei ruoli usati nelle tariffe     */
+/*  FIGURE PROFESSIONALI â€” anagrafica dei ruoli usati nelle tariffe     */
 /* ------------------------------------------------------------------ */
 
 function FigureProfessionali({ figureProfessionali, ditte, onAggiungi, onElimina }: {
@@ -2383,7 +2399,7 @@ function DittaForm({ esistente, strutture, manutentori, figureProfessionali, onS
 
   // Due tariffe valide contemporaneamente per la stessa figura sarebbero
   // ambigue: costoManodopera prenderebbe solo la prima, ignorando l'altra
-  // in silenzio. Una tariffa scaduta invece non blocca: è il caso normale
+  // in silenzio. Una tariffa scaduta invece non blocca: Ã¨ il caso normale
   // di rinnovo (si aggiunge la nuova mantenendo la vecchia come storico).
   const tariffaGiaAttiva = !!nuovaTariffaFiguraId && f.tariffe.some((t) => t.figuraProfessionaleId === nuovaTariffaFiguraId && !tariffaScaduta(t));
 
@@ -2426,7 +2442,7 @@ function DittaForm({ esistente, strutture, manutentori, figureProfessionali, onS
 
         <Field label="Approvatore">
           <select required className={inputCls} value={f.approvatoreId} onChange={(e) => upd({ approvatoreId: e.target.value })}>
-            <option value="" disabled>— seleziona un referente interno —</option>
+            <option value="" disabled>â€” seleziona un referente interno â€”</option>
             {approvatoriDisponibili.map((m) => <option key={m.id} value={m.id}>{m.nome}{m.eliminato ? " (eliminato)" : ""}</option>)}
           </select>
           {!f.approvatoreId ? (
@@ -2437,21 +2453,21 @@ function DittaForm({ esistente, strutture, manutentori, figureProfessionali, onS
         </Field>
 
         <Field label="Indirizzo">
-          <input className={inputCls} value={f.indirizzo} onChange={(e) => upd({ indirizzo: e.target.value })} placeholder="Via, numero civico, città" />
+          <input className={inputCls} value={f.indirizzo} onChange={(e) => upd({ indirizzo: e.target.value })} placeholder="Via, numero civico, cittÃ " />
         </Field>
 
         <Field label="Data fine contratto">
           <input type="date" className={inputCls} value={f.dataFineContratto} onChange={(e) => upd({ dataFineContratto: e.target.value })} />
           <span className="text-xs text-stone-400 mt-1.5 block">
             {f.dataFineContratto
-              ? (contrattoScaduto(f) ? "Contratto scaduto: i tecnici di questa ditta non sono associabili a nuovi interventi." : "Oltre questa data i tecnici della ditta non saranno più associabili a nuovi interventi.")
+              ? (contrattoScaduto(f) ? "Contratto scaduto: i tecnici di questa ditta non sono associabili a nuovi interventi." : "Oltre questa data i tecnici della ditta non saranno piÃ¹ associabili a nuovi interventi.")
               : "Lascia vuoto se il contratto non ha una scadenza definita."}
           </span>
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Telefono">
-            <input className={inputCls} value={f.telefono} onChange={(e) => upd({ telefono: e.target.value })} placeholder="+39 …" />
+            <input className={inputCls} value={f.telefono} onChange={(e) => upd({ telefono: e.target.value })} placeholder="+39 â€¦" />
           </Field>
           <Field label="Email">
             <input type="email" className={inputCls} value={f.email} onChange={(e) => upd({ email: e.target.value })} placeholder="info@ditta.it" />
@@ -2473,7 +2489,7 @@ function DittaForm({ esistente, strutture, manutentori, figureProfessionali, onS
               value={nuovaSpec}
               onChange={(e) => setNuovaSpec(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); aggiungiSpec(); } }}
-              placeholder="Es. Idraulico, Antincendio… (Invio per aggiungere)"
+              placeholder="Es. Idraulico, Antincendioâ€¦ (Invio per aggiungere)"
             />
             <button type="button" onClick={aggiungiSpec} className="px-3 py-2 rounded-lg bg-stone-800 text-white shrink-0"><Plus size={14} /></button>
           </div>
@@ -2486,7 +2502,7 @@ function DittaForm({ esistente, strutture, manutentori, figureProfessionali, onS
                 <tr className="bg-stone-50 border-b border-stone-200 text-left text-[11px] font-semibold uppercase tracking-wide text-stone-500">
                   <th className="px-3 py-2">Figura professionale</th>
                   <th className="px-3 py-2 text-right">Tariffa oraria</th>
-                  <th className="px-3 py-2">Scadenza validità</th>
+                  <th className="px-3 py-2">Scadenza validitÃ </th>
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
@@ -2496,15 +2512,15 @@ function DittaForm({ esistente, strutture, manutentori, figureProfessionali, onS
                 )}
                 {f.tariffe.map((t) => (
                   <tr key={t.id} className="border-b border-stone-100 last:border-0">
-                    <td className="px-3 py-2 text-stone-800">{figureProfessionali.find((fig) => fig.id === t.figuraProfessionaleId)?.nome || "—"}</td>
-                    <td className="px-3 py-2 text-right font-mono-tag text-stone-600">€ {t.tariffaOraria.toFixed(2)}/h</td>
+                    <td className="px-3 py-2 text-stone-800">{figureProfessionali.find((fig) => fig.id === t.figuraProfessionaleId)?.nome || "â€”"}</td>
+                    <td className="px-3 py-2 text-right font-mono-tag text-stone-600">â‚¬ {t.tariffaOraria.toFixed(2)}/h</td>
                     <td className="px-3 py-2">
                       {t.scadenza ? (
                         <span className={`font-mono-tag text-xs ${tariffaScaduta(t) ? "text-rose-600 font-semibold" : "text-stone-500"}`}>
-                          {fmtData(t.scadenza)}{tariffaScaduta(t) ? " · scaduta" : ""}
+                          {fmtData(t.scadenza)}{tariffaScaduta(t) ? " Â· scaduta" : ""}
                         </span>
                       ) : (
-                        <span className="text-xs text-stone-300">—</span>
+                        <span className="text-xs text-stone-300">â€”</span>
                       )}
                     </td>
                     <td className="px-3 py-1 text-right">
@@ -2523,7 +2539,7 @@ function DittaForm({ esistente, strutture, manutentori, figureProfessionali, onS
               value={nuovaTariffaFiguraId}
               onChange={(e) => setNuovaTariffaFiguraId(e.target.value)}
             >
-              <option value="" disabled>— seleziona figura professionale —</option>
+              <option value="" disabled>â€” seleziona figura professionale â€”</option>
               {figureProfessionali.filter((fig) => !fig.eliminato).map((fig) => <option key={fig.id} value={fig.id}>{fig.nome}</option>)}
             </select>
             <input
@@ -2531,18 +2547,18 @@ function DittaForm({ esistente, strutture, manutentori, figureProfessionali, onS
               value={nuovaTariffaImporto}
               onChange={(e) => setNuovaTariffaImporto(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); aggiungiTariffa(); } }}
-              placeholder="€/h"
+              placeholder="â‚¬/h"
             />
             <input
               type="date" className={inputCls + " w-40"}
               value={nuovaTariffaScadenza}
               onChange={(e) => setNuovaTariffaScadenza(e.target.value)}
-              title="Scadenza validità (opzionale)"
+              title="Scadenza validitÃ  (opzionale)"
             />
             <button type="button" onClick={aggiungiTariffa} disabled={tariffaGiaAttiva} className="px-3 py-2 rounded-lg bg-stone-800 text-white shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"><Plus size={14} /></button>
           </div>
           {tariffaGiaAttiva && (
-            <span className="text-xs text-rose-600 mt-1.5 block">Esiste già una tariffa attiva per questa figura professionale. Elimina o lascia scadere quella esistente prima di aggiungerne una nuova.</span>
+            <span className="text-xs text-rose-600 mt-1.5 block">Esiste giÃ  una tariffa attiva per questa figura professionale. Elimina o lascia scadere quella esistente prima di aggiungerne una nuova.</span>
           )}
         </FieldGroup>
 
@@ -2564,7 +2580,7 @@ function DittaForm({ esistente, strutture, manutentori, figureProfessionali, onS
         </Field>
 
         <Field label="Note">
-          <textarea className={inputCls} rows={2} value={f.note} onChange={(e) => upd({ note: e.target.value })} placeholder="Contratti, condizioni, orari di reperibilità…" />
+          <textarea className={inputCls} rows={2} value={f.note} onChange={(e) => upd({ note: e.target.value })} placeholder="Contratti, condizioni, orari di reperibilitÃ â€¦" />
         </Field>
 
         <label className="flex items-center gap-2 mb-1 cursor-pointer select-none">
@@ -2591,7 +2607,7 @@ function DittaForm({ esistente, strutture, manutentori, figureProfessionali, onS
 }
 
 /* ------------------------------------------------------------------ */
-/*  CENSIMENTO — verifica di quanto presente in ogni struttura          */
+/*  CENSIMENTO â€” verifica di quanto presente in ogni struttura          */
 /* ------------------------------------------------------------------ */
 
 function Censimento({ strutture, zoneDi, camereDi, oggettiDi, aggiungiOggetto, eliminaOggetto, segnaVerificato, creaInterventoDaOggetto, censimento }: {
@@ -2614,23 +2630,23 @@ function Censimento({ strutture, zoneDi, camereDi, oggettiDi, aggiungiOggetto, e
     <div>
       <header className="mb-5">
         <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Censimento</h1>
-        <p className="text-stone-500 text-xs sm:text-sm mt-1">Verifica, struttura per struttura, di tutto ciò che è presente: arredi, attrezzature e impianti</p>
+        <p className="text-stone-500 text-xs sm:text-sm mt-1">Verifica, struttura per struttura, di tutto ciÃ² che Ã¨ presente: arredi, attrezzature e impianti</p>
       </header>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <StatCard label="Elementi censiti" value={censimento.totale} icon={ClipboardCheck} accent="bg-[#1B2430]" />
         <StatCard label="Verificati" value={`${censimento.percVerificato}%`} icon={ShieldCheck} accent="bg-emerald-600" />
         <StatCard label="Da verificare" value={censimento.daVerificare} icon={HelpCircle} accent="bg-amber-500" />
-        <StatCard label="Criticità" value={censimento.criticita} icon={ShieldAlert} accent="bg-rose-600" />
+        <StatCard label="CriticitÃ " value={censimento.criticita} icon={ShieldAlert} accent="bg-rose-600" />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-5 bg-white border border-stone-200 rounded-xl px-3 py-2.5">
         <select value={strutturaSel} onChange={(e) => setStrutturaSel(e.target.value)} className={inputCls + " w-auto text-sm font-semibold"}>
-          {strutture.map((s) => <option key={s.id} value={s.id}>{s.nome} · {s.citta}</option>)}
+          {strutture.map((s) => <option key={s.id} value={s.id}>{s.nome} Â· {s.citta}</option>)}
         </select>
         <label className="flex items-center gap-1.5 text-xs text-stone-600 ml-auto cursor-pointer select-none">
           <input type="checkbox" checked={soloDaVerificare} onChange={(e) => setSoloDaVerificare(e.target.checked)} />
-          Mostra solo criticità / da verificare
+          Mostra solo criticitÃ  / da verificare
         </label>
       </div>
 
@@ -2738,7 +2754,7 @@ function ListaOggettiCensimento({ titolo, sottotitolo, icona: Icona, oggetti, so
   return (
     <div className="border border-stone-150 rounded-lg bg-stone-50/60 p-3">
       <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-600 mb-2">
-        <Icona size={13} /> {titolo} <span className="text-stone-400 font-normal">· {sottotitolo}</span>
+        <Icona size={13} /> {titolo} <span className="text-stone-400 font-normal">Â· {sottotitolo}</span>
       </div>
 
       <div className="grid gap-1.5 mb-2">
@@ -2777,7 +2793,7 @@ function ListaOggettiCensimento({ titolo, sottotitolo, icona: Icona, oggetti, so
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nuovo elemento rilevato…" className={inputCls + " text-xs py-1.5 flex-1 min-w-[110px]"} />
+        <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nuovo elemento rilevatoâ€¦" className={inputCls + " text-xs py-1.5 flex-1 min-w-[110px]"} />
         <input value={codice} onChange={(e) => setCodice(e.target.value)} placeholder="Codice cespite" className={inputCls + " text-xs py-1.5 w-28 font-mono-tag"} />
         <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className={inputCls + " text-xs py-1.5 w-28"}>
           {CATEGORIE.map((c) => <option key={c}>{c}</option>)}
@@ -3037,20 +3053,20 @@ function ManutenzioneForm({ esistente, prefill, strutture, zoneDi, camereDi, ogg
         <div className="grid grid-cols-2 gap-3">
           <Field label="Camera (opzionale)">
             <select className={inputCls} value={f.camereId} onChange={(e) => upd({ camereId: e.target.value, oggettoId: "" })}>
-              <option value="">— area comune —</option>
+              <option value="">â€” area comune â€”</option>
               {camereDisp.map((c) => <option key={c.id} value={c.id}>Camera {c.numero}</option>)}
             </select>
           </Field>
           <Field label="Oggetto / arredo / attrezzatura">
             <select className={inputCls} value={f.oggettoId} onChange={(e) => upd({ oggettoId: e.target.value })}>
-              <option value="">— generico / non specificato —</option>
+              <option value="">â€” generico / non specificato â€”</option>
               {oggettiDisp.map((o) => <option key={o.id} value={o.id}>{o.nome}{o.codiceCespite ? ` [${o.codiceCespite}]` : ""} ({o.categoria})</option>)}
             </select>
           </Field>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Priorità">
+          <Field label="PrioritÃ ">
             <select className={inputCls} value={f.priorita} onChange={(e) => upd({ priorita: e.target.value })}>
               {PRIORITA.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
@@ -3059,7 +3075,7 @@ function ManutenzioneForm({ esistente, prefill, strutture, zoneDi, camereDi, ogg
             <select className={inputCls} value={f.stato} onChange={(e) => upd({ stato: e.target.value })}>
               {(utenteCorrente ? STATI.filter((s) => s !== "Completata") : STATI).map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            {utenteCorrente && <span className="block text-xs text-stone-400 mt-1">Solo un amministratore può segnare un intervento come completato.</span>}
+            {utenteCorrente && <span className="block text-xs text-stone-400 mt-1">Solo un amministratore puÃ² segnare un intervento come completato.</span>}
           </Field>
         </div>
         </fieldset>
@@ -3091,7 +3107,7 @@ function ManutenzioneForm({ esistente, prefill, strutture, zoneDi, camereDi, ogg
                 </button>
               </div>
               {!f.notaChiusura.trim() && (
-                <span className="block text-xs text-stone-400 mt-1.5">Compila la nota di chiusura più in basso per poter segnare l'intervento come completato.</span>
+                <span className="block text-xs text-stone-400 mt-1.5">Compila la nota di chiusura piÃ¹ in basso per poter segnare l'intervento come completato.</span>
               )}
             </div>
           ) : (
@@ -3122,7 +3138,7 @@ function ManutenzioneForm({ esistente, prefill, strutture, zoneDi, camereDi, ogg
                 else upd({ assegnatoId: v, assegnatoLibero: null });
               }}
             >
-              <option value="">— non assegnato —</option>
+              <option value="">â€” non assegnato â€”</option>
               <optgroup label="Interni">
                 {manutentori
                   .filter((m) => m.tipo === "Interno" && (manutentoreDisponibile(m, ditte) || m.id === f.assegnatoId))
@@ -3133,11 +3149,11 @@ function ManutenzioneForm({ esistente, prefill, strutture, zoneDi, camereDi, ogg
                   .filter((m) => m.tipo === "Esterno" && (manutentoreDisponibile(m, ditte) || m.id === f.assegnatoId))
                   .map((m) => <option key={m.id} value={m.id}>{m.nome}{!manutentoreDisponibile(m, ditte) ? " (non disponibile)" : ""}</option>)}
               </optgroup>
-              <option value="__altro__">Altro (inserisci manualmente)…</option>
+              <option value="__altro__">Altro (inserisci manualmente)â€¦</option>
             </select>
             {manutentori.some((m) => m.id === f.assegnatoId && !manutentoreDisponibile(m, ditte)) && (
               <span className="text-xs text-amber-700 mt-1.5 block">
-                Questo manutentore non è più disponibile (rimosso, non attivo, ditta non collegata/non attiva o con contratto scaduto). Resta assegnato a questo intervento ma non sarà proponibile per nuovi interventi.
+                Questo manutentore non Ã¨ piÃ¹ disponibile (rimosso, non attivo, ditta non collegata/non attiva o con contratto scaduto). Resta assegnato a questo intervento ma non sarÃ  proponibile per nuovi interventi.
               </span>
             )}
             {f.assegnatoLibero !== null && (
@@ -3183,11 +3199,11 @@ function ManutenzioneForm({ esistente, prefill, strutture, zoneDi, camereDi, ogg
               <input type="file" accept="image/*" multiple className="hidden" onChange={aggiungiFoto} />
             </label>
           </div>
-          {caricamento && <span className="text-xs text-stone-400">Caricamento foto…</span>}
-          <span className="text-xs text-stone-400">Puoi allegare una o più foto dello stato dell'oggetto o dell'intervento eseguito.</span>
+          {caricamento && <span className="text-xs text-stone-400">Caricamento fotoâ€¦</span>}
+          <span className="text-xs text-stone-400">Puoi allegare una o piÃ¹ foto dello stato dell'oggetto o dell'intervento eseguito.</span>
         </Field>
 
-        <FieldGroup label={`Tempo registrato${f.tempoRegistrato.length ? ` · totale ${fmtDurata(f.tempoRegistrato.reduce((s, t) => s + t.minuti, 0))}` : ""}`}>
+        <FieldGroup label={`Tempo registrato${f.tempoRegistrato.length ? ` Â· totale ${fmtDurata(f.tempoRegistrato.reduce((s, t) => s + t.minuti, 0))}` : ""}`}>
           <div className="border border-stone-300 rounded-lg divide-y divide-stone-200 mb-2 overflow-hidden">
             {f.tempoRegistrato.length === 0 && (
               <div className="px-3 py-2.5 text-xs text-stone-400">Nessun tempo registrato per questo intervento.</div>
@@ -3196,7 +3212,7 @@ function ManutenzioneForm({ esistente, prefill, strutture, zoneDi, camereDi, ogg
               <div key={t.id} className="px-3 py-2 text-sm">
                 {modificaTempoId === t.id ? (
                   <div className="flex flex-wrap gap-2 items-center">
-                    <span className="text-stone-600 text-xs shrink-0">{nomeManutentoreId(t.manutentoreId, manutentori) || "—"}</span>
+                    <span className="text-stone-600 text-xs shrink-0">{nomeManutentoreId(t.manutentoreId, manutentori) || "â€”"}</span>
                     <input
                       type="number" min="1" className={inputCls + " w-20 text-xs py-1.5"}
                       value={editTempoMinuti} onChange={(e) => setEditTempoMinuti(e.target.value)}
@@ -3217,7 +3233,7 @@ function ManutenzioneForm({ esistente, prefill, strutture, zoneDi, camereDi, ogg
                 ) : (
                   <>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-stone-800 flex-1 truncate">{nomeManutentoreId(t.manutentoreId, manutentori) || "—"}</span>
+                      <span className="font-medium text-stone-800 flex-1 truncate">{nomeManutentoreId(t.manutentoreId, manutentori) || "â€”"}</span>
                       <span className="text-stone-600 font-mono-tag">{fmtDurata(t.minuti)}</span>
                       <span className="text-xs text-stone-400 font-mono-tag">{fmtData(t.data)}</span>
                       <button
@@ -3273,15 +3289,15 @@ function ManutenzioneForm({ esistente, prefill, strutture, zoneDi, camereDi, ogg
           )}
         </FieldGroup>
 
-        <FieldGroup label={`Materiale necessario${f.materiali.length ? ` · totale € ${f.materiali.reduce((s, mt) => s + mt.quantita * mt.costoUnitario, 0).toFixed(2)}` : ""}`}>
+        <FieldGroup label={`Materiale necessario${f.materiali.length ? ` Â· totale â‚¬ ${f.materiali.reduce((s, mt) => s + mt.quantita * mt.costoUnitario, 0).toFixed(2)}` : ""}`}>
           {f.materiali.length > 0 && (
             <div className="border border-stone-200 rounded-lg divide-y divide-stone-100 mb-3">
               {f.materiali.map((mt) => (
                 <div key={mt.id} className="px-3 py-2 text-sm">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-medium text-stone-800 flex-1 min-w-[100px] truncate">{mt.nome}</span>
-                    <span className="text-xs text-stone-500 font-mono-tag">{mt.quantita} × € {mt.costoUnitario.toFixed(2)}</span>
-                    <span className="text-xs text-stone-700 font-semibold font-mono-tag">€ {(mt.quantita * mt.costoUnitario).toFixed(2)}</span>
+                    <span className="text-xs text-stone-500 font-mono-tag">{mt.quantita} Ã— â‚¬ {mt.costoUnitario.toFixed(2)}</span>
+                    <span className="text-xs text-stone-700 font-semibold font-mono-tag">â‚¬ {(mt.quantita * mt.costoUnitario).toFixed(2)}</span>
                     <select
                       value={mt.stato} onChange={(e) => cambiaStatoMateriale(mt.id, e.target.value)}
                       className={`text-[11px] font-semibold rounded-md px-1.5 py-1 border outline-none ${statoMaterialeColor[mt.stato]}`}
@@ -3309,12 +3325,12 @@ function ManutenzioneForm({ esistente, prefill, strutture, zoneDi, camereDi, ogg
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); aggiungiMateriale(); } }}
             />
             <input
-              type="number" min="1" className={inputCls + " w-20"} placeholder="Qtà"
+              type="number" min="1" className={inputCls + " w-20"} placeholder="QtÃ "
               value={nuovoMateriale.quantita} onChange={(e) => setNuovoMateriale((p) => ({ ...p, quantita: e.target.value }))}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); aggiungiMateriale(); } }}
             />
             <input
-              type="number" min="0" step="0.01" className={inputCls + " w-28"} placeholder="Costo unitario €"
+              type="number" min="0" step="0.01" className={inputCls + " w-28"} placeholder="Costo unitario â‚¬"
               value={nuovoMateriale.costoUnitario} onChange={(e) => setNuovoMateriale((p) => ({ ...p, costoUnitario: e.target.value }))}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); aggiungiMateriale(); } }}
             />
@@ -3413,13 +3429,13 @@ function Anagrafica({ strutture, zoneDi, camereDi, oggettiDi, aggiungiStruttura,
     <div>
       <header className="mb-6">
         <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Anagrafica strutture</h1>
-        <p className="text-stone-500 text-xs sm:text-sm mt-1">Strutture, zone, camere e oggetti soggetti a manutenzione — Gruppo Urban Homy</p>
+        <p className="text-stone-500 text-xs sm:text-sm mt-1">Strutture, zone, camere e oggetti soggetti a manutenzione â€” Gruppo Urban Homy</p>
       </header>
 
       <div className="bg-white border border-stone-200 rounded-xl shadow-sm p-5 mb-4">
         <div className="flex gap-2 flex-wrap">
           <input value={nuovaStruttura} onChange={(e) => setNuovaStruttura(e.target.value)} placeholder="Nome nuova struttura" className={inputCls + " flex-1 min-w-[160px]"} />
-          <input value={nuovaCitta} onChange={(e) => setNuovaCitta(e.target.value)} placeholder="Città" className={inputCls + " w-40"} />
+          <input value={nuovaCitta} onChange={(e) => setNuovaCitta(e.target.value)} placeholder="CittÃ " className={inputCls + " w-40"} />
           <select value={nuovoTipo} onChange={(e) => setNuovoTipo(e.target.value)} className={inputCls + " w-32"}>
             <option value="Ostello">Ostello</option>
             <option value="B&B">B&B</option>
@@ -3448,7 +3464,7 @@ function Anagrafica({ strutture, zoneDi, camereDi, oggettiDi, aggiungiStruttura,
                 <Building2 size={18} className="text-[#C1622D] shrink-0" />
                 <div className="text-left flex-1 min-w-0">
                   <div className="font-[Fraunces] font-semibold text-stone-900">{s.nome}</div>
-                  <div className="text-xs text-stone-500">{s.citta} · {s.tipo} · {zoneDi(s.id).length} zone</div>
+                  <div className="text-xs text-stone-500">{s.citta} Â· {s.tipo} Â· {zoneDi(s.id).length} zone</div>
                 </div>
               </button>
               <button onClick={() => eliminaStruttura(s.id)} className="p-2 text-stone-300 hover:text-rose-600 shrink-0" title="Elimina struttura">
@@ -3497,7 +3513,7 @@ function ZoneStruttura({ strutturaId, zone, camereDi, oggettiDi, aggiungiZona, a
   return (
     <div className="border-t border-stone-100 pt-4">
       <div className="flex gap-2 mb-3">
-        <input value={nuovaZona} onChange={(e) => setNuovaZona(e.target.value)} placeholder="Nome nuova zona (es. Piano 3, Cucina…)" className={inputCls + " text-sm"} />
+        <input value={nuovaZona} onChange={(e) => setNuovaZona(e.target.value)} placeholder="Nome nuova zona (es. Piano 3, Cucinaâ€¦)" className={inputCls + " text-sm"} />
         <select value={tipoZona} onChange={(e) => setTipoZona(e.target.value)} className={inputCls + " w-32 text-sm"}>
           <option value="piano">Piano</option>
           <option value="comune">Area comune</option>
@@ -3569,7 +3585,7 @@ function CamereZona({ zonaId, strutturaId, camere, aggiungiCamera, eliminaCamera
             <div className="flex items-center justify-between px-2.5 py-1.5 bg-white">
               <button onClick={() => setCameraAperta(cameraAperta === c.id ? null : c.id)} className="text-xs font-medium text-stone-700 flex items-center gap-1.5">
                 {cameraAperta === c.id ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                Camera {c.numero} <span className="text-stone-400">· {c.tipo}</span>
+                Camera {c.numero} <span className="text-stone-400">Â· {c.tipo}</span>
               </button>
               <button onClick={() => eliminaCamera(c.id)} className="text-stone-300 hover:text-rose-600"><Trash2 size={12} /></button>
             </div>
@@ -3611,7 +3627,7 @@ function OggettiCamera({ strutturaId, zonaId, camereId, oggetti, aggiungiOggetto
       <ul className="space-y-1">
         {oggetti.map((o) => (
           <li key={o.id} className="flex items-center justify-between text-xs bg-stone-50 rounded px-2 py-1 gap-2">
-            <span className="text-stone-700 truncate">{o.nome} <span className="text-stone-400">· {o.categoria}</span></span>
+            <span className="text-stone-700 truncate">{o.nome} <span className="text-stone-400">Â· {o.categoria}</span></span>
             <span className="flex items-center gap-1.5 shrink-0">
               {o.codiceCespite && <Tag className="bg-white text-stone-500 border-stone-300 font-mono-tag">{o.codiceCespite}</Tag>}
               <button onClick={() => eliminaOggetto(o.id)} className="text-stone-300 hover:text-rose-600"><Trash2 size={11} /></button>
@@ -3648,7 +3664,7 @@ function OggettiZonaComune({ zonaId, strutturaId, oggetti, aggiungiOggetto, elim
       <ul className="space-y-1.5">
         {oggetti.map((o) => (
           <li key={o.id} className="flex items-center justify-between text-xs bg-white border border-stone-200 rounded px-2.5 py-1.5 gap-2">
-            <span className="text-stone-700 truncate">{o.nome} <span className="text-stone-400">· {o.categoria}</span></span>
+            <span className="text-stone-700 truncate">{o.nome} <span className="text-stone-400">Â· {o.categoria}</span></span>
             <span className="flex items-center gap-1.5 shrink-0">
               {o.codiceCespite && <Tag className="bg-stone-50 text-stone-500 border-stone-300 font-mono-tag">{o.codiceCespite}</Tag>}
               <button onClick={() => eliminaOggetto(o.id)} className="text-stone-300 hover:text-rose-600"><Trash2 size={12} /></button>
