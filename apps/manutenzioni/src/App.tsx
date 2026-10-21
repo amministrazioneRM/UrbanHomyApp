@@ -694,7 +694,7 @@ export default function App() {
           <div className="w-14 h-14 rounded-xl bg-[#1B2430] flex items-center justify-center mx-auto mb-4">
             <Wrench size={26} className="text-white" />
           </div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900 mb-2">Accesso non disponibile</h1>
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900 mb-2">Accesso non disponibile</h1>
           <p className="text-stone-500 text-sm mb-6">
             {sessione
               ? "Il tuo account non ha accesso all'applicazione Manutenzioni. Contatta un amministratore del portale."
@@ -1041,8 +1041,8 @@ function Dashboard({ stats, censimento, manutenzioni, luogoLabel, onApri, onNuov
     <div>
       <header className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl md:text-[28px] font-semibold text-stone-900">Cruscotto manutenzioni</h1>
-          <p className="text-stone-500 text-sm mt-1">Gruppo Urban Homy · tutte le strutture</p>
+          <h1 className="font-[Fraunces] text-xl md:text-[28px] font-semibold text-stone-900">Cruscotto manutenzioni</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Gruppo Urban Homy · tutte le strutture</p>
         </div>
         <button onClick={onNuova} className="flex items-center gap-2 bg-[#C1622D] hover:bg-[#a9531f] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
           <Plus size={16} /> Nuovo intervento
@@ -1209,8 +1209,8 @@ function Manutenzioni({ manutenzioni, filtroRapido, strutture, manutentori, uten
     <div>
       <header className="flex items-start justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Interventi</h1>
-          <p className="text-stone-500 text-sm mt-1">
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Interventi</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">
             {utenteCorrente ? <>Connesso come <span className="font-semibold text-stone-700">{utenteCorrente.nome}</span> · {utenteCorrente.tipo}</> : "Riparazioni singole e manutenzioni programmate"}
           </p>
         </div>
@@ -1404,8 +1404,8 @@ function Calendario({ manutenzioni, strutture, utenteCorrente, luogoLabel, onApr
     <div>
       <header className="flex items-start justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Calendario</h1>
-          <p className="text-stone-500 text-sm mt-1">
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Calendario</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">
             {accessoLimitato ? "Vedi solo le scadenze dei tuoi interventi assegnati" : "Scadenze di riparazioni singole e manutenzioni programmate"}
           </p>
         </div>
@@ -1519,8 +1519,8 @@ function Approvazioni({ manutenzioni, manutentori, ditte, tempiRegistrati, luogo
   return (
     <div>
       <header className="mb-6">
-        <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Approvazioni</h1>
-        <p className="text-stone-500 text-sm mt-1">Interventi segnati come completati, in attesa di verifica e approvazione</p>
+        <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Approvazioni</h1>
+        <p className="text-stone-500 text-xs sm:text-sm mt-1">Interventi segnati come completati, in attesa di verifica e approvazione</p>
       </header>
 
       {elenco.length === 0 ? (
@@ -1652,8 +1652,8 @@ function Report({ manutenzioni, manutentori, ditte, tempiRegistrati, materiali, 
     <div>
       <header className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Report</h1>
-          <p className="text-stone-500 text-sm mt-1">Interventi approvati nel mese e riepilogo delle fatture da ricevere dalle ditte esterne</p>
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Report</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Interventi approvati nel mese e riepilogo delle fatture da ricevere dalle ditte esterne</p>
         </div>
         <div className="flex items-center gap-1 bg-white border border-stone-300 rounded-lg px-1 py-1">
           <button type="button" onClick={() => cambiaMese(-1)} className="p-1.5 text-stone-500 hover:bg-stone-100 rounded-md">
@@ -1792,8 +1792,8 @@ function Team({ manutentori, ditte, figureProfessionali, strutture, manutenzioni
     <div>
       <header className="flex items-start justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Manutentori</h1>
-          <p className="text-stone-500 text-sm mt-1">
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Manutentori</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">
             {utenteCorrente ? <>Connesso come <span className="font-semibold text-stone-700">{utenteCorrente.nome}</span> · {utenteCorrente.tipo}</> : "Censimento del personale interno e delle ditte esterne"}
           </p>
         </div>
@@ -2151,8 +2151,8 @@ function DitteEsterne({ ditte, manutentori, figureProfessionali, strutture, onNu
     <div>
       <header className="flex items-start justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Ditte esterne</h1>
-          <p className="text-stone-500 text-sm mt-1">Anagrafica delle aziende esterne e dei rispettivi tecnici</p>
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Ditte esterne</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Anagrafica delle aziende esterne e dei rispettivi tecnici</p>
         </div>
         <button onClick={onNuova} className="flex items-center gap-2 bg-[#C1622D] hover:bg-[#a9531f] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
           <Plus size={16} /> Nuova ditta
@@ -2279,8 +2279,8 @@ function FigureProfessionali({ figureProfessionali, ditte, onAggiungi, onElimina
   return (
     <div>
       <header className="mb-6">
-        <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Figure professionali</h1>
-        <p className="text-stone-500 text-sm mt-1">Anagrafica dei ruoli tecnici usati per le tariffe orarie delle ditte esterne</p>
+        <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Figure professionali</h1>
+        <p className="text-stone-500 text-xs sm:text-sm mt-1">Anagrafica dei ruoli tecnici usati per le tariffe orarie delle ditte esterne</p>
       </header>
 
       <div className="bg-white border border-stone-200 rounded-xl shadow-sm p-5 mb-4">
@@ -2613,8 +2613,8 @@ function Censimento({ strutture, zoneDi, camereDi, oggettiDi, aggiungiOggetto, e
   return (
     <div>
       <header className="mb-5">
-        <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Censimento</h1>
-        <p className="text-stone-500 text-sm mt-1">Verifica, struttura per struttura, di tutto ciò che è presente: arredi, attrezzature e impianti</p>
+        <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Censimento</h1>
+        <p className="text-stone-500 text-xs sm:text-sm mt-1">Verifica, struttura per struttura, di tutto ciò che è presente: arredi, attrezzature e impianti</p>
       </header>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
@@ -3412,8 +3412,8 @@ function Anagrafica({ strutture, zoneDi, camereDi, oggettiDi, aggiungiStruttura,
   return (
     <div>
       <header className="mb-6">
-        <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Anagrafica strutture</h1>
-        <p className="text-stone-500 text-sm mt-1">Strutture, zone, camere e oggetti soggetti a manutenzione — Gruppo Urban Homy</p>
+        <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Anagrafica strutture</h1>
+        <p className="text-stone-500 text-xs sm:text-sm mt-1">Strutture, zone, camere e oggetti soggetti a manutenzione — Gruppo Urban Homy</p>
       </header>
 
       <div className="bg-white border border-stone-200 rounded-xl shadow-sm p-5 mb-4">

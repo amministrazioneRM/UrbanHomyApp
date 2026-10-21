@@ -356,7 +356,7 @@ export default function App() {
           <div className="w-14 h-14 rounded-xl bg-[#1B2340] flex items-center justify-center mx-auto mb-4">
             <LifeBuoy size={26} className="text-white" />
           </div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900 mb-2">Accesso non disponibile</h1>
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900 mb-2">Accesso non disponibile</h1>
           <p className="text-stone-500 text-sm mb-6">
             {sessione
               ? "Il tuo account non ha accesso all'applicazione Ticket. Contatta un amministratore del portale."
@@ -564,8 +564,8 @@ function Dashboard({ stats, ticket, luogoLabel, onApri, onNuovo, onFiltroRapido 
     <div>
       <header className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl md:text-[28px] font-semibold text-stone-900">Cruscotto ticket IT</h1>
-          <p className="text-stone-500 text-sm mt-1">Gruppo Urban Homy · tutte le sedi</p>
+          <h1 className="font-[Fraunces] text-xl md:text-[28px] font-semibold text-stone-900">Cruscotto ticket IT</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Gruppo Urban Homy · tutte le sedi</p>
         </div>
         <button onClick={onNuovo} className="flex items-center gap-2 bg-[#2D6BC1] hover:bg-[#25569c] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
           <Plus size={16} /> Nuovo ticket
@@ -663,8 +663,8 @@ function TicketList({ ticket, filtroRapido, strutture, utenti, utenteCorrente, l
     <div>
       <header className="flex items-start justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Ticket</h1>
-          <p className="text-stone-500 text-sm mt-1">
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Ticket</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">
             {utenteCorrente ? <>Connesso come <span className="font-semibold text-stone-700">{utenteCorrente.nome}</span> · {utenteCorrente.reparto}</> : "Richieste di assistenza IT del gruppo"}
           </p>
         </div>
@@ -972,8 +972,8 @@ function Utenti({ utenti, strutture, ticket, onNuovo, onApri }: UtentiProps) {
     <div>
       <header className="flex items-start justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Utenti</h1>
-          <p className="text-stone-500 text-sm mt-1">Personale che può aprire ticket di assistenza IT</p>
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Utenti</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Personale che può aprire ticket di assistenza IT</p>
         </div>
         <button onClick={onNuovo} className="flex items-center gap-2 bg-[#2D6BC1] hover:bg-[#25569c] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
           <Plus size={16} /> Nuovo utente

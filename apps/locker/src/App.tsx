@@ -830,8 +830,8 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
     <div>
       <header className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl md:text-[28px] font-semibold text-stone-900">Cruscotto incassi</h1>
-          <p className="text-stone-500 text-sm mt-1">Baggy Locker · Gruppo Urban Homy</p>
+          <h1 className="font-[Fraunces] text-xl md:text-[28px] font-semibold text-stone-900">Cruscotto incassi</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Baggy Locker · Gruppo Urban Homy</p>
         </div>
       </header>
       <div className="flex flex-wrap gap-2 mb-5">
@@ -902,7 +902,7 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
                 <div className="flex items-center gap-2"><MapPin size={14} className="text-stone-400" /><span className="font-semibold text-sm text-stone-900">{s.nome}</span></div>
                 <CheckCircle2 size={18} className={selezionata ? "text-[#1E8E6E]" : "text-stone-300"} />
               </div>
-              <div className="text-2xl font-bold text-stone-900 font-[Fraunces]">{fmtEuro(tot)}</div>
+              <div className="text-xl md:text-2xl font-bold text-stone-900 font-[Fraunces]">{fmtEuro(tot)}</div>
               <div className="text-xs text-stone-500 mt-1">{diSede.filter((o) => o.stato === "Concluso").length} ordini conclusi nel periodo selezionato</div>
               <div className="flex items-center gap-1.5 mt-2.5 pt-2.5 border-t border-stone-100">
                 <ShoppingCart size={12} className="text-stone-400 shrink-0" />
@@ -997,8 +997,8 @@ function Ordini({ ordini, strutture, strutturaOf, onApri, onNuovo, onImportaFile
     <div>
       <header className="flex items-start justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Vendite</h1>
-          <p className="text-stone-500 text-sm mt-1">Elenco ordini del deposito bagagli</p>
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Vendite</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Elenco ordini del deposito bagagli</p>
         </div>
         <div className="flex items-center gap-2">
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={onFileScelto} />
@@ -1255,8 +1255,8 @@ function Sedi({ strutture, ordini, locali, onNuova, onApri, onNuovoLocale, onApr
     <div>
       <header className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Sedi</h1>
-          <p className="text-stone-500 text-sm mt-1">Attiva una sede quando il servizio Baggy Locker parte davvero</p>
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Sedi</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Attiva una sede quando il servizio Baggy Locker parte davvero</p>
         </div>
         <button onClick={onNuova} className="flex items-center gap-2 bg-[#1E8E6E] hover:bg-[#186f57] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition"><Plus size={16} /> Nuova sede</button>
       </header>

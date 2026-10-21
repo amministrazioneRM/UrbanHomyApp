@@ -1939,8 +1939,8 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
     <div>
       <header className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl md:text-[28px] font-semibold text-stone-900">Cruscotto incassi</h1>
-          <p className="text-stone-500 text-sm mt-1">Vending Machine · Gruppo Urban Homy</p>
+          <h1 className="font-[Fraunces] text-xl md:text-[28px] font-semibold text-stone-900">Cruscotto incassi</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Vending Machine · Gruppo Urban Homy</p>
         </div>
       </header>
 
@@ -2042,7 +2042,7 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
                 </div>
                 <CheckCircle2 size={18} className={selezionata ? "text-[#CA8A04]" : "text-stone-300"} />
               </div>
-              <div className="text-2xl font-bold text-stone-900 font-[Fraunces]">{fmtEuro(tot)}</div>
+              <div className="text-xl md:text-2xl font-bold text-stone-900 font-[Fraunces]">{fmtEuro(tot)}</div>
               <div className="text-xs text-stone-500 mt-1">{completateSede.length} vendite completate nel periodo selezionato</div>
             </button>
           );
@@ -2142,8 +2142,8 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
     <div>
       <header className="flex items-start justify-between mb-5 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Vendite</h1>
-          <p className="text-stone-500 text-sm mt-1">Vendite registrate dai distributori automatici</p>
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Vendite</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Vendite registrate dai distributori automatici</p>
         </div>
         <div className="flex items-center gap-2">
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={onFileScelto} />
@@ -2490,8 +2490,8 @@ function Sedi({ strutture, vendite, macchine, onNuova, onApri, onNuovaMacchina, 
     <div>
       <header className="flex items-start justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Sedi</h1>
-          <p className="text-stone-500 text-sm mt-1">Il servizio è attivo quando la sede ha almeno una macchina configurata e attiva</p>
+          <h1 className="font-[Fraunces] text-xl md:text-2xl font-semibold text-stone-900">Sedi</h1>
+          <p className="text-stone-500 text-xs sm:text-sm mt-1">Il servizio è attivo quando la sede ha almeno una macchina configurata e attiva</p>
         </div>
         <button onClick={onNuova} className="flex items-center gap-2 bg-[#CA8A04] hover:bg-[#AB7204] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
           <Plus size={16} /> Nuova sede
