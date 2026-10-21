@@ -86,7 +86,9 @@ app.use("/api/manutentori", makeCrudRouter(prisma.manutentore as never, { idPref
 app.use("/api/figure-professionali", makeCrudRouter(prisma.figuraProfessionale as never, { idPrefix: "FIG", modelName: "FiguraProfessionale" }));
 
 // Utenti e accessi
-app.use("/api/utenti/accounts", makeCrudRouter(prisma.utentiAccount as never, { idPrefix: "ACC", modelName: "UtentiAccount", omit: ["password"], hashFields: ["password"] }));
+// La password non è mai gestita via API CRUD: viene ignorata dall'input e omessa dall'output.
+// L'unico account con password è l'admin, impostato tramite lo script seed-admin.ts.
+app.use("/api/utenti/accounts", makeCrudRouter(prisma.utentiAccount as never, { idPrefix: "ACC", modelName: "UtentiAccount", omit: ["password"], stripFields: ["password"] }));
 app.use("/api/utenti/ruoli", makeCrudRouter(prisma.utentiRuolo as never, { idPrefix: "RUOLO", modelName: "UtentiRuolo" }));
 app.use("/api/utenti/sostituti", makeCrudRouter(prisma.utentiSostituto as never, { idPrefix: "SOST", modelName: "UtentiSostituto" }));
 app.use("/api/utenti/sedi", makeCrudRouter(prisma.utentiSede as never, { idPrefix: "SEDE", modelName: "UtentiSede" }));

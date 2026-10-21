@@ -15,7 +15,7 @@ function parseJsonField(value: unknown): unknown {
   return typeof value === "string" ? JSON.parse(value) : value;
 }
 
-function omitPassword(account: { password: string; accessi: unknown; sediAbilitate?: unknown } & Omit<SafeAccount, "accessi" | "sediAbilitate">): SafeAccount {
+function omitPassword(account: { password: string | null; accessi: unknown; sediAbilitate?: unknown } & Omit<SafeAccount, "accessi" | "sediAbilitate">): SafeAccount {
   const { password: _pw, accessi, sediAbilitate, ...rest } = account;
   return {
     ...rest,
@@ -33,6 +33,11 @@ router.post("/login", async (req, res, next) => {
       where: { email },
     });
     if (!account) { res.status(401).json({ error: "Credenziali non valide" }); return; }
+
+    if (!account.password) {
+      res.status(403).json({ error: "Questo account accede tramite SSO Microsoft" });
+      return;
+    }
 
     const ok = await bcrypt.compare(password, account.password);
     if (!ok) { res.status(401).json({ error: "Credenziali non valide" }); return; }
