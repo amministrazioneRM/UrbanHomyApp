@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import type { LucideIcon } from "lucide-react";
 import type { UHAccount, UHSede } from "./accounts";
 import {

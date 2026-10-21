@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   LifeBuoy, Ticket as TicketIcon, Plus, ChevronDown, X, AlertTriangle,
   CheckCircle2, Clock3, Loader2, Trash2, Pencil, LayoutGrid, Search,
