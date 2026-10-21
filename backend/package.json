@@ -10,7 +10,8 @@
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:seed": "ts-node --transpile-only prisma/seed.ts"
+    "prisma:seed": "ts-node --transpile-only prisma/seed.ts",
+    "seed:admin": "ts-node --transpile-only src/seed-admin.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"
@@ -31,7 +32,7 @@
     "@types/node": "^26.6.2",
     "prisma": "^5.20.0",
     "ts-node": "^10.9.2",
-    "typescript": "^7.0.2"
+    "typescript": "~5.7.0"
   },
   "allowScripts": {
     "prisma@5.22.0": true,
