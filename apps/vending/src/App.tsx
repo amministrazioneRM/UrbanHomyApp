@@ -59,6 +59,7 @@ interface VenditeProps {
   onApri: (v: VendingVendita) => void;
   onImportaFile: (file: File, strutturaId: string, modalita: string) => Promise<void>;
   importRisultato: ImportRisultato | null; onChiudiImport: () => void;
+  onEliminaTutte: () => void;
 }
 interface ImportaVenditeFormProps { strutture: VendingStruttura[]; onConferma: (strutturaId: string, modalita: string) => void; onClose: () => void; }
 interface VenditaFormProps { esistente: VendingVendita; strutture: VendingStruttura[]; macchine: VendingMacchina[]; onSalva: (v: VendingVendita) => void; onElimina: () => void; onClose: () => void; }
@@ -1692,6 +1693,7 @@ export default function App() {
               onImportaFile={importaVenditeDaFile}
               importRisultato={importRisultato}
               onChiudiImport={() => setImportRisultato(null)}
+              onEliminaTutte={() => setVendite([])}
             />
           )}
 
@@ -2074,7 +2076,7 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
 /*  ELENCO VENDITE                                                       */
 /* ------------------------------------------------------------------ */
 
-function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri, onImportaFile, importRisultato, onChiudiImport }: VenditeProps) {
+function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri, onImportaFile, importRisultato, onChiudiImport, onEliminaTutte }: VenditeProps) {
   const [filtroStruttura, setFiltroStruttura] = useState<string>("");
   const [filtroMetodo, setFiltroMetodo] = useState<string>("");
   const [filtroPeriodo, setFiltroPeriodo] = useState<string>("tutto");
@@ -2110,6 +2112,18 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
         </div>
         <div className="flex items-center gap-2">
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={onFileScelto} />
+          <button
+            onClick={() => {
+              if (vendite.length === 0) return;
+              if (window.confirm(`Vuoi davvero cancellare tutte le ${vendite.length} vendite? L'operazione è irreversibile.`)) {
+                onEliminaTutte();
+              }
+            }}
+            disabled={vendite.length === 0}
+            className="flex items-center gap-2 bg-white border border-stone-300 hover:border-rose-400 hover:text-rose-600 text-stone-500 text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition disabled:opacity-30"
+          >
+            <Trash2 size={16} /> Cancella tutto
+          </button>
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={importRisultato?.loading}
