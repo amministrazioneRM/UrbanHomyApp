@@ -1478,6 +1478,8 @@ export default function App() {
     setModale(null);
   }
   function eliminaStruttura(id) {
+    setVendite((vs) => vs.filter((v) => v.strutturaId !== id));
+    setMacchine((ms) => ms.filter((m) => m.strutturaId !== id));
     setStrutture((ss) => ss.filter((s) => s.id !== id));
     setModale(null);
   }

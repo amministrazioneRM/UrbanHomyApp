@@ -21,6 +21,7 @@ interface CrudOptions {
   omit?: string[];
   hashFields?: string[];
   filter?: (req: Request) => Promise<AnyRecord | undefined> | AnyRecord | undefined;
+  preDelete?: (req: Request, id: string) => Promise<void>;
 }
 
 async function hashFieldsIn(data: AnyRecord, hashFields: string[]): Promise<AnyRecord> {
@@ -97,7 +98,7 @@ function serialize(data: unknown, omit?: string[]): unknown {
 }
 
 export function makeCrudRouter(delegate: PrismaDelegate, options: CrudOptions = {}): Router {
-  const { idPrefix, include, modelName, omit, hashFields = [], filter } = options;
+  const { idPrefix, include, modelName, omit, hashFields = [], filter, preDelete } = options;
   const router = Router();
   const dateFields = modelName ? dateFieldsFor(modelName) : [];
 
@@ -145,6 +146,7 @@ export function makeCrudRouter(delegate: PrismaDelegate, options: CrudOptions = 
 
   router.delete("/:id", async (req, res, next) => {
     try {
+      if (preDelete) await preDelete(req, req.params.id);
       await delegate.delete({ where: { id: req.params.id } });
       res.status(204).end();
     } catch (err) {
