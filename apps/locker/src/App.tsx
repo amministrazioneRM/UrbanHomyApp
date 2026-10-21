@@ -396,14 +396,14 @@ function Tag({ children, className = "" }: TagProps) {
 interface StatCardProps { label: string; value: string | number; sub?: string; icon: React.ComponentType<{ size?: number; className?: string }>; accent: string }
 function StatCard({ label, value, sub, icon: Icon, accent }: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 bg-white border border-stone-200 rounded-xl px-5 py-4 shadow-sm">
-      <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${accent}`}>
-        <Icon size={20} className="text-white" />
+    <div className="flex items-center gap-3 bg-white border border-stone-200 rounded-xl px-3 py-3 sm:px-5 sm:py-4 shadow-sm">
+      <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-lg flex items-center justify-center shrink-0 ${accent}`}>
+        <Icon size={18} className="text-white" />
       </div>
       <div className="min-w-0">
-        <div className="text-2xl font-bold text-stone-900 leading-none font-[Fraunces] truncate">{value}</div>
-        <div className="text-xs text-stone-500 mt-1 tracking-wide uppercase">{label}</div>
-        {sub && <div className="text-[11px] text-stone-400 mt-0.5">{sub}</div>}
+        <div className="text-lg sm:text-2xl font-bold text-stone-900 leading-none font-[Fraunces] truncate">{value}</div>
+        <div className="text-[10px] sm:text-xs text-stone-500 mt-1 tracking-wide uppercase">{label}</div>
+        {sub && <div className="text-[10px] sm:text-[11px] text-stone-400 mt-0.5 leading-tight">{sub}</div>}
       </div>
     </div>
   );
@@ -603,7 +603,7 @@ export default function App() {
         </div>
       )}
       <div className="flex flex-col md:flex-row min-h-screen">
-        <aside className={`${sidebarCollapsed ? "md:w-14" : "md:w-60"} shrink-0 bg-[#1B2A26] text-stone-200 flex md:flex-col transition-all duration-200`}>
+        <aside className={`${sidebarCollapsed ? "md:w-14" : "md:w-60"} shrink-0 bg-[#1B2A26] text-stone-200 flex md:flex-col md:sticky md:top-0 md:h-screen transition-all duration-200`}>
           <div className={`border-b border-white/10 hidden md:flex flex-col ${sidebarCollapsed ? "items-center px-0 py-4" : "px-5 py-5"}`}>
             {!sidebarCollapsed && (
               <a href="/" className="flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-stone-200 transition mb-3"><ArrowLeft size={12} /> Applicazioni Urban Homy</a>
@@ -618,7 +618,7 @@ export default function App() {
               )}
             </div>
           </div>
-          <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-visible">
+          <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-y-auto md:flex-1">
             <a href="/" className="md:hidden flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap text-stone-400 hover:text-stone-200 hover:bg-white/5 transition" title="Applicazioni Urban Homy"><ArrowLeft size={16} /></a>
             {([{ id: "dashboard", label: "Cruscotto", icon: LayoutGrid }, { id: "ordini", label: "Vendite", icon: Wallet }] as Array<{ id: string; label: string; icon: React.ComponentType<{ size?: number }> }>).map((t) => (
               <button key={t.id} onClick={() => setTab(t.id)} title={sidebarCollapsed ? t.label : undefined}
@@ -834,10 +834,10 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
           <p className="text-stone-500 text-sm mt-1">Baggy Locker · Gruppo Urban Homy</p>
         </div>
       </header>
-      <div className="flex gap-2 mb-5">
+      <div className="flex flex-wrap gap-2 mb-5">
         {PERIODI.map((p) => (
           <button key={p.id} onClick={() => setPeriodo(p.id)}
-            className={`px-3.5 py-2 rounded-lg text-sm font-semibold border transition ${periodo === p.id ? "bg-[#1B2A26] text-white border-[#1B2A26]" : "bg-white text-stone-500 border-stone-300 hover:border-stone-400"}`}>
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold border transition ${periodo === p.id ? "bg-[#1B2A26] text-white border-[#1B2A26]" : "bg-white text-stone-500 border-stone-300 hover:border-stone-400"}`}>
             {p.label}
           </button>
         ))}
