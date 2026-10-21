@@ -1920,12 +1920,12 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
         </div>
       </header>
 
-      <div className="flex gap-2 mb-5">
+      <div className="flex flex-wrap gap-2 mb-5">
         {PERIODI.map((p) => (
           <button
             key={p.id}
             onClick={() => setPeriodo(p.id)}
-            className={`px-3.5 py-2 rounded-lg text-sm font-semibold border transition ${
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold border transition ${
               periodo === p.id ? "bg-[#1F1A12] text-white border-[#1F1A12]" : "bg-white text-stone-500 border-stone-300 hover:border-stone-400"
             }`}
           >
