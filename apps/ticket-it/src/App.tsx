@@ -484,7 +484,6 @@ export default function App() {
               {utenti.map((u) => <option key={u.id} value={u.id} className="text-stone-800">{u.nome}</option>)}
             </select>
           </div>
-          </div>
           )}
           <div className="hidden md:flex flex-col border-t border-white/10 mt-auto">
             {!sidebarCollapsed && (
