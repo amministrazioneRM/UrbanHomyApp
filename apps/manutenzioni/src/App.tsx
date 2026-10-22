@@ -10,7 +10,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import UHAccounts from "./accounts";
 import type { UHAccount } from "./accounts";
-import { api, useSyncedResource, useBackendOffline } from "./api";
+import { api, useSyncedResource, useBackendOffline, PageSize } from "./api";
 
 /* ------------------------------------------------------------------ */
 /*  DOMAIN INTERFACES                                                   */
@@ -443,7 +443,10 @@ export default function App() {
   const [zone, setZone] = useSyncedResource(api.zone, seedZone);
   const [camere, setCamere] = useSyncedResource(api.camere, seedCamere);
   const [oggetti, setOggetti] = useSyncedResource(api.oggetti, seedOggetti);
-  const [manutenzioni, setManutenzioni] = useSyncedResource(api.manutenzioni, seedManutenzioni);
+  const [manutenzioni, setManutenzioni] = useState<Manutenzione[]>(seedManutenzioni);
+  const [manutenzioniTotal, setManutenzioniTotal] = useState<number>(0);
+  const [manutenzioniPage, setManutenzioniPage] = useState<number>(1);
+  const [manutenzioniPageSize, setManutenzioniPageSize] = useState<PageSize>(20);
   const [tempiRegistrati, setTempiRegistrati] = useSyncedResource(api.tempiRegistrati, seedTempiRegistrati);
   const [materiali, setMateriali] = useSyncedResource(api.materiali, seedMateriali);
   const [storicoModifiche, setStoricoModifiche] = useSyncedResource(api.storico, seedStorico);
@@ -452,16 +455,18 @@ export default function App() {
   const [figureProfessionali, setFigureProfessionali] = useSyncedResource(api.figureProfessionali, seedFigureProfessionali);
   const backendOffline = useBackendOffline();
 
+  const [sessione] = useState<UHAccount | null>(() => UHAccounts.loadSession());
+  const puoAccedere = UHAccounts.hasAccesso(sessione, APP_ID);
+  const isAdminApp = UHAccounts.ruoloIn(sessione, APP_ID) === "Amministratore";
+
   const [tab, setTab] = useState<string>("dashboard");
-  const [utenteCorrenteId, setUtenteCorrenteId] = useState<string>(() => localStorage.getItem("uh_utenteCorrenteId") || "");
+  const utenteCorrenteId = sessione?.email
+    ? (manutentori.find((m) => m.email === sessione.email)?.id ?? "")
+    : "";
   const TAB_IMPOSTAZIONI = ["censimento", "team", "ditte", "figure", "strutture"];
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(tab));
   const [modale, setModale] = useState<Modale | null>(null);
   const [filtroRapido, setFiltroRapido] = useState<{ tipo: string; token: number } | null>(null);
-
-  const [sessione] = useState<UHAccount | null>(() => UHAccounts.loadSession());
-  const puoAccedere = UHAccounts.hasAccesso(sessione, APP_ID);
-  const isAdminApp = UHAccounts.ruoloIn(sessione, APP_ID) === "Amministratore";
 
   useEffect(() => {
     if (!isAdminApp && TAB_IMPOSTAZIONI.includes(tab)) setTab("dashboard");
@@ -470,6 +475,12 @@ export default function App() {
   useEffect(() => {
     if (tab === "report" && !isAdminApp) setTab("dashboard");
   }, [tab, isAdminApp]);
+
+  useEffect(() => {
+    api.manutenzioni.listPaged(manutenzioniPage, manutenzioniPageSize)
+      .then((res) => { setManutenzioni(res.items); setManutenzioniTotal(res.total); })
+      .catch(() => {});
+  }, [manutenzioniPage, manutenzioniPageSize]);
 
   function apriFiltroRapido(tipo) {
     setTab("manutenzioni");
@@ -528,6 +539,9 @@ export default function App() {
     } else {
       manutenzioneId = nid("MNT");
       setManutenzioni((ms) => [{ ...payload, id: manutenzioneId, dataCreazione: oggi.toISOString().slice(0, 10) }, ...ms]);
+      api.manutenzioni.listPaged(manutenzioniPage, manutenzioniPageSize)
+        .then((res) => { setManutenzioni(res.items); setManutenzioniTotal(res.total); })
+        .catch(() => {});
     }
     setTempiRegistrati((ts) => [
       ...ts.filter((t) => t.manutenzioneId !== manutenzioneId),
@@ -548,6 +562,9 @@ export default function App() {
     setTempiRegistrati((ts) => ts.filter((t) => t.manutenzioneId !== id));
     setMateriali((ms) => ms.filter((mt) => mt.manutenzioneId !== id));
     setStoricoModifiche((vs) => vs.filter((v) => v.manutenzioneId !== id));
+    api.manutenzioni.listPaged(manutenzioniPage, manutenzioniPageSize)
+      .then((res) => { setManutenzioni(res.items); setManutenzioniTotal(res.total); })
+      .catch(() => {});
     setModale(null);
   }
   function cambiaStato(id, stato) {
@@ -804,25 +821,14 @@ export default function App() {
             </div>
             )}
           </nav>
-          <div className="mt-auto px-3 py-3 border-t border-white/10">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-500 px-2 mb-1.5">Accesso come</div>
-            <select
-              value={utenteCorrenteId}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                setUtenteCorrenteId(e.target.value);
-                localStorage.setItem("uh_utenteCorrenteId", e.target.value);
-              }}
-              className="w-full bg-white/10 text-stone-100 text-xs rounded-lg px-2.5 py-2 outline-none border border-white/10 focus:border-[#C1622D]"
-            >
-              <option value="" className="text-stone-800">Amministratore (vede tutto)</option>
-              <optgroup label="Interni" className="text-stone-800">
-                {manutentori.filter((m) => m.tipo === "Interno" && !m.eliminato).map((m) => <option key={m.id} value={m.id} className="text-stone-800">{m.nome}</option>)}
-              </optgroup>
-              <optgroup label="Esterni" className="text-stone-800">
-                {manutentori.filter((m) => m.tipo === "Esterno" && !m.eliminato).map((m) => <option key={m.id} value={m.id} className="text-stone-800">{m.nome}</option>)}
-              </optgroup>
-            </select>
-          </div>
+          {utenteCorrenteId && (
+            <div className="mt-auto px-3 py-3 border-t border-white/10">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-500 px-2 mb-1">Accesso come</div>
+              <div className="text-xs text-stone-300 px-2 truncate">
+                {manutentori.find((m) => m.id === utenteCorrenteId)?.nome ?? sessione?.nome ?? "—"}
+              </div>
+            </div>
+          )}
           <div className="px-5 py-3 text-[11px] text-stone-500 hidden md:block border-t border-white/10">
             {struttureAttive.length} strutture · {censimento.totale} elementi censiti
           </div>
@@ -852,12 +858,39 @@ export default function App() {
               filtroRapido={filtroRapido}
               strutture={struttureAttive}
               manutentori={manutentori}
-              utenteCorrente={manutentori.find((m) => m.id === utenteCorrenteId) || null}
+              utenteCorrente={utenteCorrente}
               luogoLabel={luogoLabel}
               cambiaStato={cambiaStato}
               onApri={(m) => setModale({ type: "modificaManutenzione", payload: m })}
               onNuova={() => setModale({ type: "nuovaManutenzione", payload: null })}
             />
+          )}
+          {tab === "manutenzioni" && (
+            <div className="flex items-center justify-between px-1 mt-4 text-sm text-stone-500">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setManutenzioniPage((p) => Math.max(1, p - 1))}
+                  disabled={manutenzioniPage <= 1}
+                  className="px-2 py-1 rounded border border-stone-200 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >‹</button>
+                <span className="px-2">Pagina {manutenzioniPage} di {Math.max(1, Math.ceil(manutenzioniTotal / manutenzioniPageSize))}</span>
+                <button
+                  onClick={() => setManutenzioniPage((p) => Math.min(Math.ceil(manutenzioniTotal / manutenzioniPageSize), p + 1))}
+                  disabled={manutenzioniPage >= Math.ceil(manutenzioniTotal / manutenzioniPageSize)}
+                  className="px-2 py-1 rounded border border-stone-200 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >›</button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>Righe:</span>
+                {([20, 50, 100] as PageSize[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setManutenzioniPageSize(s); setManutenzioniPage(1); }}
+                    className={`px-2 py-1 rounded border ${manutenzioniPageSize === s ? "bg-stone-800 text-white border-stone-800" : "border-stone-200 hover:bg-stone-100"}`}
+                  >{s}</button>
+                ))}
+              </div>
+            </div>
           )}
 
           {tab === "report" && isAdminApp && (
@@ -876,7 +909,7 @@ export default function App() {
             <Calendario
               manutenzioni={manutenzioni}
               strutture={struttureAttive}
-              utenteCorrente={manutentori.find((m) => m.id === utenteCorrenteId) || null}
+               utenteCorrente={utenteCorrente}
               luogoLabel={luogoLabel}
               onApri={(m) => setModale({ type: "modificaManutenzione", payload: m })}
             />
@@ -916,7 +949,7 @@ export default function App() {
               strutture={struttureAttive}
               manutenzioni={manutenzioni}
               tempiRegistrati={tempiRegistrati}
-              utenteCorrente={manutentori.find((m) => m.id === utenteCorrenteId) || null}
+              utenteCorrente={utenteCorrente}
               luogoLabel={luogoLabel}
               cambiaStato={cambiaStato}
               onNuovo={() => setModale({ type: "nuovoManutentore", payload: null })}

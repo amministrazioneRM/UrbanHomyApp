@@ -8,6 +8,7 @@ import {
 import type { UHAccount } from "./accounts";
 import UHAccounts from "./accounts";
 import { api, useSyncedResource, useBackendOffline } from "./api";
+import type { PageSize } from "./api";
 
 const APP_ID = "ticketIt";
 
@@ -280,23 +281,34 @@ interface FiltroRapidoState {
 export default function App() {
   const [strutture] = useSyncedResource<TicketStruttura>(api.strutture, seedStrutture);
   const [utenti, setUtenti] = useSyncedResource<TicketUtente>(api.utenti, seedUtenti);
-  const [ticket, setTicket] = useSyncedResource<Ticket>(api.ticket, seedTicket);
+  const [ticket, setTicket] = useState<Ticket[]>(seedTicket);
+  const [ticketTotal, setTicketTotal] = useState<number>(0);
+  const [ticketPage, setTicketPage] = useState<number>(1);
+  const [ticketPageSize, setTicketPageSize] = useState<PageSize>(20);
   const backendOffline = useBackendOffline();
-
-  const [tab, setTab] = useState<string>("dashboard");
-  const [utenteCorrenteId, setUtenteCorrenteId] = useState<string>(() => localStorage.getItem("uhit_utenteCorrenteId") || "");
-  const TAB_IMPOSTAZIONI = ["utenti"];
-  const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(tab));
-  const [modale, setModale] = useState<ModaleState | null>(null);
-  const [filtroRapido, setFiltroRapido] = useState<FiltroRapidoState | null>(null);
 
   const [sessione] = useState<UHAccount | null>(() => UHAccounts.loadSession());
   const puoAccedere: boolean = UHAccounts.hasAccesso(sessione, APP_ID);
   const isAdminApp: boolean = UHAccounts.ruoloIn(sessione, APP_ID) === "Amministratore";
 
+  const [tab, setTab] = useState<string>("dashboard");
+  const utenteCorrenteId = sessione?.email
+    ? (utenti.find((u) => u.email === sessione.email)?.id ?? "")
+    : "";
+  const TAB_IMPOSTAZIONI = ["utenti"];
+  const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(tab));
+  const [modale, setModale] = useState<ModaleState | null>(null);
+  const [filtroRapido, setFiltroRapido] = useState<FiltroRapidoState | null>(null);
+
   useEffect(() => {
     if (!isAdminApp && TAB_IMPOSTAZIONI.includes(tab)) setTab("dashboard");
   }, [isAdminApp, tab]);
+
+  useEffect(() => {
+    api.ticket.listPaged(ticketPage, ticketPageSize)
+      .then((res) => { setTicket(res.items); setTicketTotal(res.total); })
+      .catch(() => {});
+  }, [ticketPage, ticketPageSize]);
 
   function apriFiltroRapido(tipo: string) {
     setTab("ticket");
@@ -312,11 +324,17 @@ export default function App() {
       setTicket((ts) => ts.map((t) => (t.id === dati.id ? dati : t)));
     } else {
       setTicket((ts) => [{ ...dati, id: nid("TIC"), dataCreazione: oggi.toISOString().slice(0, 10) }, ...ts]);
+      api.ticket.listPaged(ticketPage, ticketPageSize)
+        .then((res) => { setTicket(res.items); setTicketTotal(res.total); })
+        .catch(() => {});
     }
     setModale(null);
   }
   function eliminaTicket(id: string) {
     setTicket((ts) => ts.filter((t) => t.id !== id));
+    api.ticket.listPaged(ticketPage, ticketPageSize)
+      .then((res) => { setTicket(res.items); setTicketTotal(res.total); })
+      .catch(() => {});
     setModale(null);
   }
   function cambiaStato(id: string, stato: string) {
@@ -457,20 +475,14 @@ export default function App() {
             </div>
             )}
           </nav>
-          <div className="mt-auto px-3 py-3 border-t border-white/10">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-500 px-2 mb-1.5">Accesso come</div>
-            <select
-              value={utenteCorrenteId}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                setUtenteCorrenteId(e.target.value);
-                localStorage.setItem("uhit_utenteCorrenteId", e.target.value);
-              }}
-              className="w-full bg-white/10 text-stone-100 text-xs rounded-lg px-2.5 py-2 outline-none border border-white/10 focus:border-[#2D6BC1]"
-            >
-              <option value="" className="text-stone-800">Amministratore (vede tutto)</option>
-              {utenti.map((u) => <option key={u.id} value={u.id} className="text-stone-800">{u.nome}</option>)}
-            </select>
-          </div>
+          {utenteCorrenteId && (
+            <div className="mt-auto px-3 py-3 border-t border-white/10">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-stone-500 px-2 mb-1">Accesso come</div>
+              <div className="text-xs text-stone-300 px-2 truncate">
+                {utenti.find((u) => u.id === utenteCorrenteId)?.nome ?? sessione?.nome ?? "—"}
+              </div>
+            </div>
+          )}
           <div className="px-5 py-3 text-[11px] text-stone-500 hidden md:block border-t border-white/10">
             {strutture.length} sedi · {utenti.length} utenti
           </div>
@@ -501,6 +513,34 @@ export default function App() {
               onApri={(t) => setModale({ type: "modificaTicket", payload: t })}
               onNuovo={() => setModale({ type: "nuovoTicket", payload: null })}
             />
+          )}
+
+          {tab === "ticket" && (
+            <div className="flex items-center justify-between px-1 mt-4 text-sm text-stone-500">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setTicketPage((p) => Math.max(1, p - 1))}
+                  disabled={ticketPage <= 1}
+                  className="px-2 py-1 rounded border border-stone-200 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >‹</button>
+                <span className="px-2">Pagina {ticketPage} di {Math.max(1, Math.ceil(ticketTotal / ticketPageSize))}</span>
+                <button
+                  onClick={() => setTicketPage((p) => Math.min(Math.ceil(ticketTotal / ticketPageSize), p + 1))}
+                  disabled={ticketPage >= Math.ceil(ticketTotal / ticketPageSize)}
+                  className="px-2 py-1 rounded border border-stone-200 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >›</button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>Righe:</span>
+                {([20, 50, 100] as PageSize[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setTicketPageSize(s); setTicketPage(1); }}
+                    className={`px-2 py-1 rounded border ${ticketPageSize === s ? "bg-stone-800 text-white border-stone-800" : "border-stone-200 hover:bg-stone-100"}`}
+                  >{s}</button>
+                ))}
+              </div>
+            </div>
           )}
 
           {tab === "utenti" && (

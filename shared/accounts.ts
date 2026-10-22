@@ -2,8 +2,7 @@
 /*  Urban Homy — directory utenti e accessi condivisa                   */
 /*  Usata da: home (script semplice), Manutenzioni, Ticket IT, Utenti   */
 /*  (importata via esbuild nelle app React, caricata come <script>      */
-/*  globale nella home page). Tutto vive in localStorage: NON è un      */
-/*  vero sistema di autenticazione, è verificato solo nel browser.      */
+/*  globale nella home page).                                           */
 /*                                                                      */
 /*  Ruoli: ogni app definisce dei "moduli" (le sue sezioni interne).    */
 /*  Un ruolo appartiene a UNA app e assegna, per ciascun modulo, i      */
@@ -79,9 +78,6 @@ declare global {
 
 const ACCOUNTS_KEY = "uh_accounts";
 const SESSION_KEY = "uh_session";
-const ROLES_KEY = "uh_ruoli";
-const SOSTITUTI_KEY = "uh_sostituti";
-const SEDI_KEY = "uh_sedi";
 const TOKEN_KEY = "uh_token";
 const API_BASE = (typeof window !== "undefined" && window.__UH_API_BASE__) || "http://localhost:4000/api";
 
@@ -131,15 +127,7 @@ const RUOLI = ["Amministratore", "Utente"]; // ruolo globale dell'account (super
 
 const TIPI_SEDE = ["Hotel", "B&B", "Sede amministrativa", "Deposito bagagli", "Altro"];
 
-const DEFAULT_SEDI: UHSede[] = [
-  { id: "SEDE-1", nome: "Hotello Trieste", tipo: "Hotel", citta: "Trieste", indirizzo: "", attiva: true },
-  { id: "SEDE-2", nome: "Hotello Padova", tipo: "Hotel", citta: "Padova", indirizzo: "", attiva: true },
-  { id: "SEDE-3", nome: "Urban Homy Gorizia", tipo: "B&B", citta: "Gorizia", indirizzo: "", attiva: true },
-  { id: "SEDE-4", nome: "Europalace Hotel", tipo: "Hotel", citta: "Monfalcone", indirizzo: "", attiva: true },
-  { id: "SEDE-5", nome: "Sede amministrativa", tipo: "Sede amministrativa", citta: "", indirizzo: "", attiva: true },
-  { id: "SEDE-6", nome: "Baggy Locker Padova", tipo: "Deposito bagagli", citta: "Padova", indirizzo: "", attiva: true },
-  { id: "SEDE-7", nome: "Baggy Locker Trieste", tipo: "Deposito bagagli", citta: "Trieste", indirizzo: "", attiva: false },
-];
+
 
 const PERMESSI = [
   { id: "lettura", nome: "Lettura" },
@@ -249,58 +237,114 @@ function saveAccounts(_list: UHAccount[]): void {
   // No-op: gli accounts non vengono più persistiti nel localStorage.
 }
 
-function loadRoles(): UHRuolo[] {
-  let raw: string | null = null;
-  try { raw = localStorage.getItem(ROLES_KEY); } catch (e) {}
-  if (!raw) {
-    saveRoles(DEFAULT_ROLES);
-    return clone(DEFAULT_ROLES);
+async function fetchRoles(): Promise<UHRuolo[]> {
+  const token = getToken();
+  try {
+    const res = await fetch(API_BASE + "/utenti/ruoli", {
+      headers: token ? { Authorization: "Bearer " + token } : {},
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error("fetchRoles error:", e);
+    return [];
   }
-  try { return JSON.parse(raw); } catch (e) { return clone(DEFAULT_ROLES); }
 }
-function saveRoles(list: UHRuolo[]): void {
-  localStorage.setItem(ROLES_KEY, JSON.stringify(list));
+async function syncRoles(list: UHRuolo[]): Promise<void> {
+  const token = getToken();
+  try {
+    await fetch(API_BASE + "/utenti/ruoli/batch", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: "Bearer " + token } : {}),
+      },
+      body: JSON.stringify(list),
+    });
+  } catch (e) {
+    console.error("syncRoles error:", e);
+  }
 }
-function rolesForApp(appId: string): UHRuolo[] {
-  return loadRoles().filter((r) => r.appId === appId);
+function rolesForApp(appId: string, ruoli: UHRuolo[] = DEFAULT_ROLES): UHRuolo[] {
+  return ruoli.filter((r) => r.appId === appId);
 }
-function roleById(id: string): UHRuolo | null {
-  return loadRoles().find((r) => r.id === id) || null;
+function roleById(id: string, ruoli: UHRuolo[] = DEFAULT_ROLES): UHRuolo | null {
+  return ruoli.find((r) => r.id === id) || null;
 }
 
 function oggiISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
-function loadSostituti(): UHSostituto[] {
-  let raw: string | null = null;
-  try { raw = localStorage.getItem(SOSTITUTI_KEY); } catch (e) {}
-  if (!raw) return [];
-  try { return JSON.parse(raw); } catch (e) { return []; }
+async function fetchSostituti(): Promise<UHSostituto[]> {
+  const token = getToken();
+  try {
+    const res = await fetch(API_BASE + "/utenti/sostituti", {
+      headers: token ? { Authorization: "Bearer " + token } : {},
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error("fetchSostituti error:", e);
+    return [];
+  }
 }
-function saveSostituti(list: UHSostituto[]): void {
-  localStorage.setItem(SOSTITUTI_KEY, JSON.stringify(list));
+async function syncSostituti(list: UHSostituto[]): Promise<void> {
+  const token = getToken();
+  try {
+    await fetch(API_BASE + "/utenti/sostituti/batch", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: "Bearer " + token } : {}),
+      },
+      body: JSON.stringify(list),
+    });
+  } catch (e) {
+    console.error("syncSostituti error:", e);
+  }
 }
 // La sostituzione (se presente) attiva per `sostitutoId` sull'app `appId` alla data
 // `dataStr` (default oggi): durante il periodo, il sostituto eredita l'accesso e il
 // ruolo diretti del titolare per quell'app (non si considerano sostituzioni a catena).
-function sostituzioneAttiva(sostitutoId: string, appId: string, dataStr?: string): UHSostituto | null {
+// `sostituti` è la lista già caricata dal chiamante; se non fornita usa array vuoto
+// (nessuna sostituzione attiva) per evitare letture da localStorage.
+function sostituzioneAttiva(sostitutoId: string, appId: string, dataStr?: string, sostituti: UHSostituto[] = []): UHSostituto | null {
   const data = dataStr || oggiISO();
-  return loadSostituti().find((s) => {
+  return sostituti.find((s) => {
     return s.sostitutoId === sostitutoId && s.appId === appId && s.dataInizio <= data && data <= s.dataFine;
   }) || null;
 }
 
-function loadSedi(): UHSede[] {
-  let raw: string | null = null;
-  try { raw = localStorage.getItem(SEDI_KEY); } catch (e) {}
-  if (!raw) {
-    saveSedi(DEFAULT_SEDI);
-    return clone(DEFAULT_SEDI);
+async function fetchSedi(): Promise<UHSede[]> {
+  const token = getToken();
+  try {
+    const res = await fetch(API_BASE + "/utenti/sedi", {
+      headers: token ? { Authorization: "Bearer " + token } : {},
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error("fetchSedi error:", e);
+    return [];
   }
-  try { return JSON.parse(raw); } catch (e) { return clone(DEFAULT_SEDI); }
 }
-function saveSedi(list: UHSede[]): void {
-  localStorage.setItem(SEDI_KEY, JSON.stringify(list));
+async function syncSedi(list: UHSede[]): Promise<void> {
+  const token = getToken();
+  try {
+    await fetch(API_BASE + "/utenti/sedi/batch", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: "Bearer " + token } : {}),
+      },
+      body: JSON.stringify(list),
+    });
+  } catch (e) {
+    console.error("syncSedi error:", e);
+  }
 }
 
 function loadSession(): UHAccount | null {
@@ -393,21 +437,21 @@ interface AccessoDiretto {
 
 // Accesso/ruolo diretti del titolare per un'app, ignorando eventuali sostituzioni
 // (evita catene: un sostituto non eredita a sua volta le sostituzioni del titolare).
-function accessoDirettoTitolare(titolare: UHAccount | null | undefined, appId: string): AccessoDiretto | null {
+function accessoDirettoTitolare(titolare: UHAccount | null | undefined, appId: string, ruoli: UHRuolo[] = DEFAULT_ROLES): AccessoDiretto | null {
   if (!titolare) return null;
   if (isAdminGlobale(titolare)) return { abilitato: true, ruolo: { nome: "Amministratore", permessi: null, admin: true } };
   const accesso = titolare.accessi && titolare.accessi[appId as AppId];
   if (!accesso || !accesso.abilitato) return null;
-  return { abilitato: true, ruolo: roleById(accesso.ruoloId) };
+  return { abilitato: true, ruolo: roleById(accesso.ruoloId, ruoli) };
 }
 
-function hasAccesso(account: UHAccount | null | undefined, appId: string): boolean {
+function hasAccesso(account: UHAccount | null | undefined, appId: string, sostituti: UHSostituto[] = [], accounts: UHAccount[] = []): boolean {
   if (!account) return false;
   if (isAdminGlobale(account)) return true;
   if (account.accessi && account.accessi[appId as AppId] && account.accessi[appId as AppId]!.abilitato) return true;
-  const sost = sostituzioneAttiva(account.id, appId);
+  const sost = sostituzioneAttiva(account.id, appId, undefined, sostituti);
   if (!sost) return false;
-  const titolare = loadAccounts().find((a) => a.id === sost.titolareId);
+  const titolare = accounts.find((a) => a.id === sost.titolareId);
   return !!accessoDirettoTitolare(titolare, appId);
 }
 
@@ -416,18 +460,18 @@ function hasAccesso(account: UHAccount | null | undefined, appId: string): boole
 // app è bloccato (non rinominabile/eliminabile) proprio per garantire che questo
 // confronto continui a funzionare. Se l'account sta sostituendo qualcuno in questo
 // momento su questa app, eredita il ruolo del titolare.
-function ruoloIn(account: UHAccount | null | undefined, appId: string): string | null {
+function ruoloIn(account: UHAccount | null | undefined, appId: string, ruoli: UHRuolo[] = DEFAULT_ROLES, sostituti: UHSostituto[] = [], accounts: UHAccount[] = []): string | null {
   if (!account) return null;
   if (isAdminGlobale(account)) return "Amministratore";
   const accesso = account.accessi && account.accessi[appId as AppId];
   if (accesso && accesso.abilitato) {
-    const ruolo = roleById(accesso.ruoloId);
+    const ruolo = roleById(accesso.ruoloId, ruoli);
     return (ruolo && ruolo.nome) || "Utente";
   }
-  const sost = sostituzioneAttiva(account.id, appId);
+  const sost = sostituzioneAttiva(account.id, appId, undefined, sostituti);
   if (sost) {
-    const titolare = loadAccounts().find((a) => a.id === sost.titolareId);
-    const diretto = accessoDirettoTitolare(titolare, appId);
+    const titolare = accounts.find((a) => a.id === sost.titolareId);
+    const diretto = accessoDirettoTitolare(titolare, appId, ruoli);
     if (diretto) return (diretto.ruolo && diretto.ruolo.nome) || "Utente";
   }
   return "Utente";
@@ -435,19 +479,19 @@ function ruoloIn(account: UHAccount | null | undefined, appId: string): string |
 
 // Permesso granulare: può l'account fare `tipo` (lettura/modifica/creazione/eliminazione)
 // sul modulo `moduloId` dell'app `appId`? Considera anche le sostituzioni attive.
-function permesso(account: UHAccount | null | undefined, appId: string, moduloId: string, tipo: keyof PermessiEntry): boolean {
+function permesso(account: UHAccount | null | undefined, appId: string, moduloId: string, tipo: keyof PermessiEntry, ruoli: UHRuolo[] = DEFAULT_ROLES, sostituti: UHSostituto[] = [], accounts: UHAccount[] = []): boolean {
   if (!account) return false;
   if (isAdminGlobale(account)) return true;
   const accesso = account.accessi && account.accessi[appId as AppId];
   if (accesso && accesso.abilitato) {
-    const ruolo = roleById(accesso.ruoloId);
+    const ruolo = roleById(accesso.ruoloId, ruoli);
     const mp = ruolo && ruolo.permessi && ruolo.permessi[moduloId];
     if (mp && mp[tipo]) return true;
   }
-  const sost = sostituzioneAttiva(account.id, appId);
+  const sost = sostituzioneAttiva(account.id, appId, undefined, sostituti);
   if (sost) {
-    const titolare = loadAccounts().find((a) => a.id === sost.titolareId);
-    const diretto = accessoDirettoTitolare(titolare, appId);
+    const titolare = accounts.find((a) => a.id === sost.titolareId);
+    const diretto = accessoDirettoTitolare(titolare, appId, ruoli);
     if (diretto) {
       if (diretto.ruolo && diretto.ruolo.admin) return true;
       const mpTitolare = diretto.ruolo && diretto.ruolo.permessi && diretto.ruolo.permessi[moduloId];
@@ -460,15 +504,12 @@ function permesso(account: UHAccount | null | undefined, appId: string, moduloId
 const UHAccounts = {
   ACCOUNTS_KEY,
   SESSION_KEY,
-  ROLES_KEY,
-  SEDI_KEY,
   APPS,
   RUOLI,
   PERMESSI,
   TIPI_SEDE,
   DEFAULT_ACCOUNTS,
   DEFAULT_ROLES,
-  DEFAULT_SEDI,
   accessoVuoto,
   moduliOf,
   permessiVuoti,
@@ -476,16 +517,16 @@ const UHAccounts = {
   matricePermessi,
   loadAccounts,
   saveAccounts,
-  loadRoles,
-  saveRoles,
+  fetchRoles,
+  syncRoles,
   rolesForApp,
   roleById,
-  loadSostituti,
-  saveSostituti,
+  fetchSostituti,
+  syncSostituti,
   sostituzioneAttiva,
   oggiISO,
-  loadSedi,
-  saveSedi,
+  fetchSedi,
+  syncSedi,
   loadSession,
   saveSession,
   clearSession,
