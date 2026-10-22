@@ -24,9 +24,6 @@ var _UHAccountsModule = (() => {
   });
   var ACCOUNTS_KEY = "uh_accounts";
   var SESSION_KEY = "uh_session";
-  var ROLES_KEY = "uh_ruoli";
-  var SOSTITUTI_KEY = "uh_sostituti";
-  var SEDI_KEY = "uh_sedi";
   var TOKEN_KEY = "uh_token";
   var API_BASE = typeof window !== "undefined" && window.__UH_API_BASE__ || "http://localhost:4000/api";
   var APPS = [
@@ -70,15 +67,7 @@ var _UHAccountsModule = (() => {
   ];
   var RUOLI = ["Amministratore", "Utente"];
   var TIPI_SEDE = ["Hotel", "B&B", "Sede amministrativa", "Deposito bagagli", "Altro"];
-  var DEFAULT_SEDI = [
-    { id: "SEDE-1", nome: "Hotello Trieste", tipo: "Hotel", citta: "Trieste", indirizzo: "", attiva: true },
-    { id: "SEDE-2", nome: "Hotello Padova", tipo: "Hotel", citta: "Padova", indirizzo: "", attiva: true },
-    { id: "SEDE-3", nome: "Urban Homy Gorizia", tipo: "B&B", citta: "Gorizia", indirizzo: "", attiva: true },
-    { id: "SEDE-4", nome: "Europalace Hotel", tipo: "Hotel", citta: "Monfalcone", indirizzo: "", attiva: true },
-    { id: "SEDE-5", nome: "Sede amministrativa", tipo: "Sede amministrativa", citta: "", indirizzo: "", attiva: true },
-    { id: "SEDE-6", nome: "Baggy Locker Padova", tipo: "Deposito bagagli", citta: "Padova", indirizzo: "", attiva: true },
-    { id: "SEDE-7", nome: "Baggy Locker Trieste", tipo: "Deposito bagagli", citta: "Trieste", indirizzo: "", attiva: false }
-  ];
+
   var PERMESSI = [
     { id: "lettura", nome: "Lettura" },
     { id: "modifica", nome: "Modifica" },
@@ -193,92 +182,86 @@ var _UHAccountsModule = (() => {
     return a;
   }
   function loadAccounts() {
-    let raw = null;
-    try {
-      raw = localStorage.getItem(ACCOUNTS_KEY);
-    } catch (e) {
-    }
-    if (!raw) {
-      saveAccounts(DEFAULT_ACCOUNTS);
-      return clone(DEFAULT_ACCOUNTS);
-    }
-    try {
-      return JSON.parse(raw).map(migraAccount);
-    } catch (e) {
-      return clone(DEFAULT_ACCOUNTS);
-    }
+    // Gli accounts sono gestiti esclusivamente dal backend.
+    return [];
   }
-  function saveAccounts(list) {
-    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(list));
+  function saveAccounts(_list) {
+    // No-op: gli accounts non vengono più persistiti nel localStorage.
   }
-  function loadRoles() {
-    let raw = null;
-    try {
-      raw = localStorage.getItem(ROLES_KEY);
-    } catch (e) {
-    }
-    if (!raw) {
-      saveRoles(DEFAULT_ROLES);
-      return clone(DEFAULT_ROLES);
-    }
-    try {
-      return JSON.parse(raw);
-    } catch (e) {
-      return clone(DEFAULT_ROLES);
-    }
+  function fetchRoles() {
+    const token = getToken();
+    return fetch(API_BASE + "/utenti/ruoli", {
+      headers: token ? { Authorization: "Bearer " + token } : {},
+    }).then(function(res) {
+      if (!res.ok) return [];
+      return res.json().then(function(data) { return Array.isArray(data) ? data : []; });
+    }).catch(function(e) {
+      console.error("fetchRoles error:", e);
+      return [];
+    });
   }
-  function saveRoles(list) {
-    localStorage.setItem(ROLES_KEY, JSON.stringify(list));
+  function syncRoles(list) {
+    const token = getToken();
+    return fetch(API_BASE + "/utenti/ruoli/batch", {
+      method: "POST",
+      headers: Object.assign({ "Content-Type": "application/json" }, token ? { Authorization: "Bearer " + token } : {}),
+      body: JSON.stringify(list),
+    }).catch(function(e) { console.error("syncRoles error:", e); });
   }
-  function rolesForApp(appId) {
-    return loadRoles().filter((r) => r.appId === appId);
+  function rolesForApp(appId, ruoli) {
+    return (ruoli || DEFAULT_ROLES).filter(function(r) { return r.appId === appId; });
   }
-  function roleById(id) {
-    return loadRoles().find((r) => r.id === id) || null;
+  function roleById(id, ruoli) {
+    return (ruoli || DEFAULT_ROLES).find(function(r) { return r.id === id; }) || null;
   }
   function oggiISO() {
     return (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   }
-  function loadSostituti() {
-    let raw = null;
-    try {
-      raw = localStorage.getItem(SOSTITUTI_KEY);
-    } catch (e) {
-    }
-    if (!raw) return [];
-    try {
-      return JSON.parse(raw);
-    } catch (e) {
+  function fetchSostituti() {
+    const token = getToken();
+    return fetch(API_BASE + "/utenti/sostituti", {
+      headers: token ? { Authorization: "Bearer " + token } : {},
+    }).then(function(res) {
+      if (!res.ok) return [];
+      return res.json().then(function(data) { return Array.isArray(data) ? data : []; });
+    }).catch(function(e) {
+      console.error("fetchSostituti error:", e);
       return [];
-    }
+    });
   }
-  function saveSostituti(list) {
-    localStorage.setItem(SOSTITUTI_KEY, JSON.stringify(list));
+  function syncSostituti(list) {
+    const token = getToken();
+    return fetch(API_BASE + "/utenti/sostituti/batch", {
+      method: "POST",
+      headers: Object.assign({ "Content-Type": "application/json" }, token ? { Authorization: "Bearer " + token } : {}),
+      body: JSON.stringify(list),
+    }).catch(function(e) { console.error("syncSostituti error:", e); });
   }
-  function sostituzioneAttiva(sostitutoId, appId, dataStr) {
+  function sostituzioneAttiva(sostitutoId, appId, dataStr, sostituti) {
     const data = dataStr || oggiISO();
-    return loadSostituti().find((s) => {
+    return (sostituti || []).find(function(s) {
       return s.sostitutoId === sostitutoId && s.appId === appId && s.dataInizio <= data && data <= s.dataFine;
     }) || null;
   }
-  function loadSedi() {
-    let raw = null;
-    try {
-      raw = localStorage.getItem(SEDI_KEY);
-    } catch (e) {
-    }
-    if (!raw) {
-      saveSedi(DEFAULT_SEDI);
-      return clone(DEFAULT_SEDI);
-    }
-    try {
-      return JSON.parse(raw);
-    } catch (e) {
-      return clone(DEFAULT_SEDI);
-    }
+  function fetchSedi() {
+    const token = getToken();
+    return fetch(API_BASE + "/utenti/sedi", {
+      headers: token ? { Authorization: "Bearer " + token } : {},
+    }).then(function(res) {
+      if (!res.ok) return [];
+      return res.json().then(function(data) { return Array.isArray(data) ? data : []; });
+    }).catch(function(e) {
+      console.error("fetchSedi error:", e);
+      return [];
+    });
   }
-  function saveSedi(list) {
-    localStorage.setItem(SEDI_KEY, JSON.stringify(list));
+  function syncSedi(list) {
+    const token = getToken();
+    return fetch(API_BASE + "/utenti/sedi/batch", {
+      method: "POST",
+      headers: Object.assign({ "Content-Type": "application/json" }, token ? { Authorization: "Bearer " + token } : {}),
+      body: JSON.stringify(list),
+    }).catch(function(e) { console.error("syncSedi error:", e); });
   }
   function loadSession() {
     let raw = null;
@@ -289,14 +272,14 @@ var _UHAccountsModule = (() => {
     if (!raw) return null;
     try {
       const sess = JSON.parse(raw);
-      const attuale = loadAccounts().find((a) => a.id === sess.id);
-      return attuale || null;
+      if (sess && sess.id && sess.email) return sess;
+      return null;
     } catch (e) {
       return null;
     }
   }
   function saveSession(account) {
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ id: account.id }));
+    localStorage.setItem(SESSION_KEY, JSON.stringify(account));
   }
   function clearSession() {
     localStorage.removeItem(SESSION_KEY);
@@ -309,20 +292,14 @@ var _UHAccountsModule = (() => {
       return null;
     }
   }
-  function upsertAccountInCache(account) {
-    const list = loadAccounts().filter((a) => a.id !== account.id);
-    list.push(account);
-    saveAccounts(list);
-  }
   function autenticaConRisposta(res) {
     if (!res.ok) {
-      return res.json().catch(() => ({})).then((body) => {
+      return res.json().catch(function() { return {}; }).then(function(body) {
         throw new Error(body.error || "Accesso non riuscito");
       });
     }
-    return res.json().then((data) => {
+    return res.json().then(function(data) {
       localStorage.setItem(TOKEN_KEY, data.token);
-      upsertAccountInCache(data.account);
       saveSession(data.account);
       return data.account;
     });
@@ -344,51 +321,51 @@ var _UHAccountsModule = (() => {
   function isAdminGlobale(account) {
     return !!(account && account.ruoloGlobale === "Amministratore");
   }
-  function accessoDirettoTitolare(titolare, appId) {
+  function accessoDirettoTitolare(titolare, appId, ruoli) {
     if (!titolare) return null;
     if (isAdminGlobale(titolare)) return { abilitato: true, ruolo: { nome: "Amministratore", permessi: null, admin: true } };
     const accesso = titolare.accessi && titolare.accessi[appId];
     if (!accesso || !accesso.abilitato) return null;
-    return { abilitato: true, ruolo: roleById(accesso.ruoloId) };
+    return { abilitato: true, ruolo: roleById(accesso.ruoloId, ruoli) };
   }
-  function hasAccesso(account, appId) {
+  function hasAccesso(account, appId, sostituti, accounts) {
     if (!account) return false;
     if (isAdminGlobale(account)) return true;
     if (account.accessi && account.accessi[appId] && account.accessi[appId].abilitato) return true;
-    const sost = sostituzioneAttiva(account.id, appId);
+    const sost = sostituzioneAttiva(account.id, appId, void 0, sostituti || []);
     if (!sost) return false;
-    const titolare = loadAccounts().find((a) => a.id === sost.titolareId);
+    const titolare = (accounts || []).find(function(a) { return a.id === sost.titolareId; });
     return !!accessoDirettoTitolare(titolare, appId);
   }
-  function ruoloIn(account, appId) {
+  function ruoloIn(account, appId, ruoli, sostituti, accounts) {
     if (!account) return null;
     if (isAdminGlobale(account)) return "Amministratore";
     const accesso = account.accessi && account.accessi[appId];
     if (accesso && accesso.abilitato) {
-      const ruolo = roleById(accesso.ruoloId);
+      const ruolo = roleById(accesso.ruoloId, ruoli);
       return ruolo && ruolo.nome || "Utente";
     }
-    const sost = sostituzioneAttiva(account.id, appId);
+    const sost = sostituzioneAttiva(account.id, appId, void 0, sostituti || []);
     if (sost) {
-      const titolare = loadAccounts().find((a) => a.id === sost.titolareId);
-      const diretto = accessoDirettoTitolare(titolare, appId);
+      const titolare = (accounts || []).find(function(a) { return a.id === sost.titolareId; });
+      const diretto = accessoDirettoTitolare(titolare, appId, ruoli);
       if (diretto) return diretto.ruolo && diretto.ruolo.nome || "Utente";
     }
     return "Utente";
   }
-  function permesso(account, appId, moduloId, tipo) {
+  function permesso(account, appId, moduloId, tipo, ruoli, sostituti, accounts) {
     if (!account) return false;
     if (isAdminGlobale(account)) return true;
     const accesso = account.accessi && account.accessi[appId];
     if (accesso && accesso.abilitato) {
-      const ruolo = roleById(accesso.ruoloId);
+      const ruolo = roleById(accesso.ruoloId, ruoli);
       const mp = ruolo && ruolo.permessi && ruolo.permessi[moduloId];
       if (mp && mp[tipo]) return true;
     }
-    const sost = sostituzioneAttiva(account.id, appId);
+    const sost = sostituzioneAttiva(account.id, appId, void 0, sostituti || []);
     if (sost) {
-      const titolare = loadAccounts().find((a) => a.id === sost.titolareId);
-      const diretto = accessoDirettoTitolare(titolare, appId);
+      const titolare = (accounts || []).find(function(a) { return a.id === sost.titolareId; });
+      const diretto = accessoDirettoTitolare(titolare, appId, ruoli);
       if (diretto) {
         if (diretto.ruolo && diretto.ruolo.admin) return true;
         const mpTitolare = diretto.ruolo && diretto.ruolo.permessi && diretto.ruolo.permessi[moduloId];
@@ -400,15 +377,12 @@ var _UHAccountsModule = (() => {
   var UHAccounts = {
     ACCOUNTS_KEY,
     SESSION_KEY,
-    ROLES_KEY,
-    SEDI_KEY,
     APPS,
     RUOLI,
     PERMESSI,
     TIPI_SEDE,
     DEFAULT_ACCOUNTS,
     DEFAULT_ROLES,
-    DEFAULT_SEDI,
     accessoVuoto,
     moduliOf,
     permessiVuoti,
@@ -416,16 +390,16 @@ var _UHAccountsModule = (() => {
     matricePermessi,
     loadAccounts,
     saveAccounts,
-    loadRoles,
-    saveRoles,
+    fetchRoles,
+    syncRoles,
     rolesForApp,
     roleById,
-    loadSostituti,
-    saveSostituti,
+    fetchSostituti,
+    syncSostituti,
     sostituzioneAttiva,
     oggiISO,
-    loadSedi,
-    saveSedi,
+    fetchSedi,
+    syncSedi,
     loadSession,
     saveSession,
     clearSession,

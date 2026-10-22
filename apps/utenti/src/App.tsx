@@ -152,9 +152,9 @@ export default function App(): JSX.Element {
   useEffect(() => {
     api.accounts.list().then(setAccounts).catch(() => {});
   }, []);
-  const [ruoli, setRuoli] = useSyncedResource(api.ruoli, UHAccounts.loadRoles());
-  const [sostituti, setSostituti] = useSyncedResource(api.sostituti, UHAccounts.loadSostituti());
-  const [sedi, setSedi] = useSyncedResource(api.sedi, UHAccounts.loadSedi());
+  const [ruoli, setRuoli] = useSyncedResource(api.ruoli, UHAccounts.DEFAULT_ROLES);
+  const [sostituti, setSostituti] = useSyncedResource(api.sostituti, []);
+  const [sedi, setSedi] = useSyncedResource(api.sedi, []);
   const [modale, setModale] = useState<ModaleUtente | null>(null);
   const [erroreAccount, setErroreAccount] = useState<string | null>(null);
   const [modaleRuolo, setModaleRuolo] = useState<ModaleRuolo | null>(null);
@@ -190,15 +190,12 @@ export default function App(): JSX.Element {
     api.accounts.list().then(setAccounts).catch(() => {});
   }
   function persistRuoli(list: UHRuolo[]): void {
-    UHAccounts.saveRoles(list);
     setRuoli(list);
   }
   function persistSostituti(list: UHSostituto[]): void {
-    UHAccounts.saveSostituti(list);
     setSostituti(list);
   }
   function persistSedi(list: UHSede[]): void {
-    UHAccounts.saveSedi(list);
     setSedi(list);
   }
 

@@ -32,8 +32,17 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+export type PageSize = 20 | 50 | 100;
+export interface PagedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: PageSize;
+}
+
 interface Resource<T> {
   list: () => Promise<T[]>;
+  listPaged: (page: number, pageSize: PageSize) => Promise<PagedResponse<T>>;
   create: (item: T) => Promise<T>;
   update: (id: string, item: Partial<T>) => Promise<T>;
   remove: (id: string) => Promise<void>;
@@ -65,11 +74,16 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
 function makeResource<T extends { id: string }>(path: string): Resource<T> {
   return {
     list: () => apiFetch<T[]>(`/${path}`),
+    listPaged: (page, pageSize) => apiFetch<PagedResponse<T>>(`/${path}?page=${page}&pageSize=${pageSize}`),
     create: (item) => apiFetch<T>(`/${path}`, { method: "POST", body: JSON.stringify(item) }),
     update: (id, item) => apiFetch<T>(`/${path}/${id}`, { method: "PUT", body: JSON.stringify(item) }),
     remove: (id) => apiFetch<void>(`/${path}/${id}`, { method: "DELETE" }),
     batch: (items) => apiFetch<T[]>(`/${path}/batch`, { method: "POST", body: JSON.stringify(items) }),
   };
+}
+
+export function fetchOrdiniDashboard<T>(periodo: string): Promise<T[]> {
+  return apiFetch<T[]>(`/locker/ordini/dashboard?periodo=${encodeURIComponent(periodo)}`);
 }
 
 export const api = {
