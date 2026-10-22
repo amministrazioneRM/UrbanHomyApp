@@ -7,12 +7,16 @@ import { Prisma } from "@prisma/client";
 type AnyRecord = Record<string, unknown>;
 
 interface PrismaDelegate {
-  findMany(args?: { include?: AnyRecord; where?: AnyRecord }): Promise<AnyRecord[]>;
+  findMany(args?: { include?: AnyRecord; where?: AnyRecord; skip?: number; take?: number }): Promise<AnyRecord[]>;
   findUnique(args: { where: { id: string }; include?: AnyRecord }): Promise<AnyRecord | null>;
   create(args: { data: AnyRecord }): Promise<AnyRecord>;
   update(args: { where: { id: string }; data: AnyRecord }): Promise<AnyRecord>;
   delete(args: { where: { id: string } }): Promise<AnyRecord>;
+  count(args?: { where?: AnyRecord }): Promise<number>;
 }
+
+const ALLOWED_PAGE_SIZES = [20, 50, 100] as const;
+type AllowedPageSize = typeof ALLOWED_PAGE_SIZES[number];
 
 interface CrudOptions {
   idPrefix?: string;
@@ -24,6 +28,8 @@ interface CrudOptions {
   stripFields?: string[];
   filter?: (req: Request) => Promise<AnyRecord | undefined> | AnyRecord | undefined;
   preDelete?: (req: Request, id: string) => Promise<void>;
+  /** Abilita la paginazione server-side tramite query params ?page=&pageSize= */
+  paginated?: boolean;
 }
 
 async function hashFieldsIn(data: AnyRecord, hashFields: string[]): Promise<AnyRecord> {
@@ -100,7 +106,7 @@ function serialize(data: unknown, omit?: string[]): unknown {
 }
 
 export function makeCrudRouter(delegate: PrismaDelegate, options: CrudOptions = {}): Router {
-  const { idPrefix, include, modelName, omit, hashFields = [], stripFields = [], filter, preDelete } = options;
+  const { idPrefix, include, modelName, omit, hashFields = [], stripFields = [], filter, preDelete, paginated } = options;
 
   function stripInputFields(data: AnyRecord): AnyRecord {
     if (stripFields.length === 0) return data;
@@ -114,7 +120,32 @@ export function makeCrudRouter(delegate: PrismaDelegate, options: CrudOptions = 
   router.get("/", async (req, res, next) => {
     try {
       const where = filter ? (await filter(req)) : undefined;
-      const items = await delegate.findMany({ include, ...(where ? { where } : {}) });
+      const findArgs: Parameters<PrismaDelegate["findMany"]>[0] = { include, ...(where ? { where } : {}) };
+
+      // Paginazione opzionale: attiva solo se la route ha paginated=true e i params sono presenti
+      if (paginated && (req.query.page !== undefined || req.query.pageSize !== undefined)) {
+        const rawPage = parseInt(req.query.page as string, 10);
+        const rawPageSize = parseInt(req.query.pageSize as string, 10);
+        if (!Number.isInteger(rawPage) || rawPage < 1) {
+          res.status(400).json({ error: "Il parametro 'page' deve essere un intero ≥ 1" });
+          return;
+        }
+        if (!(ALLOWED_PAGE_SIZES as readonly number[]).includes(rawPageSize)) {
+          res.status(400).json({ error: `Il parametro 'pageSize' deve essere uno tra: ${ALLOWED_PAGE_SIZES.join(", ")}` });
+          return;
+        }
+        const page = rawPage;
+        const pageSize = rawPageSize as AllowedPageSize;
+        const [items, total] = await Promise.all([
+          delegate.findMany({ ...findArgs, skip: (page - 1) * pageSize, take: pageSize }),
+          delegate.count(where ? { where } : undefined),
+        ]);
+        res.json({ items: serialize(items, omit), total, page, pageSize });
+        return;
+      }
+
+      // Comportamento default: array flat (retrocompatibile)
+      const items = await delegate.findMany(findArgs);
       res.json(serialize(items, omit));
     } catch (err) {
       next(err);

@@ -9,7 +9,8 @@ import {
 // @ts-ignore
 import * as XLSX from "xlsx";
 import UHAccounts from "./accounts";
-import { api, useSyncedResource, useBackendOffline } from "./api";
+import { api, useSyncedResource, useBackendOffline, fetchVenditeDashboard, fetchVenditeStats } from "./api";
+import type { PageSize, VenditeStats } from "./api";
 const APP_ID = "vendingMachine";
 
 interface VendingStruttura { id: string; sedeCentraleId: string; nome: string; citta: string; attiva: boolean }
@@ -65,11 +66,12 @@ interface ImportaVenditeFormProps { onConferma: (modalita: string) => void; onCl
 interface VenditaFormProps { esistente: VendingVendita; strutture: VendingStruttura[]; macchine: VendingMacchina[]; onSalva: (v: VendingVendita) => void; onElimina: () => void; onClose: () => void; }
 interface SediProps {
   strutture: VendingStruttura[]; vendite: VendingVendita[]; macchine: VendingMacchina[];
+  sediCentrali: UHSede[];
   onNuova: () => void; onApri: (s: VendingStruttura) => void;
   onNuovaMacchina: (strutturaId: string) => void; onApriMacchina: (m: VendingMacchina) => void;
   onEliminaMacchina: (id: string) => void; onToggleMacchinaAttiva: (id: string) => void;
 }
-interface StrutturaFormProps { esistente: VendingStruttura | null; onSalva: (s: VendingStruttura) => void; onElimina: (() => void) | null; onClose: () => void; }
+interface StrutturaFormProps { esistente: VendingStruttura | null; sediCentrali: UHSede[]; onSalva: (s: VendingStruttura) => void; onElimina: (() => void) | null; onClose: () => void; }
 interface MacchinaFormProps { esistente: VendingMacchina | null; prefill?: { strutturaId: string }; strutture: VendingStruttura[]; onSalva: (m: VendingMacchina) => void; onElimina: (() => void) | null; onClose: () => void; }
 
 
@@ -1181,16 +1183,22 @@ function inPeriodo(iso: string, periodoId: string): boolean {
   lunedi.setDate(now.getDate() - ((now.getDay() + 6) % 7));
   let da: Date, a: Date;
   switch (periodoId) {
-    case "sett-corrente": da = lunedi; a = now; break;
+    // lunedì → domenica della settimana corrente
+    case "sett-corrente": { da = new Date(lunedi); a = new Date(lunedi); a.setDate(lunedi.getDate() + 6); break; }
+    // lunedì → domenica della settimana scorsa
     case "sett-prec": {
-      const lp = new Date(lunedi); lp.setDate(lunedi.getDate() - 7);
-      const dp = new Date(lunedi); dp.setDate(lunedi.getDate() - 1);
-      da = lp; a = dp; break;
+      da = new Date(lunedi); da.setDate(lunedi.getDate() - 7);
+      a = new Date(lunedi); a.setDate(lunedi.getDate() - 1);
+      break;
     }
-    case "mese-corrente": da = new Date(anno, mese, 1); a = now; break;
-    case "mese-prec": da = new Date(anno, mese - 1, 1); a = new Date(anno, mese, 0); break;
-    case "anno-corrente": da = new Date(anno, 0, 1); a = now; break;
-    case "anno-prec": da = new Date(anno - 1, 0, 1); a = new Date(anno - 1, 11, 31); break;
+    // 1° → ultimo giorno del mese corrente
+    case "mese-corrente": { da = new Date(anno, mese, 1); a = new Date(anno, mese + 1, 0); break; }
+    // 1° → ultimo giorno del mese precedente
+    case "mese-prec": { da = new Date(anno, mese - 1, 1); a = new Date(anno, mese, 0); break; }
+    // 1 gennaio → 31 dicembre dell'anno corrente
+    case "anno-corrente": { da = new Date(anno, 0, 1); a = new Date(anno, 11, 31); break; }
+    // 1 gennaio → 31 dicembre dell'anno scorso
+    case "anno-prec": { da = new Date(anno - 1, 0, 1); a = new Date(anno - 1, 11, 31); break; }
     default: return true;
   }
   const s = da.toISOString().slice(0, 10);
@@ -1446,17 +1454,30 @@ const inputCls = "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 t
 export default function App() {
   const [strutture, setStrutture] = useSyncedResource(api.strutture, seedStrutture);
   const [macchine, setMacchine] = useSyncedResource(api.macchine, seedMacchine);
-  const [vendite, setVendite, reloadVendite] = useSyncedResource(api.vendite, seedVendite);
+  const [vendite, setVendite] = useState<VendingVendita[]>(seedVendite);
+  const [venditeTotal, setVenditeTotal] = useState<number>(0);
+  const [venditePage, setVenditePage] = useState<number>(1);
+  const [venditePageSize, setVenditePageSize] = useState<PageSize>(20);
   const backendOffline = useBackendOffline();
 
   const [tab, setTab] = useState<string>("dashboard");
   const TAB_IMPOSTAZIONI = ["sedi"];
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(tab));
   const [modale, setModale] = useState<Modale | null>(null);
-  const [periodo, setPeriodo] = useState<string>("mese-corrente");
+  const [periodo, _setPeriodo] = useState<string>("mese-corrente");
+  const setPeriodo = (p: string) => { _setPeriodo(p); setVenditePage(1); };
   const [importRisultato, setImportRisultato] = useState<ImportRisultato | null>(null);
 
   const [sessione] = useState<UHAccount | null>(() => UHAccounts.loadSession());
+  const [sediCentrali, setSediCentrali] = useState<UHSede[]>([]);
+  useEffect(() => { UHAccounts.fetchSedi().then(setSediCentrali).catch(() => {}); }, []);
+
+  const reloadVendite = () => {
+    api.vendite.listPaged(venditePage, venditePageSize)
+      .then((res) => { setVendite(res.items as VendingVendita[]); setVenditeTotal(res.total); })
+      .catch(() => {});
+  };
+  useEffect(() => { reloadVendite(); }, [venditePage, venditePageSize]);
   const puoAccedere = UHAccounts.hasAccesso(sessione, APP_ID);
   const isAdminApp = UHAccounts.ruoloIn(sessione, APP_ID) === "Amministratore";
 
@@ -1563,8 +1584,18 @@ export default function App() {
   // reali da mostrare, quindi vengono escluse da statistiche, grafico e sedi.
   const idsConMacchinaAttiva = useMemo(() => new Set(macchine.filter((m) => m.attiva !== false).map((m) => m.strutturaId)), [macchine]);
   const struttureConMacchine = useMemo(() => strutture.filter((s) => idsConMacchinaAttiva.has(s.id)), [strutture, idsConMacchinaAttiva]);
+  // venditeConMacchina e venditePeriodo: derivati dall'array paginato, usati nella sezione lista vendite
   const venditeConMacchina = useMemo(() => vendite.filter((v) => idsConMacchinaAttiva.has(v.strutturaId)), [vendite, idsConMacchinaAttiva]);
   const venditePeriodo = useMemo(() => venditeConMacchina.filter((v) => inPeriodo(v.data, periodo)), [venditeConMacchina, periodo]);
+
+  // venditeConMacchinaDashboard: caricato separatamente dal backend, contiene TUTTE le vendite
+  // del periodo indipendentemente dalla paginazione — usato esclusivamente dal cruscotto
+  const [venditeDashboard, setVenditeDashboard] = useState<VendingVendita[]>([]);
+  useEffect(() => {
+    fetchVenditeDashboard<VendingVendita>(periodo)
+      .then((all) => setVenditeDashboard(all.filter((v) => idsConMacchinaAttiva.has(v.strutturaId))))
+      .catch(() => {});
+  }, [periodo, idsConMacchinaAttiva]);
 
   if (!puoAccedere) {
     return (
@@ -1684,8 +1715,8 @@ export default function App() {
         <main className="flex-1 min-w-0 px-4 md:px-8 py-6 md:py-8">
           {tab === "dashboard" && (
             <Dashboard
-              vendite={venditeConMacchina}
-              venditePeriodo={venditePeriodo}
+              vendite={venditeDashboard}
+              venditePeriodo={venditeDashboard}
               strutture={struttureConMacchine}
               periodo={periodo}
               setPeriodo={setPeriodo}
@@ -1708,11 +1739,40 @@ export default function App() {
             />
           )}
 
+          {tab === "vendite" && (
+            <div className="flex items-center justify-between px-1 mt-4 text-sm text-stone-500">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setVenditePage((p) => Math.max(1, p - 1))}
+                  disabled={venditePage <= 1}
+                  className="px-2 py-1 rounded border border-stone-200 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >‹</button>
+                <span className="px-2">Pagina {venditePage} di {Math.max(1, Math.ceil(venditeTotal / venditePageSize))}</span>
+                <button
+                  onClick={() => setVenditePage((p) => Math.min(Math.ceil(venditeTotal / venditePageSize), p + 1))}
+                  disabled={venditePage >= Math.ceil(venditeTotal / venditePageSize)}
+                  className="px-2 py-1 rounded border border-stone-200 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >›</button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>Righe:</span>
+                {([20, 50, 100] as PageSize[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setVenditePageSize(s); setVenditePage(1); }}
+                    className={`px-2 py-1 rounded border ${venditePageSize === s ? "bg-stone-800 text-white border-stone-800" : "border-stone-200 hover:bg-stone-100"}`}
+                  >{s}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {tab === "sedi" && (
             <Sedi
               strutture={strutture}
               vendite={vendite}
               macchine={macchine}
+              sediCentrali={sediCentrali}
               onNuova={() => setModale({ type: "nuovaSede", payload: null })}
               onApri={(s) => setModale({ type: "modificaSede", payload: s })}
               onNuovaMacchina={(strutturaId) => setModale({ type: "nuovaMacchina", payload: null, prefill: { strutturaId } })}
@@ -1739,6 +1799,7 @@ export default function App() {
       {(modale?.type === "nuovaSede" || modale?.type === "modificaSede") && (
         <StrutturaForm
           esistente={modale.payload}
+          sediCentrali={sediCentrali}
           onSalva={salvaStruttura}
           onElimina={modale.payload ? () => eliminaStruttura(modale.payload.id) : null}
           onClose={() => setModale(null)}
@@ -1811,6 +1872,20 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
     return Math.min(180, Math.max(7, giorni));
   }, [periodo, venditeFiltrate]);
 
+  const labelGrafico = useMemo(() => {
+    const MAP: Record<string, string> = {
+      "sett-corrente": "Settimana corrente",
+      "sett-prec": "Settimana precedente",
+      "mese-corrente": "Mese corrente",
+      "mese-prec": "Mese precedente",
+      "anno-corrente": "Anno corrente",
+      "anno-prec": "Anno precedente",
+      "tutto": "Andamento complessivo",
+    };
+    if (periodo in MAP) return MAP[periodo];
+    return `Andamento ultimi ${giorniGrafico} giorni`;
+  }, [periodo, giorniGrafico]);
+
   const [raggruppamento, setRaggruppamento] = useState<string>("giorno");
 
   // Ogni sede selezionata ha un colore fisso (assegnato per posizione tra
@@ -1826,12 +1901,55 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
     }));
   }
 
+  // Data di inizio del periodo selezionato (usata per costruire i bucket
+  // partendo dall'inizio effettivo invece che da oggi - N giorni).
+  const inizioPeriodo = useMemo((): Date => {
+    const anno = oggi.getFullYear();
+    const mese = oggi.getMonth();
+    const lunedi = new Date(oggi);
+    lunedi.setDate(oggi.getDate() - ((oggi.getDay() + 6) % 7));
+    lunedi.setHours(0, 0, 0, 0);
+    switch (periodo) {
+      case "sett-corrente": return new Date(lunedi);
+      case "sett-prec": { const lp = new Date(lunedi); lp.setDate(lunedi.getDate() - 7); return lp; }
+      case "mese-corrente": return new Date(anno, mese, 1);
+      case "mese-prec": return new Date(anno, mese - 1, 1);
+      case "anno-corrente": return new Date(anno, 0, 1);
+      case "anno-prec": return new Date(anno - 1, 0, 1);
+      default: {
+        const date = venditeFiltrate.map((v) => v.data).filter(Boolean).sort();
+        if (date.length > 0) return new Date(date[0] + "T00:00:00");
+        const d = new Date(oggi); d.setDate(d.getDate() - (giorniGrafico - 1)); return d;
+      }
+    }
+  }, [periodo, venditeFiltrate, giorniGrafico]);
+
+  const finePeriodo = useMemo((): Date => {
+    const anno = oggi.getFullYear();
+    const mese = oggi.getMonth();
+    const lunedi = new Date(oggi);
+    lunedi.setDate(oggi.getDate() - ((oggi.getDay() + 6) % 7));
+    switch (periodo) {
+      case "sett-corrente": { const dom = new Date(lunedi); dom.setDate(lunedi.getDate() + 6); return dom; }
+      case "sett-prec": { const dp = new Date(lunedi); dp.setDate(lunedi.getDate() - 1); return dp; }
+      case "mese-corrente": return new Date(anno, mese + 1, 0);
+      case "mese-prec": return new Date(anno, mese, 0);
+      case "anno-corrente": return new Date(anno, 11, 31);
+      case "anno-prec": return new Date(anno - 1, 11, 31);
+      default: return oggi;
+    }
+  }, [periodo]);
+
   const perBucket = useMemo(() => {
+    // Numero di giorni dall'inizio alla fine del periodo
+    const msPerGiorno = 86400000;
+    const nGiorni = Math.round((finePeriodo.getTime() - inizioPeriodo.getTime()) / msPerGiorno) + 1;
+
     if (raggruppamento === "settimana") {
-      const nSettimane = Math.max(1, Math.ceil(giorniGrafico / 7));
+      const nSettimane = Math.max(1, Math.ceil(nGiorni / 7));
       const arr = [];
       for (let w = nSettimane - 1; w >= 0; w--) {
-        const fine = new Date(oggi); fine.setDate(fine.getDate() - w * 7);
+        const fine = new Date(finePeriodo); fine.setDate(fine.getDate() - w * 7);
         const inizio = new Date(fine); inizio.setDate(inizio.getDate() - 6);
         const inizioIso = inizio.toISOString().slice(0, 10);
         const fineIso = fine.toISOString().slice(0, 10);
@@ -1843,9 +1961,9 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
       return arr;
     }
     if (raggruppamento === "mese") {
-      const mesi = [];
-      for (let n = giorniGrafico - 1; n >= 0; n--) {
-        const d = new Date(oggi); d.setDate(d.getDate() - n);
+      const mesi: string[] = [];
+      for (let n = 0; n < nGiorni; n++) {
+        const d = new Date(inizioPeriodo); d.setDate(inizioPeriodo.getDate() + n);
         const ym = d.toISOString().slice(0, 7);
         if (!mesi.includes(ym)) mesi.push(ym);
       }
@@ -1858,18 +1976,34 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
         return { key: ym, label, title: label, totale: tot, segmenti };
       });
     }
-    // giorno
+    // giorno — itera dall'inizio alla fine del periodo con label selettive
+    // In base al numero di giorni, mostriamo etichette diverse per non sovraffollare l'asse:
+    // ≤ 7 giorni  → nome del giorno (Lun, Mar, …)
+    // 8–31 giorni → numero del giorno (1, 5, 10, 15, …) ogni 5 giorni
+    // > 31 giorni → nome del mese abbreviato al 1° di ogni mese
     const arr = [];
-    for (let n = giorniGrafico - 1; n >= 0; n--) {
-      const d = new Date(oggi); d.setDate(d.getDate() - n);
+    const GIORNI_SETTIMANA = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
+    for (let n = 0; n < nGiorni; n++) {
+      const d = new Date(inizioPeriodo); d.setDate(inizioPeriodo.getDate() + n);
       const iso = d.toISOString().slice(0, 10);
       const bucketVendite = venditeFiltrate.filter((v) => v.data === iso);
       const segmenti = segmentiDi(bucketVendite);
       const tot = segmenti.reduce((s, seg) => s + seg.valore, 0);
-      arr.push({ key: iso, label: null, title: fmtData(iso), totale: tot, segmenti });
+      let label: string | null = null;
+      if (nGiorni <= 7) {
+        label = GIORNI_SETTIMANA[d.getDay()];
+      } else if (nGiorni <= 31) {
+        const giorno = d.getDate();
+        if (giorno === 1 || giorno % 5 === 0) label = String(giorno);
+      } else {
+        if (d.getDate() === 1) {
+          label = d.toLocaleDateString("it-IT", { month: "short" });
+        }
+      }
+      arr.push({ key: iso, label, title: fmtData(iso), totale: tot, segmenti });
     }
     return arr;
-  }, [venditeFiltrate, giorniGrafico, raggruppamento, sediPerSegmenti]);
+  }, [venditeFiltrate, inizioPeriodo, finePeriodo, raggruppamento, sediPerSegmenti]);
   const maxBucket = Math.max(1, ...perBucket.map((g) => g.totale));
 
   // Pezzi e incasso (solo vendite completate) per articolo, con la
@@ -1943,7 +2077,7 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
 
       <div className="bg-white border border-stone-200 rounded-xl shadow-sm px-5 py-4 mb-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <h2 className="font-[Fraunces] font-semibold text-stone-900">Andamento ultimi {giorniGrafico} giorni</h2>
+          <h2 className="font-[Fraunces] font-semibold text-stone-900">{labelGrafico}</h2>
           <div className="flex gap-1.5">
             {[
               { id: "giorno", label: "Giorno" },
@@ -1974,23 +2108,28 @@ function Dashboard({ vendite, venditePeriodo, strutture, periodo, setPeriodo, st
           </div>
         )}
 
-        <div className="flex items-end gap-1 h-32 overflow-x-auto">
+        <div className="flex items-end gap-1 h-44 overflow-x-auto overflow-y-visible pt-8">
           {perBucket.map((g) => {
             const segmentiValidi = g.segmenti.filter((seg) => seg.valore > 0);
             const tooltip = `${g.title} · ${fmtEuro(g.totale)}` + segmentiValidi.map((seg) => `\n${seg.nome}: ${fmtEuro(seg.valore)}`).join("");
             return (
-              <div key={g.key} className="h-full flex-1 min-w-[8px] flex flex-col items-center justify-end gap-1.5 group relative">
-                <div className="text-[10px] text-stone-400 opacity-0 group-hover:opacity-100 transition font-mono-tag whitespace-nowrap">{fmtEuro(g.totale)}</div>
+              <div key={g.key} className="h-full flex-1 min-w-[8px] flex items-end group relative" title={tooltip}>
                 <div
                   className="w-full rounded-t shrink-0 overflow-hidden flex flex-col-reverse bg-stone-100"
                   style={{ height: `${Math.max(4, (g.totale / maxBucket) * 100)}%` }}
-                  title={tooltip}
                 >
                   {segmentiValidi.map((seg) => (
                     <div key={seg.id} style={{ height: `${(seg.valore / g.totale) * 100}%`, backgroundColor: seg.colore }} />
                   ))}
                 </div>
-                {g.label && <div className="text-[10px] text-stone-400 font-mono-tag whitespace-nowrap">{g.label}</div>}
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 text-[10px] text-stone-700 bg-white/90 border border-stone-200 rounded px-1.5 py-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none z-10 text-center leading-tight"
+                  style={{ bottom: `calc(${Math.max(4, (g.totale / maxBucket) * 100)}% + 6px)` }}
+                >
+                  <div className="font-semibold">{fmtEuro(g.totale)}</div>
+                  <div className="text-stone-400 text-[9px]">{g.title}</div>
+                </div>
+                <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 text-[10px] text-stone-400 opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none">{g.label ?? ""}</div>
               </div>
             );
           })}
@@ -2096,6 +2235,17 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
   const [fileInAttesa, setFileInAttesa] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Aggregati calcolati dal backend su tutti i record (non dipendono dalla paginazione)
+  const [stats, setStats] = useState<VenditeStats>({ nVendite: 0, nCompletate: 0, totalePezzi: 0, totaleIncasso: 0 });
+  useEffect(() => {
+    fetchVenditeStats({
+      periodo: filtroPeriodo !== "tutto" ? filtroPeriodo : undefined,
+      struttura: filtroStruttura || undefined,
+      stato: filtroStato || undefined,
+      metodoPagamento: filtroMetodo || undefined,
+    }).then(setStats).catch(() => {});
+  }, [filtroPeriodo, filtroStruttura, filtroStato, filtroMetodo]);
+
   const elenco = vendite
     .filter((v) => !filtroStruttura || v.strutturaId === filtroStruttura)
     .filter((v) => !filtroMetodo || v.metodoPagamento === filtroMetodo)
@@ -2103,10 +2253,6 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
     .filter((v) => inPeriodo(v.data, filtroPeriodo))
     .filter((v) => !ricerca || v.prodotto.toLowerCase().includes(ricerca.toLowerCase()))
     .sort((a, b) => (b.data + b.ora).localeCompare(a.data + a.ora));
-
-  const completatePeriodo = elenco.filter((v) => v.stato === "Completata");
-  const totalePeriodo = completatePeriodo.reduce((s, v) => s + totaleVendita(v), 0);
-  const pezziPeriodo = completatePeriodo.reduce((s, v) => s + (Number(v.quantita) || 0), 0);
 
   function onFileScelto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -2186,9 +2332,9 @@ function Vendite({ vendite, strutture, macchine, strutturaOf, macchinaOf, onApri
       )}
 
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-5">
-        <StatCard label="Incasso periodo" value={fmtEuro(totalePeriodo)} sub={`${completatePeriodo.length} completate`} icon={Euro} accent="bg-[#1F1A12]" />
-        <StatCard label="Vendite" value={elenco.length} icon={ShoppingCart} accent="bg-[#CA8A04]" />
-        <StatCard label="Pezzi venduti" value={pezziPeriodo} icon={Package} accent="bg-teal-600" />
+        <StatCard label="Incasso periodo" value={fmtEuro(stats.totaleIncasso)} sub={`${stats.nCompletate} completate`} icon={Euro} accent="bg-[#1F1A12]" />
+        <StatCard label="Vendite" value={stats.nVendite} icon={ShoppingCart} accent="bg-[#CA8A04]" />
+        <StatCard label="Pezzi venduti" value={stats.totalePezzi} icon={Package} accent="bg-teal-600" />
       </div>
 
       <div className="flex flex-wrap gap-2 mb-5 items-center bg-white border border-stone-200 rounded-xl px-3 py-2.5">
@@ -2450,8 +2596,7 @@ function VenditaForm({ esistente, strutture, macchine, onSalva, onElimina, onClo
 /*  SEDI                                                                 */
 /* ------------------------------------------------------------------ */
 
-function Sedi({ strutture, vendite, macchine, onNuova, onApri, onNuovaMacchina, onApriMacchina, onEliminaMacchina, onToggleMacchinaAttiva }: SediProps) {
-  const sediCentrali: UHSede[] = UHAccounts.loadSedi();
+function Sedi({ strutture, vendite, macchine, sediCentrali, onNuova, onApri, onNuovaMacchina, onApriMacchina, onEliminaMacchina, onToggleMacchinaAttiva }: SediProps) {
   const sedeCentraleDi = (s: VendingStruttura): UHSede | null => sediCentrali.find((sc) => sc.id === s.sedeCentraleId) ?? null;
   const [espansa, setEspansa] = useState<Set<string>>(() => new Set());
   function toggleEspansa(id) {
@@ -2569,8 +2714,7 @@ function Sedi({ strutture, vendite, macchine, onNuova, onApri, onNuovaMacchina, 
   );
 }
 
-function StrutturaForm({ esistente, onSalva, onElimina, onClose }: StrutturaFormProps) {
-  const sediCentrali: UHSede[] = UHAccounts.loadSedi();
+function StrutturaForm({ esistente, sediCentrali, onSalva, onElimina, onClose }: StrutturaFormProps) {
   const vuoto: StrutturaFormState = { id: null, sedeCentraleId: "" };
   const [f, setF] = useState<StrutturaFormState>(esistente ? { id: esistente.id, sedeCentraleId: esistente.sedeCentraleId || "" } : vuoto);
   function upd(patch) { setF((prev) => ({ ...prev, ...patch })); }

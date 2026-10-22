@@ -8,7 +8,7 @@ import {
 // @ts-ignore
 import * as XLSX from "xlsx";
 import UHAccounts from "./accounts";
-import { api, useSyncedResource, useBackendOffline } from "./api";
+import { api, useSyncedResource, useBackendOffline, PageSize, fetchOrdiniDashboard } from "./api";
 
 const APP_ID = "baggyLocker";
 
@@ -182,16 +182,22 @@ function inPeriodo(iso: string, periodoId: string): boolean {
   lunedi.setDate(now.getDate() - ((now.getDay() + 6) % 7));
   let da: Date, a: Date;
   switch (periodoId) {
-    case "sett-corrente": da = lunedi; a = now; break;
+    // lunedì → domenica della settimana corrente
+    case "sett-corrente": { da = new Date(lunedi); a = new Date(lunedi); a.setDate(lunedi.getDate() + 6); break; }
+    // lunedì → domenica della settimana scorsa
     case "sett-prec": {
-      const lp = new Date(lunedi); lp.setDate(lunedi.getDate() - 7);
-      const dp = new Date(lunedi); dp.setDate(lunedi.getDate() - 1);
-      da = lp; a = dp; break;
+      da = new Date(lunedi); da.setDate(lunedi.getDate() - 7);
+      a = new Date(lunedi); a.setDate(lunedi.getDate() - 1);
+      break;
     }
-    case "mese-corrente": da = new Date(anno, mese, 1); a = now; break;
-    case "mese-prec": da = new Date(anno, mese - 1, 1); a = new Date(anno, mese, 0); break;
-    case "anno-corrente": da = new Date(anno, 0, 1); a = now; break;
-    case "anno-prec": da = new Date(anno - 1, 0, 1); a = new Date(anno - 1, 11, 31); break;
+    // 1° → ultimo giorno del mese corrente
+    case "mese-corrente": { da = new Date(anno, mese, 1); a = new Date(anno, mese + 1, 0); break; }
+    // 1° → ultimo giorno del mese precedente
+    case "mese-prec": { da = new Date(anno, mese - 1, 1); a = new Date(anno, mese, 0); break; }
+    // 1 gennaio → 31 dicembre dell'anno corrente
+    case "anno-corrente": { da = new Date(anno, 0, 1); a = new Date(anno, 11, 31); break; }
+    // 1 gennaio → 31 dicembre dell'anno scorso
+    case "anno-prec": { da = new Date(anno - 1, 0, 1); a = new Date(anno - 1, 11, 31); break; }
     default: return true;
   }
   const s = da.toISOString().slice(0, 10);
@@ -457,7 +463,15 @@ const inputCls = "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 t
 
 export default function App() {
   const [strutture, setStrutture] = useSyncedResource<LockerStruttura>(api.strutture as never, seedStrutture);
-  const [ordini, setOrdini, reloadOrdini] = useSyncedResource<LockerOrdine>(api.ordini as never, seedOrdini);
+  const [ordini, setOrdini] = useState<LockerOrdine[]>(seedOrdini);
+  const [ordiniTotal, setOrdiniTotal] = useState<number>(0);
+  const [ordiniPage, setOrdiniPage] = useState<number>(1);
+  const [ordiniPageSize, setOrdiniPageSize] = useState<PageSize>(20);
+  useEffect(() => {
+    api.ordini.listPaged(ordiniPage, ordiniPageSize)
+      .then((res) => { setOrdini(res.items as unknown as LockerOrdine[]); setOrdiniTotal(res.total); })
+      .catch(() => {});
+  }, [ordiniPage, ordiniPageSize]);
   const [locali, setLocali] = useSyncedResource<LockerLocale>(api.locali as never, seedLocali);
   const [vendingStrutture] = useSyncedResource<VendingStruttura>(api.vendingStrutture as never, []);
   const [vendingVendite] = useSyncedResource<VendingVendita>(api.vendingVendite as never, []);
@@ -471,6 +485,8 @@ export default function App() {
   const [importRisultato, setImportRisultato] = useState<ImportRisultato | null>(null);
 
   const [sessione] = useState(() => UHAccounts.loadSession());
+  const [sediCentrali, setSediCentrali] = useState<import("./accounts").UHSede[]>([]);
+  useEffect(() => { UHAccounts.fetchSedi().then(setSediCentrali).catch(() => {}); }, []);
   const puoAccedere = UHAccounts.hasAccesso(sessione, APP_ID);
   const isAdminApp = UHAccounts.ruoloIn(sessione, APP_ID) === "Amministratore";
 
@@ -561,7 +577,17 @@ export default function App() {
     }
   }
 
+  // ordiniPeriodo per la lista filtrata (opera sui dati paginati — solo per filtrare la pagina corrente nella sezione ordini)
   const ordiniPeriodo = useMemo(() => ordini.filter((o) => inPeriodo(o.dataOrdine, periodo)), [ordini, periodo]);
+
+  // ordiniDashboard: caricato separatamente dal backend, contiene TUTTI gli ordini del periodo
+  // indipendentemente dalla paginazione — usato esclusivamente dal cruscotto
+  const [ordiniDashboard, setOrdiniDashboard] = useState<LockerOrdine[]>([]);
+  useEffect(() => {
+    fetchOrdiniDashboard<LockerOrdine>(periodo)
+      .then(setOrdiniDashboard)
+      .catch(() => {});
+  }, [periodo]);
 
   if (!puoAccedere) {
     return (
@@ -640,16 +666,43 @@ export default function App() {
           </div>
         </aside>
         <main className="flex-1 min-w-0 px-4 md:px-8 py-6 md:py-8">
-          {tab === "dashboard" && <Dashboard ordini={ordini} ordiniPeriodo={ordiniPeriodo} vendingStrutture={vendingStrutture} vendingVendite={vendingVendite} strutture={strutture} periodo={periodo} setPeriodo={setPeriodo} strutturaOf={strutturaOf} onNuovo={() => setModale({ type: "nuovoOrdine", payload: null })} />}
+          {tab === "dashboard" && <Dashboard ordini={ordiniDashboard} ordiniPeriodo={ordiniDashboard} vendingStrutture={vendingStrutture} vendingVendite={vendingVendite} strutture={strutture} periodo={periodo} setPeriodo={setPeriodo} strutturaOf={strutturaOf} onNuovo={() => setModale({ type: "nuovoOrdine", payload: null })} />}
           {tab === "ordini" && <Ordini ordini={ordini} strutture={strutture} strutturaOf={strutturaOf} onApri={(o) => setModale({ type: "modificaOrdine", payload: o })} onNuovo={() => setModale({ type: "nuovoOrdine", payload: null })} onImportaFile={importaOrdiniDaFile} importRisultato={importRisultato} onChiudiImport={() => setImportRisultato(null)} onEliminaTutti={() => setOrdini([])} />}
-          {tab === "sedi" && <Sedi strutture={strutture} ordini={ordini} locali={locali} onNuova={() => setModale({ type: "nuovaSede", payload: null })} onApri={(s) => setModale({ type: "modificaSede", payload: s })} onNuovoLocale={(strutturaId) => setModale({ type: "nuovoLocale", payload: null, prefill: { strutturaId } })} onApriLocale={(l) => setModale({ type: "modificaLocale", payload: l })} onEliminaLocale={eliminaLocale} />}
+          {tab === "ordini" && (
+            <div className="flex items-center justify-between px-1 mt-4 text-sm text-stone-500">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setOrdiniPage((p) => Math.max(1, p - 1))}
+                  disabled={ordiniPage <= 1}
+                  className="px-2 py-1 rounded border border-stone-200 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >‹</button>
+                <span className="px-2">Pagina {ordiniPage} di {Math.max(1, Math.ceil(ordiniTotal / ordiniPageSize))}</span>
+                <button
+                  onClick={() => setOrdiniPage((p) => Math.min(Math.ceil(ordiniTotal / ordiniPageSize), p + 1))}
+                  disabled={ordiniPage >= Math.ceil(ordiniTotal / ordiniPageSize)}
+                  className="px-2 py-1 rounded border border-stone-200 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >›</button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>Righe:</span>
+                {([20, 50, 100] as PageSize[]).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => { setOrdiniPageSize(s); setOrdiniPage(1); }}
+                    className={`px-2 py-1 rounded border ${ordiniPageSize === s ? "bg-stone-800 text-white border-stone-800" : "border-stone-200 hover:bg-stone-100"}`}
+                  >{s}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          {tab === "sedi" && <Sedi strutture={strutture} ordini={ordini} locali={locali} sediCentrali={sediCentrali} onNuova={() => setModale({ type: "nuovaSede", payload: null })} onApri={(s) => setModale({ type: "modificaSede", payload: s })} onNuovoLocale={(strutturaId) => setModale({ type: "nuovoLocale", payload: null, prefill: { strutturaId } })} onApriLocale={(l) => setModale({ type: "modificaLocale", payload: l })} onEliminaLocale={eliminaLocale} />}
         </main>
       </div>
       {(modale?.type === "nuovoOrdine" || modale?.type === "modificaOrdine") && (
         <OrdineForm esistente={modale.type === "modificaOrdine" ? modale.payload : null} strutture={strutture} onSalva={salvaOrdine} onElimina={modale.type === "modificaOrdine" ? () => eliminaOrdine(modale.payload.id) : null} onClose={() => setModale(null)} />
       )}
       {(modale?.type === "nuovaSede" || modale?.type === "modificaSede") && (
-        <StrutturaForm esistente={modale.type === "modificaSede" ? modale.payload : null} onSalva={salvaStruttura} onElimina={modale.type === "modificaSede" ? () => eliminaStruttura(modale.payload.id) : null} onClose={() => setModale(null)} />
+        <StrutturaForm esistente={modale.type === "modificaSede" ? modale.payload : null} sediCentrali={sediCentrali} onSalva={salvaStruttura} onElimina={modale.type === "modificaSede" ? () => eliminaStruttura(modale.payload.id) : null} onClose={() => setModale(null)} />
       )}
       {(modale?.type === "nuovoLocale" || modale?.type === "modificaLocale") && (
         <LocaleForm esistente={modale.type === "modificaLocale" ? modale.payload : null} prefill={modale.type === "nuovoLocale" ? modale.prefill : undefined} strutture={strutture} onSalva={salvaLocale} onElimina={modale.type === "modificaLocale" ? () => eliminaLocale(modale.payload.id) : null} onClose={() => setModale(null)} />
@@ -734,12 +787,54 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
     }));
   }
 
+  // Data di inizio e fine del periodo selezionato (per costruire i bucket
+  // partendo dall'inizio effettivo invece che da oggi - N giorni).
+  const inizioPeriodoGrafico = useMemo((): Date => {
+    const anno = oggi.getFullYear();
+    const mese = oggi.getMonth();
+    const lunedi = new Date(oggi);
+    lunedi.setDate(oggi.getDate() - ((oggi.getDay() + 6) % 7));
+    lunedi.setHours(0, 0, 0, 0);
+    switch (periodo) {
+      case "sett-corrente": return new Date(lunedi);
+      case "sett-prec": { const lp = new Date(lunedi); lp.setDate(lunedi.getDate() - 7); return lp; }
+      case "mese-corrente": return new Date(anno, mese, 1);
+      case "mese-prec": return new Date(anno, mese - 1, 1);
+      case "anno-corrente": return new Date(anno, 0, 1);
+      case "anno-prec": return new Date(anno - 1, 0, 1);
+      default: {
+        const date = ordiniFiltrati.map((o) => o.dataOrdine).filter(Boolean).sort();
+        if (date.length > 0) return new Date(date[0] + "T00:00:00");
+        const d = new Date(oggi); d.setDate(d.getDate() - (giorniGrafico - 1)); return d;
+      }
+    }
+  }, [periodo, ordiniFiltrati, giorniGrafico]);
+
+  const finePeriodoGrafico = useMemo((): Date => {
+    const anno = oggi.getFullYear();
+    const mese = oggi.getMonth();
+    const lunedi = new Date(oggi);
+    lunedi.setDate(oggi.getDate() - ((oggi.getDay() + 6) % 7));
+    switch (periodo) {
+      case "sett-corrente": { const dom = new Date(lunedi); dom.setDate(lunedi.getDate() + 6); return dom; }
+      case "sett-prec": { const dp = new Date(lunedi); dp.setDate(lunedi.getDate() - 1); return dp; }
+      case "mese-corrente": return new Date(anno, mese + 1, 0);
+      case "mese-prec": return new Date(anno, mese, 0);
+      case "anno-corrente": return new Date(anno, 11, 31);
+      case "anno-prec": return new Date(anno - 1, 11, 31);
+      default: return oggi;
+    }
+  }, [periodo]);
+
   const perBucket = useMemo((): Bucket[] => {
+    const msPerGiorno = 86400000;
+    const nGiorni = Math.round((finePeriodoGrafico.getTime() - inizioPeriodoGrafico.getTime()) / msPerGiorno) + 1;
+
     if (raggruppamento === "settimana") {
-      const nSettimane = Math.max(1, Math.ceil(giorniGrafico / 7));
+      const nSettimane = Math.max(1, Math.ceil(nGiorni / 7));
       const arr: Bucket[] = [];
       for (let w = nSettimane - 1; w >= 0; w--) {
-        const fine = new Date(oggi); fine.setDate(fine.getDate() - w * 7);
+        const fine = new Date(finePeriodoGrafico); fine.setDate(fine.getDate() - w * 7);
         const inizio = new Date(fine); inizio.setDate(inizio.getDate() - 6);
         const inizioIso = inizio.toISOString().slice(0, 10);
         const fineIso = fine.toISOString().slice(0, 10);
@@ -752,8 +847,8 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
     }
     if (raggruppamento === "mese") {
       const mesi: string[] = [];
-      for (let n = giorniGrafico - 1; n >= 0; n--) {
-        const d = new Date(oggi); d.setDate(d.getDate() - n);
+      for (let n = 0; n < nGiorni; n++) {
+        const d = new Date(inizioPeriodoGrafico); d.setDate(inizioPeriodoGrafico.getDate() + n);
         const ym = d.toISOString().slice(0, 7);
         if (!mesi.includes(ym)) mesi.push(ym);
       }
@@ -766,17 +861,28 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
         return { key: ym, label, title: label, totale: tot, segmenti };
       });
     }
+    // giorno — label selettive in base al numero di giorni nel periodo
+    const GIORNI_SETTIMANA = ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"];
     const arr: Bucket[] = [];
-    for (let n = giorniGrafico - 1; n >= 0; n--) {
-      const d = new Date(oggi); d.setDate(d.getDate() - n);
+    for (let n = 0; n < nGiorni; n++) {
+      const d = new Date(inizioPeriodoGrafico); d.setDate(inizioPeriodoGrafico.getDate() + n);
       const iso = d.toISOString().slice(0, 10);
       const bucketOrdini = ordiniFiltrati.filter((o) => o.dataOrdine === iso);
       const segmenti = segmentiDi(bucketOrdini);
       const tot = segmenti.reduce((s, seg) => s + seg.valore, 0);
-      arr.push({ key: iso, label: null, title: fmtData(iso), totale: tot, segmenti });
+      let label: string | null = null;
+      if (nGiorni <= 7) {
+        label = GIORNI_SETTIMANA[d.getDay()];
+      } else if (nGiorni <= 31) {
+        const giorno = d.getDate();
+        if (giorno === 1 || giorno % 5 === 0) label = String(giorno);
+      } else {
+        if (d.getDate() === 1) label = d.toLocaleDateString("it-IT", { month: "short" });
+      }
+      arr.push({ key: iso, label, title: fmtData(iso), totale: tot, segmenti });
     }
     return arr;
-  }, [ordiniFiltrati, giorniGrafico, raggruppamento, sediPerSegmenti]);
+  }, [ordiniFiltrati, inizioPeriodoGrafico, finePeriodoGrafico, raggruppamento, sediPerSegmenti]);
   const maxBucket = Math.max(1, ...perBucket.map((g) => g.totale));
 
   const [metricaTipologie, setMetricaTipologie] = useState<"pezzi" | "incasso">("pezzi");
@@ -852,17 +958,23 @@ function Dashboard({ ordini, ordiniPeriodo, vendingStrutture, vendingVendite, st
             ))}
           </div>
         )}
-        <div className="flex items-end gap-1 h-32 overflow-x-auto">
+        <div className="flex items-end gap-1 h-44 overflow-x-auto overflow-y-visible pt-8">
           {perBucket.map((g) => {
             const segmentiValidi = g.segmenti.filter((seg) => seg.valore > 0);
             const tooltip = `${g.title} · ${fmtEuro(g.totale)}` + segmentiValidi.map((seg) => `\n${seg.nome}: ${fmtEuro(seg.valore)}`).join("");
             return (
-              <div key={g.key} className="h-full flex-1 min-w-[8px] flex flex-col items-center justify-end gap-1.5 group relative">
-                <div className="text-[10px] text-stone-400 opacity-0 group-hover:opacity-100 transition font-mono-tag whitespace-nowrap">{fmtEuro(g.totale)}</div>
-                <div className="w-full rounded-t shrink-0 overflow-hidden flex flex-col-reverse bg-stone-100" style={{ height: `${Math.max(4, (g.totale / maxBucket) * 100)}%` }} title={tooltip}>
+              <div key={g.key} className="h-full flex-1 min-w-[8px] flex items-end group relative" title={tooltip}>
+                <div className="w-full rounded-t shrink-0 overflow-hidden flex flex-col-reverse bg-stone-100" style={{ height: `${Math.max(4, (g.totale / maxBucket) * 100)}%` }}>
                   {segmentiValidi.map((seg) => (<div key={seg.id} style={{ height: `${(seg.valore / g.totale) * 100}%`, backgroundColor: seg.colore }} />))}
                 </div>
-                {g.label && <div className="text-[10px] text-stone-400 font-mono-tag whitespace-nowrap">{g.label}</div>}
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 text-[10px] text-stone-700 bg-white/90 border border-stone-200 rounded px-1.5 py-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none z-10 text-center leading-tight"
+                  style={{ bottom: `calc(${Math.max(4, (g.totale / maxBucket) * 100)}% + 6px)` }}
+                >
+                  <div className="font-semibold">{fmtEuro(g.totale)}</div>
+                  <div className="text-stone-400 text-[9px]">{g.title}</div>
+                </div>
+                <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 text-[10px] text-stone-400 opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none">{g.label ?? ""}</div>
               </div>
             );
           })}
@@ -1220,13 +1332,13 @@ function OrdineForm({ esistente, strutture, onSalva, onElimina, onClose }: Ordin
 
 interface SediProps {
   strutture: LockerStruttura[]; ordini: LockerOrdine[]; locali: LockerLocale[];
+  sediCentrali: import("./accounts").UHSede[];
   onNuova: () => void; onApri: (s: LockerStruttura) => void;
   onNuovoLocale: (strutturaId: string) => void;
   onApriLocale: (l: LockerLocale) => void; onEliminaLocale: (id: string) => void;
 }
 
-function Sedi({ strutture, ordini, locali, onNuova, onApri, onNuovoLocale, onApriLocale, onEliminaLocale }: SediProps) {
-  const sediCentrali = UHAccounts.loadSedi();
+function Sedi({ strutture, ordini, locali, sediCentrali, onNuova, onApri, onNuovoLocale, onApriLocale, onEliminaLocale }: SediProps) {
   const sedeCentraleDi = (s: LockerStruttura) => sediCentrali.find((sc: { id: string }) => sc.id === s.sedeCentraleId) || null;
   const [espansa, setEspansa] = useState<Set<string>>(() => new Set());
   function toggleEspansa(id: string) {
@@ -1309,9 +1421,8 @@ function Sedi({ strutture, ordini, locali, onNuova, onApri, onNuovoLocale, onApr
   );
 }
 
-interface StrutturaFormProps { esistente: LockerStruttura | null; onSalva: (d: LockerStruttura) => void; onElimina: (() => void) | null; onClose: () => void }
-function StrutturaForm({ esistente, onSalva, onElimina, onClose }: StrutturaFormProps) {
-  const sediCentrali = UHAccounts.loadSedi() as Array<{ id: string; nome: string; citta?: string; tipo?: string; indirizzo?: string; attiva: boolean }>;
+interface StrutturaFormProps { esistente: LockerStruttura | null; sediCentrali: import("./accounts").UHSede[]; onSalva: (d: LockerStruttura) => void; onElimina: (() => void) | null; onClose: () => void }
+function StrutturaForm({ esistente, sediCentrali, onSalva, onElimina, onClose }: StrutturaFormProps) {
   const vuoto = { id: null as string | null, sedeCentraleId: "" };
   const [f, setF] = useState(esistente ? { id: esistente.id, sedeCentraleId: esistente.sedeCentraleId || "" } : vuoto);
   function upd(patch: Partial<typeof f>) { setF((prev) => ({ ...prev, ...patch })); }
