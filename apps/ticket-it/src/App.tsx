@@ -297,6 +297,8 @@ export default function App() {
     ? (utenti.find((u) => u.email === sessione.email)?.id ?? "")
     : "";
   const TAB_IMPOSTAZIONI = ["utenti"];
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => { try { return localStorage.getItem("ticketit-sidebar-collapsed") === "1"; } catch { return false; } });
+  const toggleSidebar = () => setSidebarCollapsed((v) => { try { localStorage.setItem("ticketit-sidebar-collapsed", v ? "0" : "1"); } catch {} return !v; });
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(tab));
   const [modale, setModale] = useState<ModaleState | null>(null);
   const [filtroRapido, setFiltroRapido] = useState<FiltroRapidoState | null>(null);
@@ -494,8 +496,19 @@ export default function App() {
               </div>
             </div>
           )}
-          <div className="px-5 py-3 text-[11px] text-stone-500 hidden md:block border-t border-white/10">
-            {strutture.length} sedi · {utenti.length} utenti
+          <div className="hidden md:flex flex-col border-t border-white/10 mt-auto">
+            {!sidebarCollapsed && (
+              <div className="px-5 py-3 text-[11px] text-stone-500">
+                {strutture.length} sedi · {utenti.length} utenti
+              </div>
+            )}
+            <button
+              onClick={toggleSidebar}
+              className="flex items-center justify-center py-2.5 text-stone-500 hover:text-stone-300 hover:bg-white/5 transition"
+              title={sidebarCollapsed ? "Espandi menu" : "Comprimi menu"}
+            >
+              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
           </div>
         </aside>
 

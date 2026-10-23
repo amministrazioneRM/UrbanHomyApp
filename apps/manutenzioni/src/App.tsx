@@ -841,8 +841,19 @@ export default function App() {
               </div>
             </div>
           )}
-          <div className="px-5 py-3 text-[11px] text-stone-500 hidden md:block border-t border-white/10">
-            {struttureAttive.length} strutture · {censimento.totale} elementi censiti
+          <div className="hidden md:flex flex-col border-t border-white/10 mt-auto">
+            {!sidebarCollapsed && (
+              <div className="px-5 py-3 text-[11px] text-stone-500">
+                {struttureAttive.length} strutture · {censimento.totale} elementi censiti
+              </div>
+            )}
+            <button
+              onClick={toggleSidebar}
+              className="flex items-center justify-center py-2.5 text-stone-500 hover:text-stone-300 hover:bg-white/5 transition"
+              title={sidebarCollapsed ? "Espandi menu" : "Comprimi menu"}
+            >
+              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            </button>
           </div>
         </aside>
 
