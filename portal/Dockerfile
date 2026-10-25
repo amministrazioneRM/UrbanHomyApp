@@ -24,6 +24,9 @@ RUN cd apps/utenti && npm install && npm run build
 COPY apps/vending apps/vending
 RUN cd apps/vending && npm install && npm run build
 
+COPY apps/revenue-forecast apps/revenue-forecast
+RUN cd apps/revenue-forecast && npm install && npm run build
+
 # Build shared/accounts.js as IIFE for browser (reuse esbuild from manutenzioni)
 RUN apps/manutenzioni/node_modules/.bin/esbuild shared/accounts.ts \
       --bundle \
@@ -46,8 +49,9 @@ COPY --from=builder /app/apps/manutenzioni/dist apps/manutenzioni/dist
 COPY --from=builder /app/apps/locker/dist       apps/locker/dist
 COPY --from=builder /app/apps/ticket-it/dist    apps/ticket-it/dist
 COPY --from=builder /app/apps/utenti/dist       apps/utenti/dist
-COPY --from=builder /app/apps/vending/dist      apps/vending/dist
-COPY --from=builder /app/shared                 shared
+COPY --from=builder /app/apps/vending/dist           apps/vending/dist
+COPY --from=builder /app/apps/revenue-forecast/dist  apps/revenue-forecast/dist
+COPY --from=builder /app/shared                      shared
 COPY --from=builder /app/portal                 portal
 
 EXPOSE 5173
