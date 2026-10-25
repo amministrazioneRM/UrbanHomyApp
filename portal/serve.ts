@@ -11,6 +11,7 @@ const roots: Record<string, string> = {
   utenti: path.join(base, "apps", "utenti", "dist"),
   locker: path.join(base, "apps", "locker", "dist"),
   vending: path.join(base, "apps", "vending", "dist"),
+  "revenue-forecast": path.join(base, "apps", "revenue-forecast", "dist"),
   shared: path.join(base, "shared"),
 };
 const homeRoot = __dirname;
