@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   LayoutDashboard, TrendingUp, Target, History, Settings,
-  ChevronLeft, ChevronRight, LogOut, RefreshCw, Save, Send,
+  ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, LogOut, RefreshCw, Save, Send,
   Plus, Pencil, Trash2, X, Check, AlertTriangle, Building2,
   ArrowUp, ArrowDown, Minus, Eye, EyeOff,
 } from "lucide-react";
@@ -658,8 +658,13 @@ function StoricoSection({ bus, voci, account }: { bus: ForecastBU[]; voci: Forec
   const byVoce: Record<string, ForecastStorico[]> = {};
   voci.filter((v) => v.attiva).forEach((v) => { byVoce[v.id] = storici.filter((s) => s.voceId === v.id); });
 
-  const dates = [...new Set(storici.map((s) => s.dataRegistrazione.slice(0, 16)))].sort();
+  const dates = [...new Set(storici.map((s) => s.dataRegistrazione.slice(0, 16)))].sort().reverse();
   const activeVoci = voci.filter((v) => v.attiva);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  useEffect(() => { setPage(1); }, [buId, anno, mese, pageSize]);
+  const totalPages = Math.max(1, Math.ceil(dates.length / pageSize));
+  const pagedDates = dates.slice((page - 1) * pageSize, page * pageSize);
 
   // Compute reliability: last "pubblicazione" vs previous values
   const pubs = storici.filter((s) => s.tipo === "pubblicazione");
@@ -698,7 +703,7 @@ function StoricoSection({ bus, voci, account }: { bus: ForecastBU[]; voci: Forec
               </tr>
             </thead>
             <tbody>
-              {dates.map((date) => {
+              {pagedDates.map((date) => {
                 const rows = storici.filter((s) => s.dataRegistrazione.slice(0, 16) === date);
                 const tipo = rows[0]?.tipo;
                 const total = activeVoci.reduce((s, v) => {
@@ -724,6 +729,34 @@ function StoricoSection({ bus, voci, account }: { bus: ForecastBU[]; voci: Forec
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {dates.length > 0 && (
+        <div className="flex items-center justify-between px-1 text-sm text-stone-500">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="px-2 py-1 rounded border border-stone-200 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed"
+            >‹</button>
+            <span className="px-2">Pagina {page} di {totalPages}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="px-2 py-1 rounded border border-stone-200 hover:bg-stone-100 disabled:opacity-40 disabled:cursor-not-allowed"
+            >›</button>
+          </div>
+          <div className="flex items-center gap-2">
+            <span>Righe:</span>
+            {[20, 50, 100].map((s) => (
+              <button
+                key={s}
+                onClick={() => setPageSize(s)}
+                className={`px-2 py-1 rounded border ${pageSize === s ? "bg-stone-800 text-white border-stone-800" : "border-stone-200 hover:bg-stone-100"}`}
+              >{s}</button>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -910,6 +943,14 @@ export default function App() {
   const [annoFilter, setAnnoFilter] = useState(new Date().getFullYear());
   const [loadingApp, setLoadingApp] = useState(true);
   const offline = useBackendOffline();
+  const [impostazioniAperte, setImpostazioniAperte] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem("forecast-sidebar-collapsed") === "1"; } catch { return false; }
+  });
+  const toggleSidebar = () => setSidebarCollapsed((v) => {
+    try { localStorage.setItem("forecast-sidebar-collapsed", v ? "0" : "1"); } catch {}
+    return !v;
+  });
 
   const isAdmin = account?.ruoloGlobale === "Amministratore";
   const permessi: PermessiMap | null = ruolo?.permessi || null;
@@ -952,115 +993,131 @@ export default function App() {
     loadMasterData();
   }, [account, isAdmin, loadMasterData]);
 
-  function handleLogout() {
-    UHAccounts.clearSession();
-    setAccount(null);
-    window.location.href = "../";
-  }
 
-  // Not logged in
-  if (!account) {
+
+  if (!account || !UHAccounts.hasAccesso(account, APP_ID)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F3F0E8]">
-        <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-8 max-w-sm w-full text-center space-y-4">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto" style={{ background: ACCENT }}>
-            <TrendingUp size={22} color="white" />
+      <div className="min-h-screen w-full bg-[#F3F0E8] flex items-center justify-center px-4" style={{ fontFamily: "'Inter', sans-serif" }}>
+        <div className="text-center max-w-sm">
+          <div className="w-14 h-14 rounded-xl bg-[#0F2A28] flex items-center justify-center mx-auto mb-4">
+            <TrendingUp size={26} className="text-white" />
           </div>
-          <div className="font-fraunces text-xl font-semibold text-stone-900">Revenue Forecast</div>
-          <p className="text-sm text-stone-500">Effettua il login dal portale per accedere.</p>
-          <a href="../" className="inline-block text-sm font-semibold px-4 py-2 rounded-lg text-white" style={{ background: ACCENT }}>
-            Vai al portale
+          <h1 className="font-fraunces text-2xl font-semibold text-stone-900 mb-2">Accesso non disponibile</h1>
+          <p className="text-stone-500 text-sm mb-6">
+            {account
+              ? "Il tuo account non ha accesso all'applicazione Revenue Forecast. Contatta un amministratore del portale."
+              : "Devi accedere dalla home page del portale per usare questa applicazione."}
+          </p>
+          <a href="/" className="inline-flex items-center gap-2 bg-[#0F2A28] hover:bg-[#0A1D1C] text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
+            <ArrowLeft size={15} /> Torna alla home
           </a>
         </div>
       </div>
     );
   }
 
-  // No access
-  const hasAccess = isAdmin || account.accessi[APP_ID]?.abilitato === true;
-  if (!hasAccess) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F3F0E8]">
-        <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-8 max-w-sm w-full text-center space-y-3">
-          <AlertTriangle size={32} className="mx-auto text-amber-400" />
-          <div className="font-fraunces text-lg font-semibold text-stone-900">Accesso non autorizzato</div>
-          <p className="text-sm text-stone-500">Non hai i permessi per accedere a Revenue Forecast.</p>
-          <a href="../" className="inline-block text-sm font-semibold px-4 py-2 rounded-lg text-white" style={{ background: ACCENT }}>Torna al portale</a>
-        </div>
-      </div>
-    );
-  }
-
   const nav: { id: Section; label: string; icon: React.ElementType }[] = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "dashboard", label: "Cruscotto", icon: LayoutDashboard },
     { id: "forecast", label: "Forecast", icon: TrendingUp },
     { id: "target", label: "Target", icon: Target },
     { id: "storico", label: "Storico", icon: History },
-    { id: "configurazione", label: "Configurazione", icon: Settings },
   ].filter((n) => canSeeSection(n.id));
+  const puoConfigurare = canSeeSection("configurazione");
+  const itemCls = (active: boolean, compact: boolean) =>
+    `flex items-center gap-2.5 px-3 ${compact ? "py-2" : "py-2.5"} rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${
+      active ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
+    }`;
 
   return (
-    <div className="min-h-screen bg-[#F3F0E8] flex flex-col">
-      {/* Header */}
-      <header className="bg-white border-b border-stone-200 shadow-sm sticky top-0 z-30">
-        <div className="max-w-screen-xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <a href="../" className="flex items-center gap-2 text-stone-400 hover:text-stone-700 text-xs transition">
-              <ChevronLeft size={14} />
-            </a>
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: ACCENT }}>
-              <TrendingUp size={16} color="white" />
-            </div>
-            <span className="font-fraunces font-semibold text-stone-900">Revenue Forecast</span>
-          </div>
-
-          {offline && (
-            <Badge color="bg-amber-100 text-amber-700">
-              <AlertTriangle size={10} className="mr-1" /> Backend offline
-            </Badge>
-          )}
-
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-stone-600 hidden sm:block">{account.nome}</span>
-            <button className="text-stone-400 hover:text-stone-700 p-1.5 rounded-lg hover:bg-stone-100" onClick={handleLogout}>
-              <LogOut size={16} />
-            </button>
-          </div>
+    <div className="min-h-screen w-full bg-[#F3F0E8] text-stone-800" style={{ fontFamily: "'Inter', sans-serif" }}>
+      {offline && (
+        <div className="sticky top-0 z-50 flex items-center justify-center gap-2 bg-rose-600 text-white text-xs font-semibold px-4 py-2 text-center">
+          <AlertTriangle size={13} className="shrink-0" />
+          Server non raggiungibile: le modifiche non vengono salvate. Verifica la connessione e ricarica la pagina.
         </div>
-      </header>
+      )}
 
-      <div className="flex flex-1 max-w-screen-xl mx-auto w-full gap-0 px-0">
-        {/* Sidebar nav */}
-        <aside className="w-52 shrink-0 py-6 px-3 hidden md:flex flex-col gap-1">
-          {nav.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition w-full text-left ${section === id ? "text-white shadow-sm" : "text-stone-600 hover:bg-stone-200/60 hover:text-stone-900"}`}
-              style={section === id ? { background: ACCENT } : {}}
-              onClick={() => setSection(id)}
+      <div className="flex flex-col md:flex-row min-h-screen">
+        {/* SIDEBAR */}
+        <aside className={`${sidebarCollapsed ? "md:w-14" : "md:w-60"} shrink-0 bg-[#0F2A28] text-stone-200 flex md:flex-col md:sticky md:top-0 md:h-screen transition-all duration-200`}>
+          <div className={`border-b border-white/10 hidden md:flex flex-col ${sidebarCollapsed ? "items-center px-0 py-4" : "px-5 py-5"}`}>
+            {!sidebarCollapsed ? (
+              <a href="/" className="flex items-center gap-1.5 text-[11px] text-stone-400 hover:text-stone-200 transition mb-3">
+                <ArrowLeft size={12} /> Applicazioni Urban Homy
+              </a>
+            ) : (
+              <a href="/" className="flex items-center justify-center p-1.5 mb-2 rounded-lg text-stone-400 hover:text-stone-200 hover:bg-white/5 transition" title="Applicazioni Urban Homy">
+                <ArrowLeft size={14} />
+              </a>
+            )}
+            <div className={`flex items-center gap-2 ${sidebarCollapsed ? "justify-center" : ""}`}>
+              <div className="w-8 h-8 rounded-md flex items-center justify-center shrink-0" style={{ background: ACCENT }}>
+                <TrendingUp size={16} className="text-white" />
+              </div>
+              {!sidebarCollapsed && (
+                <div>
+                  <div className="font-fraunces font-semibold text-white text-[15px] leading-none">Revenue Forecast</div>
+                  <div className="text-[11px] text-stone-400 tracking-wide">Urban Homy · ricavi per BU</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <nav className="flex md:flex-col w-full px-2 py-3 gap-1 overflow-x-auto md:overflow-y-auto md:flex-1">
+            <a
+              href="/"
+              className="md:hidden flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap text-stone-400 hover:text-stone-200 hover:bg-white/5 transition"
+              title="Applicazioni Urban Homy"
             >
-              <Icon size={16} />
-              {label}
+              <ArrowLeft size={16} />
+            </a>
+            {nav.map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => setSection(id)} title={sidebarCollapsed ? label : undefined} className={itemCls(section === id, false)}>
+                <Icon size={16} />
+                {!sidebarCollapsed && label}
+              </button>
+            ))}
+
+            {puoConfigurare && (
+              <div className="md:mt-1">
+                <button
+                  onClick={() => setImpostazioniAperte((v) => !v)}
+                  title={sidebarCollapsed ? "Impostazioni" : undefined}
+                  className={`w-full ${itemCls(section === "configurazione", false)}`}
+                >
+                  <Settings size={16} />
+                  {!sidebarCollapsed && <>Impostazioni<ChevronDown size={14} className={`ml-auto transition-transform hidden md:block ${impostazioniAperte || section === "configurazione" ? "rotate-180" : ""}`} /></>}
+                </button>
+                {(impostazioniAperte || section === "configurazione") && (
+                  <div className={`flex md:flex-col gap-1 md:mt-1 ${sidebarCollapsed ? "" : "md:pl-4 md:border-l md:border-white/10 md:ml-4"}`}>
+                    <button onClick={() => setSection("configurazione")} title={sidebarCollapsed ? "Business Unit e voci" : undefined} className={itemCls(section === "configurazione", true)}>
+                      <Building2 size={15} />
+                      {!sidebarCollapsed && "Business Unit e voci"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </nav>
+
+          <div className="hidden md:flex flex-col border-t border-white/10 mt-auto">
+            {!sidebarCollapsed && (
+              <div className="px-5 py-3 text-[11px] text-stone-500">
+                {bus.filter((b) => b.attiva).length} BU attive · {voci.filter((v) => v.attiva).length} voci
+              </div>
+            )}
+            <button
+              onClick={toggleSidebar}
+              className="flex items-center justify-center py-2.5 text-stone-500 hover:text-stone-300 hover:bg-white/5 transition"
+              title={sidebarCollapsed ? "Espandi menu" : "Comprimi menu"}
+            >
+              {sidebarCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
             </button>
-          ))}
+          </div>
         </aside>
 
-        {/* Mobile nav */}
-        <div className="md:hidden w-full border-b border-stone-200 bg-white px-3 py-2 flex gap-1 overflow-x-auto sticky top-14 z-20">
-          {nav.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${section === id ? "text-white" : "text-stone-600 hover:bg-stone-100"}`}
-              style={section === id ? { background: ACCENT } : {}}
-              onClick={() => setSection(id)}
-            >
-              <Icon size={13} />{label}
-            </button>
-          ))}
-        </div>
-
-        {/* Main content */}
-        <main className="flex-1 py-6 px-4 min-w-0">
+        {/* MAIN */}
+        <main className="flex-1 min-w-0 px-4 md:px-8 py-6 md:py-8">
           {loadingApp ? (
             <div className="flex items-center justify-center h-64 text-stone-400 text-sm">Caricamento…</div>
           ) : (
