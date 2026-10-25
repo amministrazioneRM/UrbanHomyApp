@@ -4,7 +4,7 @@
 set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-for app in manutenzioni locker ticket-it utenti vending; do
+for app in manutenzioni locker ticket-it utenti vending revenue-forecast; do
   echo "Building apps/$app..."
   cd "$ROOT/apps/$app"
   npm install

@@ -152,6 +152,21 @@
         </a>
       </div>
 
+        <a id="cardRevenueForecast" href="./revenue-forecast/" class="hidden group bg-white border border-stone-200 rounded-2xl shadow-sm p-6 flex flex-col gap-4 hover:border-[#0C7873]/60 hover:shadow-md transition">
+          <div class="w-12 h-12 rounded-lg bg-[#0C7873] flex items-center justify-center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+          </div>
+          <div>
+            <div class="font-fraunces text-lg font-semibold text-stone-900">Revenue Forecast</div>
+            <div class="text-sm text-stone-500 mt-1">Pianificazione e monitoraggio ricavi per Business Unit.</div>
+          </div>
+          <div class="text-sm font-semibold text-[#0C7873] flex items-center gap-1.5 mt-auto">
+            Apri applicazione
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="group-hover:translate-x-0.5 transition-transform"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </div>
+        </a>
+      </div>
+
       <p id="nessunAccesso" class="hidden text-center text-sm text-stone-400 bg-white border border-dashed border-stone-300 rounded-xl py-10">
         Non hai ancora accesso a nessuna applicazione. Contatta un amministratore del portale.
       </p>
@@ -172,6 +187,7 @@
     var cardTicketIt = document.getElementById("cardTicketIt");
     var cardBaggyLocker = document.getElementById("cardBaggyLocker");
     var cardVendingMachine = document.getElementById("cardVendingMachine");
+    var cardRevenueForecast = document.getElementById("cardRevenueForecast");
     var cardUtenti = document.getElementById("cardUtenti");
     var nessunAccesso = document.getElementById("nessunAccesso");
 
@@ -195,11 +211,13 @@
       var haTicketIt = UHAccounts.hasAccesso(account, "ticketIt");
       var haBaggyLocker = UHAccounts.hasAccesso(account, "baggyLocker");
       var haVendingMachine = UHAccounts.hasAccesso(account, "vendingMachine");
+      var haRevenueForecast = UHAccounts.hasAccesso(account, "revenueForecast");
       cardManutenzioni.classList.toggle("hidden", !haManutenzioni);
       cardTicketIt.classList.toggle("hidden", !haTicketIt);
       cardBaggyLocker.classList.toggle("hidden", !haBaggyLocker);
       cardVendingMachine.classList.toggle("hidden", !haVendingMachine);
-      nessunAccesso.classList.toggle("hidden", haManutenzioni || haTicketIt || haBaggyLocker || haVendingMachine || isAdmin);
+      cardRevenueForecast.classList.toggle("hidden", !haRevenueForecast);
+      nessunAccesso.classList.toggle("hidden", haManutenzioni || haTicketIt || haBaggyLocker || haVendingMachine || haRevenueForecast || isAdmin);
 
       loginScreen.classList.add("hidden");
       launcher.classList.remove("hidden");

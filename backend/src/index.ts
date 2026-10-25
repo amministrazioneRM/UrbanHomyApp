@@ -7,6 +7,7 @@ import { makeCrudRouter } from "./routes/crud.js";
 import { Prisma } from "@prisma/client";
 import { requireAuth } from "./auth.js";
 import authRoutes from "./routes/auth.js";
+import forecastRoutes from "./routes/forecast.js";
 import type { AppId } from "./types.js";
 
 // null = tutte le sedi (nessun filtro); string[] = solo quelle sedi ([] = nessuna)
@@ -318,6 +319,9 @@ app.get("/api/vending/vendite/stats", async (req, res, next) => {
 });
 
 app.use("/api/vending/vendite", makeCrudRouter(prisma.vendingVendita as never, { idPrefix: "VEN", modelName: "VendingVendita", filter: vendingChildFilter("vendingMachine"), paginated: true }));
+
+// Revenue Forecast
+app.use("/api/forecast", forecastRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

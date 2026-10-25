@@ -5,7 +5,7 @@ export interface JwtPayload {
   exp?: number;
 }
 
-export type AppId = "manutenzioni" | "ticketIt" | "baggyLocker" | "vendingMachine";
+export type AppId = "manutenzioni" | "ticketIt" | "baggyLocker" | "vendingMachine" | "revenueForecast";
 
 export interface AccessoApp {
   abilitato: boolean;

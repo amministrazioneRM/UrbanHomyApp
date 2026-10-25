@@ -394,3 +394,104 @@ model VendingVendita {
   @@index([macchinaId])
   @@map("vending_vendite")
 }
+
+// App: Revenue Forecast
+
+model ForecastBU {
+  id               String            @id
+  nome             String
+  codiceBC         String?
+  sedeCentraleId   String
+  mewsPropertyId   String?
+  mewsClientToken  String?           @db.NVarChar(Max)
+  mewsAccessToken  String?           @db.NVarChar(Max)
+  attiva           Boolean           @default(true)
+
+  entries  ForecastEntry[]
+  targets  ForecastTarget[]
+  storici  ForecastStorico[]
+  actuals  ForecastActual[]
+
+  @@index([sedeCentraleId])
+  @@map("forecast_bu")
+}
+
+model ForecastVoce {
+  id      String   @id
+  nome    String
+  ordine  Int      @default(0)
+  attiva  Boolean  @default(true)
+
+  entries  ForecastEntry[]
+  targets  ForecastTarget[]
+  storici  ForecastStorico[]
+  actuals  ForecastActual[]
+
+  @@map("forecast_voci")
+}
+
+model ForecastEntry {
+  id           String       @id
+  buId         String
+  bu           ForecastBU   @relation(fields: [buId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  anno         Int
+  mese         Int
+  voceId       String
+  voce         ForecastVoce @relation(fields: [voceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  importo      Decimal      @db.Decimal(14, 2)
+  stato        String       @default("bozza")
+  dataModifica DateTime
+  utenteId     String
+
+  @@unique([buId, anno, mese, voceId])
+  @@index([buId, anno, mese])
+  @@map("forecast_entries")
+}
+
+model ForecastTarget {
+  id      String       @id
+  buId    String
+  bu      ForecastBU   @relation(fields: [buId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  anno    Int
+  mese    Int
+  voceId  String
+  voce    ForecastVoce @relation(fields: [voceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  importo Decimal      @db.Decimal(14, 2)
+
+  @@unique([buId, anno, mese, voceId])
+  @@index([buId, anno])
+  @@map("forecast_targets")
+}
+
+model ForecastStorico {
+  id                String       @id
+  buId              String
+  bu                ForecastBU   @relation(fields: [buId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  anno              Int
+  mese              Int
+  voceId            String
+  voce              ForecastVoce @relation(fields: [voceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  importo           Decimal      @db.Decimal(14, 2)
+  dataRegistrazione DateTime
+  utenteId          String
+  tipo              String
+
+  @@index([buId, anno, mese])
+  @@map("forecast_storici")
+}
+
+model ForecastActual {
+  id                String       @id
+  buId              String
+  bu                ForecastBU   @relation(fields: [buId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  anno              Int
+  mese              Int
+  voceId            String
+  voce              ForecastVoce @relation(fields: [voceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  importo           Decimal      @db.Decimal(14, 2)
+  dataAggiornamento DateTime
+
+  @@unique([buId, anno, mese, voceId])
+  @@index([buId, anno, mese])
+  @@map("forecast_actuals")
+}

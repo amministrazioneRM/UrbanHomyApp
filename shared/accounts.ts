@@ -12,7 +12,7 @@
 /*  delle sezioni riservate (UHAccounts.ruoloIn(...) === "Amministratore").*/
 /* ------------------------------------------------------------------ */
 
-export type AppId = "manutenzioni" | "ticketIt" | "baggyLocker" | "vendingMachine";
+export type AppId = "manutenzioni" | "ticketIt" | "baggyLocker" | "vendingMachine" | "revenueForecast";
 
 export interface PermessiEntry {
   lettura: boolean;
@@ -119,6 +119,16 @@ const APPS: AppDef[] = [
     moduli: [
       { id: "vendite", nome: "Vendite" },
       { id: "sedi", nome: "Sedi" },
+    ],
+  },
+  {
+    id: "revenueForecast", nome: "Revenue Forecast",
+    moduli: [
+      { id: "dashboard", nome: "Dashboard" },
+      { id: "forecast", nome: "Forecast" },
+      { id: "target", nome: "Target" },
+      { id: "storico", nome: "Storico" },
+      { id: "configurazione", nome: "Configurazione" },
     ],
   },
 ];
