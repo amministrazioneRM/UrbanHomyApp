@@ -900,7 +900,7 @@ function ConfigSection({ bus, voci, sedi, onReload }: {
 type Section = "dashboard" | "forecast" | "target" | "storico" | "configurazione";
 
 export default function App() {
-  const [account, setAccount] = useState<UHAccount | null>(() => UHAccounts.getSession());
+  const [account, setAccount] = useState<UHAccount | null>(() => UHAccounts.loadSession());
   const [ruolo, setRuolo] = useState<UHRuolo | null>(null);
   const [bus, setBus] = useState<ForecastBU[]>([]);
   const [voci, setVoci] = useState<ForecastVoce[]>([]);
@@ -930,7 +930,7 @@ export default function App() {
       const [b, v, s] = await Promise.all([
         forecastApi.getBU(),
         forecastApi.getVoci(),
-        UHAccounts.loadSedi(),
+        UHAccounts.fetchSedi(),
       ]);
       setBus(b);
       setVoci(v);
@@ -944,17 +944,17 @@ export default function App() {
     if (!account) return;
     // Load role if not admin
     if (!isAdmin && account.accessi[APP_ID]?.ruoloId) {
-      UHAccounts.loadRuolo(account.accessi[APP_ID]!.ruoloId).then(setRuolo).catch(() => {});
+      const ruoloId = account.accessi[APP_ID]!.ruoloId;
+      UHAccounts.fetchRoles()
+        .then((ruoli) => setRuolo(UHAccounts.roleById(ruoloId, ruoli)))
+        .catch(() => {});
     }
     loadMasterData();
   }, [account, isAdmin, loadMasterData]);
 
-  useEffect(() => {
-    UHAccounts.onSessionChange(setAccount);
-  }, []);
-
   function handleLogout() {
-    UHAccounts.logout();
+    UHAccounts.clearSession();
+    setAccount(null);
     window.location.href = "../";
   }
 
