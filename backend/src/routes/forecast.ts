@@ -59,7 +59,11 @@ router.get("/bu", async (req, res, next) => {
     };
     const bus = await prisma.forecastBU.findMany({ where, orderBy: { nome: "asc" }, include: { voci: { select: { voceId: true } } } });
     // never expose Mews tokens to the client
-    res.json(bus.map(({ mewsClientToken: _c, mewsAccessToken: _a, voci, ...b }) => ({ ...b, voceIds: voci.map((v) => v.voceId) })));
+    res.json(bus.map(({ mewsClientToken: _c, mewsAccessToken, voci, ...b }) => ({
+      ...b,
+      voceIds: voci.map((v) => v.voceId),
+      mewsConfigurato: !!mewsAccessToken,
+    })));
   } catch (e) { next(e); }
 });
 
@@ -133,6 +137,16 @@ router.put("/bu/:id/attiva", async (req, res, next) => {
     const bu = await prisma.forecastBU.update({ where: { id: req.params.id }, data: { attiva: req.body.attiva === true } });
     const { mewsClientToken: _c, mewsAccessToken: _a, ...safe } = bu;
     res.json(safe);
+  } catch (e) { next(e); }
+});
+
+// Access token Mews della sede: solo scrittura, non viene mai restituito. Stringa vuota = rimuove.
+router.put("/bu/:id/mews", async (req, res, next) => {
+  try {
+    if (req.account.ruoloGlobale !== "Amministratore") { res.status(403).json({ error: "Solo un amministratore può modificare le credenziali Mews" }); return; }
+    const token = typeof req.body.mewsAccessToken === "string" ? req.body.mewsAccessToken.trim() : "";
+    await prisma.forecastBU.update({ where: { id: req.params.id }, data: { mewsAccessToken: token || null } });
+    res.json({ mewsConfigurato: !!token });
   } catch (e) { next(e); }
 });
 

@@ -931,6 +931,19 @@ type GruppoAttivita = { chiave: string; codiceGruppo: string; titolo: string; ti
 function ConfigSection({ onReload }: { onReload: () => void }) {
   const [buTutte, setBuTutte] = useState<ForecastBU[]>([]);
   const [tipiBC, setTipiBC] = useState<TipoAttivitaBC[]>([]);
+  const [tokenMews, setTokenMews] = useState<Record<string, string>>({});
+  const [mewsStato, setMewsStato] = useState<Record<string, { ok: boolean; testo: string }>>({});
+
+  async function salvaMews(bu: ForecastBU, token: string) {
+    try {
+      const r = await forecastApi.setBUMews(bu.id, token);
+      setBuTutte((prev) => prev.map((b) => (b.id === bu.id ? { ...b, mewsConfigurato: r.mewsConfigurato } : b)));
+      setTokenMews((p) => ({ ...p, [bu.id]: "" }));
+      setMewsStato((p) => ({ ...p, [bu.id]: { ok: true, testo: r.mewsConfigurato ? "Access token salvato" : "Access token rimosso" } }));
+    } catch (e: unknown) {
+      setMewsStato((p) => ({ ...p, [bu.id]: { ok: false, testo: (e as Error).message } }));
+    }
+  }
 
   const caricaBU = useCallback(() => { forecastApi.getBU(true).then(setBuTutte).catch(() => {}); }, []);
   useEffect(() => {
@@ -1018,6 +1031,36 @@ function ConfigSection({ onReload }: { onReload: () => void }) {
 
             {bu.attiva && (
               <div className="mt-4 pt-4 border-t border-stone-100">
+                <div className="mb-5">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">
+                    Mews <span className="font-normal normal-case text-stone-400">· {bu.mewsConfigurato ? "access token configurato" : "access token non configurato"}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="password"
+                      autoComplete="off"
+                      className={`${inputCls} max-w-md`}
+                      value={tokenMews[bu.id] || ""}
+                      onChange={(e) => setTokenMews((p) => ({ ...p, [bu.id]: e.target.value }))}
+                      placeholder={bu.mewsConfigurato ? "Incolla un nuovo access token per sostituirlo" : "Incolla l'access token Mews di questa sede"}
+                    />
+                    <button
+                      className="px-3 py-2 text-sm rounded-lg font-semibold text-white"
+                      style={{ background: ACCENT }}
+                      onClick={() => (tokenMews[bu.id] || "").trim() && salvaMews(bu, tokenMews[bu.id])}
+                    >
+                      Salva
+                    </button>
+                    {bu.mewsConfigurato && (
+                      <button className="px-3 py-2 text-sm rounded-lg text-rose-600 hover:bg-rose-50" onClick={() => window.confirm("Rimuovere l'access token Mews di questa sede?") && salvaMews(bu, "")}>
+                        Rimuovi
+                      </button>
+                    )}
+                    {mewsStato[bu.id] && (
+                      <span className={`text-xs font-semibold ${mewsStato[bu.id].ok ? "text-emerald-600" : "text-rose-600"}`}>{mewsStato[bu.id].testo}</span>
+                    )}
+                  </div>
+                </div>
                 <div className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">
                   Voci di ricavo abilitate <span className="font-normal normal-case text-stone-400">({abilitate.length})</span>
                 </div>
