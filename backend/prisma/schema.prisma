@@ -495,3 +495,15 @@ model ForecastActual {
   @@index([buId, anno, mese])
   @@map("forecast_actuals")
 }
+
+model ForecastBCStruttura {
+  id          String   @id
+  societa     String
+  codice      String
+  nome        String
+  bloccata    Boolean  @default(false)
+  dataImport  DateTime
+
+  @@unique([societa, codice])
+  @@map("forecast_bc_strutture")
+}
