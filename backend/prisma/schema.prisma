@@ -427,8 +427,19 @@ model ForecastVoce {
   targets  ForecastTarget[]
   storici  ForecastStorico[]
   actuals  ForecastActual[]
+  tipiAttivita ForecastVoceTipoAttivita[]
 
   @@map("forecast_voci")
+}
+
+model ForecastVoceTipoAttivita {
+  id      String       @id
+  voceId  String
+  voce    ForecastVoce @relation(fields: [voceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  codice  String       @unique
+
+  @@index([voceId])
+  @@map("forecast_voce_tipi_attivita")
 }
 
 model ForecastEntry {

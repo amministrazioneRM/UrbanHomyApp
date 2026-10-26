@@ -46,7 +46,8 @@ export interface ForecastBU {
   id: string; nome: string; codiceBC?: string; sedeCentraleId: string;
   mewsPropertyId?: string; attiva: boolean;
 }
-export interface ForecastVoce { id: string; nome: string; ordine: number; attiva: boolean; }
+export interface ForecastVoce { id: string; nome: string; ordine: number; attiva: boolean; tipiAttivita?: string[]; }
+export interface TipoAttivitaBC { id: string; codice: string; nome: string; }
 export interface ForecastEntry {
   id: string; buId: string; anno: number; mese: number; voceId: string;
   importo: number; stato: "bozza" | "pubblicato"; dataModifica: string; utenteId: string;
@@ -70,7 +71,10 @@ export interface DashboardData {
 
 export const forecastApi = {
   // BU
-  getBU: () => apiFetch<ForecastBU[]>("/forecast/bu"),
+  getBU: (tutte = false) => apiFetch<ForecastBU[]>(`/forecast/bu${tutte ? "?tutte=1" : ""}`),
+  setBUAttiva: (id: string, attiva: boolean) =>
+    apiFetch<ForecastBU>(`/forecast/bu/${id}/attiva`, { method: "PUT", body: JSON.stringify({ attiva }) }),
+  getTipiAttivita: () => apiFetch<TipoAttivitaBC[]>("/forecast/tipi-attivita"),
   createBU: (data: Omit<ForecastBU, "id"> & { mewsClientToken?: string; mewsAccessToken?: string }) =>
     apiFetch<ForecastBU>("/forecast/bu", { method: "POST", body: JSON.stringify(data) }),
   updateBU: (id: string, data: Partial<ForecastBU> & { mewsClientToken?: string; mewsAccessToken?: string }) =>
@@ -78,7 +82,7 @@ export const forecastApi = {
 
   // Voci
   getVoci: () => apiFetch<ForecastVoce[]>("/forecast/voci"),
-  createVoce: (data: { nome: string; ordine?: number }) =>
+  createVoce: (data: { nome: string; ordine?: number; tipiAttivita?: string[] }) =>
     apiFetch<ForecastVoce>("/forecast/voci", { method: "POST", body: JSON.stringify(data) }),
   updateVoce: (id: string, data: Partial<ForecastVoce>) =>
     apiFetch<ForecastVoce>(`/forecast/voci/${id}`, { method: "PUT", body: JSON.stringify(data) }),

@@ -23,10 +23,11 @@ async function syncBuDaSedi(): Promise<void> {
   for (const s of sedi) {
     const id = `FBU-${s.id}`;
     ids.push(id);
+    // L'attivazione per il forecast è una scelta in Impostazioni: una sede nuova parte disattivata.
     await prisma.forecastBU.upsert({
       where: { id },
-      create: { id, nome: s.nome, codiceBC: s.buCodice, sedeCentraleId: s.id, attiva: s.attiva },
-      update: { nome: s.nome, codiceBC: s.buCodice, sedeCentraleId: s.id, attiva: s.attiva },
+      create: { id, nome: s.nome, codiceBC: s.buCodice, sedeCentraleId: s.id, attiva: false },
+      update: { nome: s.nome, codiceBC: s.buCodice, sedeCentraleId: s.id, ...(s.attiva ? {} : { attiva: false }) },
     });
   }
   await prisma.forecastBU.updateMany({ where: { id: { notIn: ids } }, data: { attiva: false } });
@@ -51,7 +52,11 @@ router.get("/bu", async (req, res, next) => {
     if (!hasForecastAccess(req)) { res.json([]); return; }
     await syncBuDaSedi();
     const buIds = await allowedBuIds(req);
-    const where = buIds ? { id: { in: buIds }, attiva: true } : { attiva: true };
+    const soloAttive = req.query.tutte !== "1";
+    const where = {
+      ...(buIds ? { id: { in: buIds } } : {}),
+      ...(soloAttive ? { attiva: true } : {}),
+    };
     const bus = await prisma.forecastBU.findMany({ where, orderBy: { nome: "asc" } });
     // never expose Mews tokens to the client
     res.json(bus.map(({ mewsClientToken: _c, mewsAccessToken: _a, ...b }) => b));
@@ -94,32 +99,65 @@ router.put("/bu/:id", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.put("/bu/:id/attiva", async (req, res, next) => {
+  try {
+    if (!hasForecastAccess(req)) { res.status(403).json({ error: "Accesso negato" }); return; }
+    const bu = await prisma.forecastBU.update({ where: { id: req.params.id }, data: { attiva: req.body.attiva === true } });
+    const { mewsClientToken: _c, mewsAccessToken: _a, ...safe } = bu;
+    res.json(safe);
+  } catch (e) { next(e); }
+});
+
 // ─── VOCI ────────────────────────────────────────────────────────────────────
+
+const voceConTipi = { include: { tipiAttivita: { select: { codice: true } } } } as const;
+type VoceConTipi = { tipiAttivita: { codice: string }[] } & Record<string, unknown>;
+const serializzaVoce = ({ tipiAttivita, ...v }: VoceConTipi) => ({ ...v, tipiAttivita: tipiAttivita.map((t) => t.codice).sort() });
+
+// Un tipo attività appartiene a una sola voce: assegnarlo a una voce lo toglie dalle altre.
+async function impostaTipiAttivita(voceId: string, codici: string[]): Promise<void> {
+  const unici = [...new Set(codici)];
+  await prisma.$transaction([
+    prisma.forecastVoceTipoAttivita.deleteMany({ where: { OR: [{ voceId }, { codice: { in: unici } }] } }),
+    prisma.forecastVoceTipoAttivita.createMany({ data: unici.map((codice) => ({ id: uid("FVT"), voceId, codice })) }),
+  ]);
+}
 
 router.get("/voci", async (req, res, next) => {
   try {
-    const voci = await prisma.forecastVoce.findMany({ orderBy: { ordine: "asc" } });
-    res.json(voci);
+    const voci = await prisma.forecastVoce.findMany({ orderBy: { ordine: "asc" }, ...voceConTipi });
+    res.json(voci.map((v) => serializzaVoce(v as unknown as VoceConTipi)));
   } catch (e) { next(e); }
 });
 
 router.post("/voci", async (req, res, next) => {
   try {
-    const { nome, ordine } = req.body;
-    const voce = await prisma.forecastVoce.create({
-      data: { id: uid("FVO"), nome, ordine: ordine ?? 0, attiva: true },
-    });
-    res.json(voce);
+    const { nome, ordine, tipiAttivita } = req.body as { nome: string; ordine?: number; tipiAttivita?: string[] };
+    const id = uid("FVO");
+    await prisma.forecastVoce.create({ data: { id, nome, ordine: ordine ?? 0, attiva: true } });
+    if (tipiAttivita) await impostaTipiAttivita(id, tipiAttivita);
+    const voce = await prisma.forecastVoce.findUniqueOrThrow({ where: { id }, ...voceConTipi });
+    res.json(serializzaVoce(voce as unknown as VoceConTipi));
   } catch (e) { next(e); }
 });
 
 router.put("/voci/:id", async (req, res, next) => {
   try {
-    const voce = await prisma.forecastVoce.update({
+    const { nome, ordine, attiva, tipiAttivita } = req.body as { nome?: string; ordine?: number; attiva?: boolean; tipiAttivita?: string[] };
+    await prisma.forecastVoce.update({
       where: { id: req.params.id },
-      data: req.body,
+      data: { ...(nome !== undefined && { nome }), ...(ordine !== undefined && { ordine }), ...(attiva !== undefined && { attiva }) },
     });
-    res.json(voce);
+    if (tipiAttivita) await impostaTipiAttivita(req.params.id, tipiAttivita);
+    const voce = await prisma.forecastVoce.findUniqueOrThrow({ where: { id: req.params.id }, ...voceConTipi });
+    res.json(serializzaVoce(voce as unknown as VoceConTipi));
+  } catch (e) { next(e); }
+});
+
+router.get("/tipi-attivita", async (req, res, next) => {
+  try {
+    if (!hasForecastAccess(req)) { res.json([]); return; }
+    res.json(await prisma.forecastBCTipoAttivita.findMany({ orderBy: { codice: "asc" } }));
   } catch (e) { next(e); }
 });
 

@@ -8,7 +8,7 @@ import {
 import UHAccounts from "./accounts";
 import type { UHAccount, UHRuolo, UHSede, PermessiMap } from "./accounts";
 import { forecastApi, useBackendOffline } from "./api";
-import type { ForecastBU, ForecastVoce, ForecastEntry, ForecastTarget, ForecastStorico, ForecastActual, DashboardData } from "./api";
+import type { ForecastBU, TipoAttivitaBC, ForecastVoce, ForecastEntry, ForecastTarget, ForecastStorico, ForecastActual, DashboardData } from "./api";
 
 const APP_ID = "revenueForecast";
 const ACCENT = "#0C7873";
@@ -917,89 +917,164 @@ function StoricoSection({ bus, voci, account }: { bus: ForecastBU[]; voci: Forec
 
 // ─── Configurazione section ───────────────────────────────────────────────────
 
-type ModalConf =
-  | { type: "nuovaBU" }
-  | { type: "modificaBU"; bu: ForecastBU & { mewsClientToken?: string; mewsAccessToken?: string } }
-  | { type: "nuovaVoce" }
-  | { type: "modificaVoce"; voce: ForecastVoce };
+type ModalConf = { type: "nuovaVoce" } | { type: "modificaVoce"; voce: ForecastVoce };
 
-function ConfigSection({ bus, voci, sedi, onReload }: {
-  bus: ForecastBU[]; voci: ForecastVoce[]; sedi: UHSede[]; onReload: () => void;
-}) {
+const eMarcatore = (t: TipoAttivitaBC) => /\s-\s(Inizio|Fine)$/.test(t.nome);
+
+function ConfigSection({ voci, onReload }: { voci: ForecastVoce[]; onReload: () => void }) {
   const [modal, setModal] = useState<ModalConf | null>(null);
-  const [buForm, setBuForm] = useState({ nome: "", codiceBC: "", sedeCentraleId: "", mewsPropertyId: "", mewsClientToken: "", mewsAccessToken: "", attiva: true });
-  const [voceForm, setVoceForm] = useState({ nome: "", ordine: 0 });
-  const [showTokens, setShowTokens] = useState(false);
+  const [voceForm, setVoceForm] = useState<{ nome: string; ordine: number; tipi: string[] }>({ nome: "", ordine: 0, tipi: [] });
+  const [buTutte, setBuTutte] = useState<ForecastBU[]>([]);
+  const [tipiBC, setTipiBC] = useState<TipoAttivitaBC[]>([]);
+  const [errore, setErrore] = useState<string | null>(null);
 
-  function openNewBU() {
-    setBuForm({ nome: "", codiceBC: "", sedeCentraleId: sedi[0]?.id || "", mewsPropertyId: "", mewsClientToken: "", mewsAccessToken: "", attiva: true });
-    setModal({ type: "nuovaBU" });
-  }
-  function openEditBU(bu: ForecastBU) {
-    setBuForm({ nome: bu.nome, codiceBC: bu.codiceBC || "", sedeCentraleId: bu.sedeCentraleId, mewsPropertyId: bu.mewsPropertyId || "", mewsClientToken: "", mewsAccessToken: "", attiva: bu.attiva });
-    setModal({ type: "modificaBU", bu: bu as ForecastBU & { mewsClientToken?: string; mewsAccessToken?: string } });
-    setShowTokens(false);
-  }
+  const caricaBU = useCallback(() => { forecastApi.getBU(true).then(setBuTutte).catch(() => {}); }, []);
+  useEffect(() => {
+    caricaBU();
+    forecastApi.getTipiAttivita().then(setTipiBC).catch(() => {});
+  }, [caricaBU]);
 
-  async function saveBU() {
-    if (!buForm.nome.trim() || !buForm.sedeCentraleId) return;
-    const data = { nome: buForm.nome, codiceBC: buForm.codiceBC || undefined, sedeCentraleId: buForm.sedeCentraleId, mewsPropertyId: buForm.mewsPropertyId || undefined, mewsClientToken: buForm.mewsClientToken || undefined, mewsAccessToken: buForm.mewsAccessToken || undefined, attiva: buForm.attiva };
-    if (modal?.type === "nuovaBU") {
-      await forecastApi.createBU(data);
-    } else if (modal?.type === "modificaBU") {
-      await forecastApi.updateBU(modal.bu.id, data);
+  async function toggleBU(bu: ForecastBU) {
+    setBuTutte((prev) => prev.map((b) => (b.id === bu.id ? { ...b, attiva: !bu.attiva } : b)));
+    try {
+      await forecastApi.setBUAttiva(bu.id, !bu.attiva);
+      onReload();
+    } catch {
+      caricaBU();
     }
-    setModal(null); onReload();
   }
 
   async function saveVoce() {
     if (!voceForm.nome.trim()) return;
-    if (modal?.type === "nuovaVoce") {
-      await forecastApi.createVoce(voceForm);
-    } else if (modal?.type === "modificaVoce") {
-      await forecastApi.updateVoce(modal.voce.id, voceForm);
+    setErrore(null);
+    try {
+      const dati = { nome: voceForm.nome, ordine: voceForm.ordine, tipiAttivita: voceForm.tipi };
+      if (modal?.type === "nuovaVoce") await forecastApi.createVoce(dati);
+      else if (modal?.type === "modificaVoce") await forecastApi.updateVoce(modal.voce.id, dati);
+      setModal(null);
+      onReload();
+    } catch (e: unknown) {
+      setErrore((e as Error).message);
     }
-    setModal(null); onReload();
+  }
+
+  const nomeTipo = (codice: string) => tipiBC.find((t) => t.codice === codice)?.nome || codice;
+  const voceDelTipo = (codice: string, escludi?: string) => voci.find((v) => v.id !== escludi && v.tipiAttivita?.includes(codice));
+
+  const gruppi = useMemo(() => {
+    const out: { chiave: string; titolo: string; tipi: TipoAttivitaBC[] }[] = [];
+    tipiBC.forEach((t) => {
+      const chiave = t.codice.split(".").slice(0, -1).join(".");
+      if (eMarcatore(t)) {
+        if (t.nome.endsWith("Inizio")) out.push({ chiave, titolo: t.nome.replace(/\s-\s(Inizio|Fine)$/, ""), tipi: [] });
+        return;
+      }
+      let g = out.find((x) => x.chiave === chiave);
+      if (!g) { g = { chiave, titolo: chiave, tipi: [] }; out.push(g); }
+      g.tipi.push(t);
+    });
+    return out.filter((g) => g.tipi.length > 0);
+  }, [tipiBC]);
+
+  function apriVoce(voce: ForecastVoce | null) {
+    setErrore(null);
+    setVoceForm(voce ? { nome: voce.nome, ordine: voce.ordine, tipi: voce.tipiAttivita || [] } : { nome: "", ordine: voci.length, tipi: [] });
+    setModal(voce ? { type: "modificaVoce", voce } : { type: "nuovaVoce" });
   }
 
   return (
     <div className="space-y-6">
-      {/* Voci */}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
+        <div className="mb-1 font-fraunces text-base font-semibold text-stone-900">Sedi del forecast</div>
+        <p className="text-sm text-stone-500 mb-4">Scegli le sedi per cui si gestisce il forecast. Compaiono le sedi dell'app Utenti e accessi con una Business Unit (BC) associata.</p>
+        <div className="space-y-2">
+          {buTutte.map((bu) => (
+            <label key={bu.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-stone-100 hover:border-stone-200 cursor-pointer">
+              <div>
+                <div className="font-medium text-stone-800">{bu.nome}</div>
+                <div className="text-xs text-stone-400 mt-0.5 font-mono">BU {bu.codiceBC}</div>
+              </div>
+              <span className="flex items-center gap-2 text-sm text-stone-600">
+                {bu.attiva ? "Forecast attivo" : "Non gestita"}
+                <input type="checkbox" className="accent-[#0C7873] w-4 h-4" checked={bu.attiva} onChange={() => toggleBU(bu)} />
+              </span>
+            </label>
+          ))}
+          {buTutte.length === 0 && (
+            <p className="text-sm text-stone-400">Nessuna sede con Business Unit (BC) associata. Associala da Utenti e accessi > Impostazioni > Sedi.</p>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
         <div className="flex items-center justify-between mb-4">
           <span className="font-fraunces text-base font-semibold text-stone-900">Voci di ricavo</span>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-semibold text-white" style={{ background: ACCENT }} onClick={() => { setVoceForm({ nome: "", ordine: voci.length }); setModal({ type: "nuovaVoce" }); }}>
+          <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-semibold text-white" style={{ background: ACCENT }} onClick={() => apriVoce(null)}>
             <Plus size={14} /> Nuova voce
           </button>
         </div>
         <div className="space-y-2">
           {voci.map((v) => (
-            <div key={v.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-stone-100 hover:border-stone-200">
-              <div className="font-medium text-stone-800">{v.nome}</div>
-              <div className="flex items-center gap-2">
+            <div key={v.id} className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl border border-stone-100 hover:border-stone-200">
+              <div className="min-w-0">
+                <div className="font-medium text-stone-800">{v.nome}</div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {(v.tipiAttivita || []).length === 0 && <span className="text-xs text-stone-400">Nessun tipo attività associato</span>}
+                  {(v.tipiAttivita || []).map((c) => (
+                    <span key={c} className="text-xs px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-100" title={nomeTipo(c)}>
+                      <span className="font-mono">{c}</span> {nomeTipo(c)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
                 <Badge color={v.attiva ? "bg-emerald-100 text-emerald-700" : "bg-stone-100 text-stone-500"}>{v.attiva ? "Attiva" : "Inattiva"}</Badge>
-                <button className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100" onClick={() => { setVoceForm({ nome: v.nome, ordine: v.ordine }); setModal({ type: "modificaVoce", voce: v }); }}><Pencil size={14} /></button>
+                <button className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100" onClick={() => apriVoce(v)}><Pencil size={14} /></button>
               </div>
             </div>
           ))}
+          {voci.length === 0 && <p className="text-sm text-stone-400">Nessuna voce. Creane una e associale i tipi attività di Business Central.</p>}
         </div>
       </div>
 
-      {/* Voce modal */}
-      {(modal?.type === "nuovaVoce" || modal?.type === "modificaVoce") && (
-        <Modal title={modal.type === "nuovaVoce" ? "Nuova voce" : "Modifica voce"} onClose={() => setModal(null)}>
+      {modal && (
+        <Modal title={modal.type === "nuovaVoce" ? "Nuova voce" : "Modifica voce"} onClose={() => setModal(null)} wide>
           <Field label="Nome voce *">
             <input className={inputCls} value={voceForm.nome} onChange={(e) => setVoceForm((p) => ({ ...p, nome: e.target.value }))} placeholder="Es. Accommodation" />
           </Field>
           <Field label="Ordine">
             <input type="number" className={inputCls} value={voceForm.ordine} onChange={(e) => setVoceForm((p) => ({ ...p, ordine: parseInt(e.target.value) || 0 }))} />
           </Field>
-          {modal.type === "modificaVoce" && (
-            <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
-              <input type="checkbox" checked={(modal.voce as ForecastVoce).attiva} className="accent-[#0C7873]" readOnly />
-              Attiva (modifica tramite API)
-            </label>
-          )}
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-stone-500">Tipo attività (BC)</div>
+            <p className="text-xs text-stone-400 mt-0.5 mb-2">Le righe di Business Central con questi codici confluiscono nella voce. Un codice può stare in una sola voce.</p>
+            <div className="max-h-72 overflow-y-auto rounded-lg border border-stone-200 px-3 py-2">
+              {gruppi.map((g) => (
+                <div key={g.chiave} className="mb-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400 mb-1">{g.titolo}</div>
+                  {g.tipi.map((t) => {
+                    const altra = voceDelTipo(t.codice, modal.type === "modificaVoce" ? modal.voce.id : undefined);
+                    const sel = voceForm.tipi.includes(t.codice);
+                    return (
+                      <label key={t.codice} className={`flex items-center gap-2 py-1 text-sm ${altra ? "text-stone-400" : "text-stone-800 cursor-pointer"}`}>
+                        <input
+                          type="checkbox"
+                          className="accent-[#0C7873]"
+                          checked={sel}
+                          onChange={(e) => setVoceForm((p) => ({ ...p, tipi: e.target.checked ? [...p.tipi, t.codice] : p.tipi.filter((c) => c !== t.codice) }))}
+                        />
+                        <span className="font-mono text-xs w-14 shrink-0">{t.codice}</span>
+                        <span>{t.nome}</span>
+                        {altra && !sel && <span className="ml-auto text-xs">già in {altra.nome} (verrà spostato)</span>}
+                      </label>
+                    );
+                  })}
+                </div>
+              ))}
+              {gruppi.length === 0 && <p className="text-sm text-stone-400">Nessun tipo attività importato da Business Central.</p>}
+            </div>
+          </div>
+          {errore && <p className="text-sm text-rose-600">{errore}</p>}
           <div className="flex justify-end gap-2 pt-2 border-t border-stone-100">
             <button className="px-4 py-2 text-sm rounded-lg text-stone-500 hover:bg-stone-100" onClick={() => setModal(null)}>Annulla</button>
             <button className="px-4 py-2 text-sm rounded-lg font-semibold text-white" style={{ background: ACCENT }} onClick={saveVoce}>Salva</button>
@@ -1217,7 +1292,7 @@ export default function App() {
                 <StoricoSection bus={bus} voci={voci} account={account} />
               )}
               {section === "configurazione" && (
-                <ConfigSection bus={bus} voci={voci} sedi={sedi} onReload={loadMasterData} />
+                <ConfigSection voci={voci} onReload={loadMasterData} />
               )}
             </>
           )}
