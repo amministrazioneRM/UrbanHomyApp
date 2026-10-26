@@ -33,6 +33,15 @@ async function syncBuDaSedi(): Promise<void> {
   await prisma.forecastBU.updateMany({ where: { id: { notIn: ids } }, data: { attiva: false } });
 }
 
+// Access token Mews di una BU: prima quello salvato per la sede, poi la variabile .env con il codice BU nel nome
+// (es. BU 30.004 -> MEWS_ACCESS_TOKEN_30_004).
+const mewsEnvName = (codice?: string | null) => (codice ? `MEWS_ACCESS_TOKEN_${codice.replace(/[^A-Za-z0-9]/g, "_")}` : "");
+const mewsAccessTokenDi = (bu: { mewsAccessToken?: string | null; codiceBC?: string | null } | null): string | undefined => {
+  if (!bu) return undefined;
+  const nome = mewsEnvName(bu.codiceBC);
+  return bu.mewsAccessToken || (nome ? process.env[nome] : undefined) || undefined;
+};
+
 async function allowedBuIds(req: Request): Promise<string[] | null> {
   if (req.account.ruoloGlobale === "Amministratore") return null;
   const sedi = req.account.sediAbilitate;
@@ -62,7 +71,8 @@ router.get("/bu", async (req, res, next) => {
     res.json(bus.map(({ mewsClientToken: _c, mewsAccessToken, voci, ...b }) => ({
       ...b,
       voceIds: voci.map((v) => v.voceId),
-      mewsConfigurato: !!mewsAccessToken,
+      mewsConfigurato: !!mewsAccessTokenDi({ mewsAccessToken, codiceBC: b.codiceBC }),
+      mewsVariabile: mewsEnvName(b.codiceBC),
     })));
   } catch (e) { next(e); }
 });
@@ -319,9 +329,9 @@ router.post("/actuals/refresh", async (req, res, next) => {
     const { buId, anno, mese } = req.body as { buId: string; anno: number; mese: number };
     const bu = await prisma.forecastBU.findUnique({ where: { id: buId } });
     const clientToken = bu?.mewsClientToken || process.env.MEWS_CLIENT_TOKEN;
-    const accessToken = bu?.mewsAccessToken || process.env.MEWS_ACCESS_TOKEN;
+    const accessToken = mewsAccessTokenDi(bu);
     if (!clientToken || !accessToken) {
-      res.status(400).json({ error: "Credenziali Mews mancanti: imposta MEWS_CLIENT_TOKEN e MEWS_ACCESS_TOKEN nel file .env" });
+      res.status(400).json({ error: `Credenziali Mews mancanti: imposta MEWS_CLIENT_TOKEN e ${mewsEnvName(bu?.codiceBC) || "MEWS_ACCESS_TOKEN_<codice BU>"} nel file .env` });
       return;
     }
     const startUtc = new Date(anno, mese - 1, 1).toISOString();

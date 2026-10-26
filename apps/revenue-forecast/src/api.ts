@@ -44,7 +44,7 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export interface ForecastBU {
   id: string; nome: string; codiceBC?: string; sedeCentraleId: string;
-  mewsPropertyId?: string; attiva: boolean; voceIds?: string[]; mewsConfigurato?: boolean;
+  mewsPropertyId?: string; attiva: boolean; voceIds?: string[]; mewsConfigurato?: boolean; mewsVariabile?: string;
 }
 export interface ForecastVoce { id: string; nome: string; ordine: number; attiva: boolean; tipiAttivita?: string[]; }
 export interface TipoAttivitaBC { id: string; codice: string; nome: string; }

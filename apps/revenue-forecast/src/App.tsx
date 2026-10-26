@@ -1035,6 +1035,11 @@ function ConfigSection({ onReload }: { onReload: () => void }) {
                   <div className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">
                     Mews <span className="font-normal normal-case text-stone-400">· {bu.mewsConfigurato ? "access token configurato" : "access token non configurato"}</span>
                   </div>
+                  {bu.mewsVariabile && (
+                    <p className="text-xs text-stone-400 mb-2">
+                      Variabile del file .env: <span className="font-mono">{bu.mewsVariabile}</span>. Il token inserito qui, se presente, ha la precedenza.
+                    </p>
+                  )}
                   <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="password"
