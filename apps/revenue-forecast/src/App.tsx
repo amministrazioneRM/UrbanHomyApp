@@ -281,6 +281,7 @@ function ForecastSection({ bus, voci, account, permessi }: {
   const [entries, setEntries] = useState<ForecastEntry[]>([]);
   const [targets, setTargets] = useState<ForecastTarget[]>([]);
   const [actuals, setActuals] = useState<ForecastActual[]>([]);
+  const [pubblicati, setPubblicati] = useState<Record<string, number>>({});
   const [base, setBase] = useState<Record<string, string>>({});
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -295,11 +296,16 @@ function ForecastSection({ bus, voci, account, permessi }: {
 
   const load = useCallback(async () => {
     if (!buId) return;
-    const [e, t, a] = await Promise.all([
+    const [e, t, a, s] = await Promise.all([
       forecastApi.getEntries({ buId, anno }),
       forecastApi.getTargets({ buId, anno }),
       forecastApi.getActuals({ buId, anno }),
+      forecastApi.getStorico({ buId, anno }),
     ]);
+    const pub: Record<string, number> = {};
+    [...s].filter((x) => x.tipo === "pubblicazione").sort((x, y) => x.dataRegistrazione.localeCompare(y.dataRegistrazione))
+      .forEach((x) => { pub[cellKey(x.mese, x.voceId)] = x.importo; });
+    setPubblicati(pub);
     setEntries(e);
     setTargets(t);
     setActuals(a);
@@ -419,12 +425,16 @@ function ForecastSection({ bus, voci, account, permessi }: {
   const targetMese = (m: number) => activeVoci.reduce((s, v) => s + (targets.find((t) => t.voceId === v.id && t.mese === m)?.importo || 0), 0);
   const actualMese = (m: number) => activeVoci.reduce((s, v) => s + (actuals.find((a) => a.voceId === v.id && a.mese === m)?.importo || 0), 0);
   const sumMesi = (f: (m: number) => number) => mesiVista.reduce((s, m) => s + f(m), 0);
+  const gruppi: (number | "tot")[] = [...mesiVista, "tot"];
+  const targetCell = (m: number, voceId: string) => targets.find((t) => t.voceId === voceId && t.mese === m)?.importo || 0;
+  const pubblicatoCell = (m: number, voceId: string): number | undefined => pubblicati[cellKey(m, voceId)];
+  const pubblicatoMese = (m: number) => activeVoci.reduce((s, v) => s + (pubblicatoCell(m, v.id) ?? 0), 0);
   const haActual = actuals.some((a) => mesiVista.includes(a.mese) && a.importo > 0);
   const ultimaModifica = entries.length ? entries.reduce((a, b) => (a.dataModifica > b.dataModifica ? a : b)).dataModifica : null;
 
   const titoloPeriodo = vista === "anno" ? `Anno ${anno}` : `${trim + 1}° trimestre ${anno}`;
   const sottoPeriodo = vista === "anno" ? "" : `${MESI_SHORT[trim * 3]} – ${MESI_SHORT[trim * 3 + 2]}`;
-  const inputW = vista === "anno" ? "w-24" : "w-32";
+  const inputW = vista === "anno" ? "w-24" : "w-28";
   const thCls = "px-3 py-3 text-xs font-semibold uppercase tracking-wide text-right whitespace-nowrap";
   const stickyCell = "sticky left-0 z-10 bg-white";
 
@@ -501,73 +511,114 @@ function ForecastSection({ bus, voci, account, permessi }: {
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-x-auto">
         <table className="w-full text-sm border-separate border-spacing-0">
           <thead>
-            <tr className="border-b border-stone-100">
-              <th className={`${stickyCell} text-left px-5 py-3 text-xs font-semibold uppercase tracking-wide text-stone-400 border-b border-stone-100`}>Voce di ricavo</th>
-              {mesiVista.map((m) => {
-                const st = statoMese(m);
-                const corrente = anno === today.getFullYear() && m === today.getMonth() + 1;
+            <tr>
+              <th rowSpan={2} className={`${stickyCell} text-left align-bottom px-5 py-3 text-xs font-semibold uppercase tracking-wide text-stone-400 border-b border-stone-100`}>Voce di ricavo</th>
+              {gruppi.map((g) => {
+                const st = g === "tot" ? null : statoMese(g);
+                const corrente = g !== "tot" && anno === today.getFullYear() && g === today.getMonth() + 1;
                 return (
-                  <th key={m} className={`${thCls} border-b border-stone-100 ${corrente ? "bg-stone-50" : ""}`} style={{ color: ACCENT }}>
-                    <div>{vista === "anno" ? MESI_SHORT[m - 1] : MESI_FULL[m - 1]}</div>
-                    <div className="mt-1 h-4 normal-case tracking-normal">
+                  <th key={g} colSpan={3} className={`px-3 pt-3 pb-1 text-center border-l border-stone-100 ${corrente ? "bg-stone-50" : ""}`}>
+                    <div className="text-xs font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: g === "tot" ? "#78716C" : ACCENT }}>
+                      {g === "tot" ? (vista === "anno" ? "Totale anno" : "Totale trimestre") : vista === "anno" ? MESI_SHORT[g - 1] : MESI_FULL[g - 1]}
+                    </div>
+                    <div className="mt-1 h-4">
                       {st && <Badge color={st === "pubblicato" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}>{st === "pubblicato" ? "Pubblicato" : "Bozza"}</Badge>}
                     </div>
                   </th>
                 );
               })}
-              <th className={`${thCls} text-stone-500 border-b border-stone-100`}>{vista === "anno" ? "Totale anno" : "Totale trim."}</th>
+            </tr>
+            <tr>
+              {gruppi.map((g) => (
+                <React.Fragment key={g}>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-stone-400 border-b border-stone-100 border-l whitespace-nowrap">Target</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-stone-500 border-b border-stone-100 whitespace-nowrap">Ultimo forecast</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide border-b border-stone-100 whitespace-nowrap" style={{ color: ACCENT }}>Bozza</th>
+                </React.Fragment>
+              ))}
             </tr>
           </thead>
           <tbody>
             {activeVoci.map((v) => (
               <tr key={v.id} className="hover:bg-stone-50/50">
                 <td className={`${stickyCell} px-5 py-2.5 font-medium text-stone-800 border-t border-stone-50`}>{v.nome}</td>
-                {mesiVista.map((m) => {
-                  const k = cellKey(m, v.id);
+                {gruppi.map((g) => {
+                  if (g === "tot") {
+                    const t = sumMesi((m) => targetCell(m, v.id));
+                    const p = sumMesi((m) => pubblicatoCell(m, v.id) ?? 0);
+                    const b = sumMesi((m) => num(localValues[cellKey(m, v.id)]));
+                    return (
+                      <React.Fragment key={g}>
+                        <td className="px-3 py-2.5 text-right text-stone-400 border-t border-stone-50 border-l">{t ? fmt(t) : "–"}</td>
+                        <td className="px-3 py-2.5 text-right text-stone-600 font-medium border-t border-stone-50">{p ? fmt(p) : "–"}</td>
+                        <td className="px-3 py-2.5 text-right font-semibold border-t border-stone-50" style={{ color: ACCENT }}>{b ? fmt(b) : "–"}</td>
+                      </React.Fragment>
+                    );
+                  }
+                  const k = cellKey(g, v.id);
+                  const t = targetCell(g, v.id);
+                  const p = pubblicatoCell(g, v.id);
                   const modificato = num(base[k]) !== num(localValues[k]);
+                  const diversoDaPubblicato = p !== undefined ? num(localValues[k]) !== p : num(localValues[k]) !== 0;
                   return (
-                    <td key={m} className="px-3 py-2 text-right border-t border-stone-50">
-                      {canEditForecast ? (
-                        <input
-                          type="number"
-                          className={`${inputW} text-right rounded-lg border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C7873]/30 focus:border-[#0C7873] ${modificato ? "border-amber-300 bg-amber-50/40" : "border-stone-200"}`}
-                          value={localValues[k] ?? ""}
-                          onChange={(e) => setLocalValues((prev) => ({ ...prev, [k]: e.target.value }))}
-                          placeholder="0"
-                        />
-                      ) : (
-                        <span className="font-semibold text-stone-800">{num(localValues[k]) ? fmt(num(localValues[k])) : "–"}</span>
-                      )}
-                    </td>
+                    <React.Fragment key={g}>
+                      <td className="px-3 py-2.5 text-right text-stone-400 border-t border-stone-50 border-l">{t ? fmt(t) : "–"}</td>
+                      <td className="px-3 py-2.5 text-right text-stone-600 font-medium border-t border-stone-50">{p !== undefined ? fmt(p) : "–"}</td>
+                      <td className="px-3 py-2 text-right border-t border-stone-50">
+                        {canEditForecast ? (
+                          <input
+                            type="number"
+                            className={`${inputW} text-right rounded-lg border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C7873]/30 focus:border-[#0C7873] ${modificato ? "border-amber-300 bg-amber-50/50" : diversoDaPubblicato ? "border-teal-200 bg-teal-50/40" : "border-stone-200"}`}
+                            value={localValues[k] ?? ""}
+                            onChange={(e) => setLocalValues((prev) => ({ ...prev, [k]: e.target.value }))}
+                            placeholder="0"
+                          />
+                        ) : (
+                          <span className="font-semibold text-stone-800">{num(localValues[k]) ? fmt(num(localValues[k])) : "–"}</span>
+                        )}
+                      </td>
+                    </React.Fragment>
                   );
                 })}
-                <td className="px-3 py-2.5 text-right font-semibold text-stone-700 border-t border-stone-50">
-                  {fmt(sumMesi((m) => num(localValues[cellKey(m, v.id)])))}
-                </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr className="bg-stone-50/60">
-              <td className={`${stickyCell} bg-stone-50 px-5 py-2.5 font-bold text-xs uppercase tracking-wide text-stone-900 border-t-2 border-stone-200`}>Totale forecast</td>
-              {mesiVista.map((m) => <td key={m} className="px-3 py-2.5 text-right font-bold border-t-2 border-stone-200" style={{ color: ACCENT }}>{fmt(forecastMese(m))}</td>)}
-              <td className="px-3 py-2.5 text-right font-bold border-t-2 border-stone-200" style={{ color: ACCENT }}>{fmt(sumMesi(forecastMese))}</td>
+              <td className={`${stickyCell} bg-stone-50 px-5 py-2.5 font-bold text-xs uppercase tracking-wide text-stone-900 border-t-2 border-stone-200`}>Totale</td>
+              {gruppi.map((g) => {
+                const f = (fn: (m: number) => number) => (g === "tot" ? sumMesi(fn) : fn(g));
+                const t = f(targetMese), p = f(pubblicatoMese), b = f(forecastMese);
+                return (
+                  <React.Fragment key={g}>
+                    <td className="px-3 py-2.5 text-right font-bold text-stone-500 border-t-2 border-stone-200 border-l">{t ? fmt(t) : "–"}</td>
+                    <td className="px-3 py-2.5 text-right font-bold text-stone-700 border-t-2 border-stone-200">{p ? fmt(p) : "–"}</td>
+                    <td className="px-3 py-2.5 text-right font-bold border-t-2 border-stone-200" style={{ color: ACCENT }}>{fmt(b)}</td>
+                  </React.Fragment>
+                );
+              })}
             </tr>
             <tr>
-              <td className={`${stickyCell} px-5 py-2 text-xs font-semibold uppercase tracking-wide text-stone-400`}>Target</td>
-              {mesiVista.map((m) => <td key={m} className="px-3 py-2 text-right text-stone-500">{targetMese(m) ? fmt(targetMese(m)) : "–"}</td>)}
-              <td className="px-3 py-2 text-right font-semibold text-stone-500">{sumMesi(targetMese) ? fmt(sumMesi(targetMese)) : "–"}</td>
-            </tr>
-            <tr>
-              <td className={`${stickyCell} px-5 py-2 text-xs font-semibold uppercase tracking-wide text-stone-400`}>Forecast vs target</td>
-              {mesiVista.map((m) => <td key={m} className="px-3 py-2"><div className="flex justify-end">{targetMese(m) ? <Delta value={forecastMese(m)} base={targetMese(m)} /> : <span className="text-stone-300">–</span>}</div></td>)}
-              <td className="px-3 py-2"><div className="flex justify-end">{sumMesi(targetMese) ? <Delta value={sumMesi(forecastMese)} base={sumMesi(targetMese)} /> : <span className="text-stone-300">–</span>}</div></td>
+              <td className={`${stickyCell} px-5 py-2 text-xs font-semibold uppercase tracking-wide text-stone-400`}>Scostamento vs target</td>
+              {gruppi.map((g) => {
+                const f = (fn: (m: number) => number) => (g === "tot" ? sumMesi(fn) : fn(g));
+                const t = f(targetMese), p = f(pubblicatoMese), b = f(forecastMese);
+                return (
+                  <React.Fragment key={g}>
+                    <td className="px-3 py-2 border-l border-stone-100" />
+                    <td className="px-3 py-2"><div className="flex justify-end">{t && p ? <Delta value={p} base={t} /> : <span className="text-stone-300">–</span>}</div></td>
+                    <td className="px-3 py-2"><div className="flex justify-end">{t ? <Delta value={b} base={t} /> : <span className="text-stone-300">–</span>}</div></td>
+                  </React.Fragment>
+                );
+              })}
             </tr>
             {haActual && (
               <tr>
                 <td className={`${stickyCell} px-5 py-2 text-xs font-semibold uppercase tracking-wide text-amber-500`}>Actual (Mews)</td>
-                {mesiVista.map((m) => <td key={m} className="px-3 py-2 text-right text-amber-600 font-medium">{actualMese(m) > 0 ? fmt(actualMese(m)) : "–"}</td>)}
-                <td className="px-3 py-2 text-right font-semibold text-amber-600">{fmt(sumMesi(actualMese))}</td>
+                {gruppi.map((g) => {
+                  const a = g === "tot" ? sumMesi(actualMese) : actualMese(g);
+                  return <td key={g} colSpan={3} className="px-3 py-2 text-right text-amber-600 font-medium border-l border-stone-100">{a > 0 ? fmt(a) : "–"}</td>;
+                })}
               </tr>
             )}
           </tfoot>
