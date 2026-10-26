@@ -439,13 +439,13 @@ function ForecastSection({ bus, voci, account, permessi }: {
   };
   const forecastMese = (m: number) => activeVoci.reduce((s, v) => s + num(localValues[cellKey(m, v.id)]), 0);
   const targetMese = (m: number) => activeVoci.reduce((s, v) => s + (targets.find((t) => t.voceId === v.id && t.mese === m)?.importo || 0), 0);
+  const actualCell = (m: number, voceId: string) => actuals.filter((a) => a.voceId === voceId && a.mese === m).reduce((s, a) => s + a.importo, 0);
   const VOCE_SENZA_TIPO = "FVO-SENZA-TIPO";
   const senzaTipoMese = (m: number) => actualCell(m, VOCE_SENZA_TIPO);
   const haSenzaTipo = mesiVista.some((m) => senzaTipoMese(m) !== 0);
   const actualMese = (m: number) => activeVoci.reduce((s, v) => s + actualCell(m, v.id), 0) + senzaTipoMese(m);
   const sumMesi = (f: (m: number) => number) => mesiVista.reduce((s, m) => s + f(m), 0);
   const gruppi: (number | "tot")[] = [...mesiVista, "tot"];
-  const actualCell = (m: number, voceId: string) => actuals.filter((a) => a.voceId === voceId && a.mese === m).reduce((s, a) => s + a.importo, 0);
   const targetCell = (m: number, voceId: string) => targets.find((t) => t.voceId === voceId && t.mese === m)?.importo || 0;
   const pubblicatoCell = (m: number, voceId: string): number | undefined => pubblicati[cellKey(m, voceId)];
   const pubblicatoMese = (m: number) => activeVoci.reduce((s, v) => s + (pubblicatoCell(m, v.id) ?? 0), 0);
