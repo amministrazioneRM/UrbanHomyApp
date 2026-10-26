@@ -122,6 +122,93 @@ function MiniBarChart({ data }: { data: { label: string; forecast: number; targe
   );
 }
 
+// ─── Progressive line chart for dashboard ────────────────────────────────────
+
+const COLORE_DIFFERENZA = "#7C3AED";
+const COLORE_TARGET = "#78716C";
+
+// Valori cumulati mese per mese. Il forecast si ferma all'ultimo mese con dati, per non mostrare un falso "piatto".
+function ProgressiveLineChart({ data }: { data: { label: string; forecast: number; target: number }[] }) {
+  const W = 800, H = 250, L = 58, R = 62, T = 14, B = 30;
+  const ultimoFc = data.reduce((last, d, i) => (d.forecast !== 0 ? i : last), -1);
+  let cf = 0, ct = 0;
+  const punti = data.map((d, i) => {
+    cf += d.forecast;
+    ct += d.target;
+    return { label: d.label, f: i <= ultimoFc ? cf : null, t: ct, diff: i <= ultimoFc ? cf - ct : null };
+  });
+  const valori = punti.flatMap((p) => [p.f, p.t, p.diff]).filter((v): v is number => v !== null);
+  if (valori.every((v) => v === 0)) {
+    return <div className="flex items-center justify-center h-40 text-sm text-stone-400">Nessun forecast o target inserito per questo anno</div>;
+  }
+  // Forecast e target (cumulati) sulla scala di sinistra; la differenza ha una scala propria a destra, altrimenti resterebbe piatta.
+  const valoriFt = punti.flatMap((p) => [p.f, p.t]).filter((v): v is number => v !== null);
+  const valoriDiff = punti.map((p) => p.diff).filter((v): v is number => v !== null);
+  const max = Math.max(...valoriFt, 0);
+  const min = Math.min(...valoriFt, 0);
+  const span = max - min || 1;
+  const maxD = Math.max(...valoriDiff, 0);
+  const minD = Math.min(...valoriDiff, 0);
+  const spanD = maxD - minD || 1;
+  const x = (i: number) => L + (i * (W - L - R)) / (data.length - 1);
+  const yFt = (v: number) => T + ((max - v) / span) * (H - T - B);
+  const yDiff = (v: number) => T + ((maxD - v) / spanD) * (H - T - B);
+  const y = (v: number, k: "f" | "t" | "diff") => (k === "diff" ? yDiff(v) : yFt(v));
+  const percorso = (k: "f" | "t" | "diff") => {
+    let d = "";
+    punti.forEach((p, i) => {
+      const v = p[k];
+      if (v === null) return;
+      d += `${d ? "L" : "M"}${x(i).toFixed(1)} ${y(v, k).toFixed(1)} `;
+    });
+    return d;
+  };
+  const ticks = Array.from({ length: 5 }, (_, k) => min + (span * k) / 4);
+  const ticksD = Array.from({ length: 5 }, (_, k) => minD + (spanD * k) / 4);
+  const serie: { k: "f" | "t" | "diff"; colore: string; nome: string }[] = [
+    { k: "t", colore: COLORE_TARGET, nome: "Target" },
+    { k: "f", colore: ACCENT, nome: "Forecast" },
+    { k: "diff", colore: COLORE_DIFFERENZA, nome: "Differenza da target" },
+  ];
+
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Andamento progressivo di forecast, target e differenza da target">
+        {ticks.map((t, k) => (
+          <g key={k}>
+            <line x1={L} x2={W - R} y1={yFt(t)} y2={yFt(t)} stroke="#E7E5E4" strokeWidth={1} />
+            <text x={L - 8} y={yFt(t) + 4} textAnchor="end" fontSize={11} fill="#A8A29E">{fmtShort(t)}</text>
+          </g>
+        ))}
+        {ticksD.map((t, k) => (
+          <text key={k} x={W - R + 8} y={yDiff(t) + 4} textAnchor="start" fontSize={11} fill={COLORE_DIFFERENZA}>{fmtShort(t)}</text>
+        ))}
+        {minD < 0 && maxD > 0 && <line x1={L} x2={W - R} y1={yDiff(0)} y2={yDiff(0)} stroke={COLORE_DIFFERENZA} strokeOpacity={0.4} strokeWidth={1} strokeDasharray="4 3" />}
+        {punti.map((p, i) => <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize={11} fill="#A8A29E">{p.label}</text>)}
+        {serie.map((s) => (
+          <g key={s.k}>
+            <path d={percorso(s.k)} fill="none" stroke={s.colore} strokeWidth={s.k === "diff" ? 2 : 2.5} strokeDasharray={s.k === "diff" ? "6 4" : undefined} strokeLinejoin="round" strokeLinecap="round" />
+            {punti.map((p, i) => {
+              const v = p[s.k];
+              if (v === null) return null;
+              return (
+                <circle key={i} cx={x(i)} cy={y(v, s.k)} r={3.5} fill="white" stroke={s.colore} strokeWidth={2}>
+                  <title>{`${s.nome} — ${MESI_FULL[i]}: ${fmt(v)}`}</title>
+                </circle>
+              );
+            })}
+          </g>
+        ))}
+      </svg>
+      <div className="flex items-center justify-center gap-5 text-xs text-stone-500 mt-1">
+        <span className="flex items-center gap-1.5"><span className="inline-block w-5 h-0.5" style={{ background: ACCENT }} /> Forecast</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block w-5 h-0.5" style={{ background: COLORE_TARGET }} /> Target</span>
+        <span className="flex items-center gap-1.5"><span className="inline-block w-5 border-t-2 border-dashed" style={{ borderColor: COLORE_DIFFERENZA }} /> Differenza da target (forecast − target, scala a destra)</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Stat card ───────────────────────────────────────────────────────────────
 
 function StatCard({ label, forecast, target, actual, icon: Icon }: {
@@ -234,6 +321,12 @@ function Dashboard({ bus, voci, buId, anno }: {
           </div>
         </div>
         <MiniBarChart data={chartData} />
+      </div>
+
+      {/* Progressive chart */}
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
+        <div className="font-fraunces text-base font-semibold text-stone-900 mb-3">Andamento progressivo {anno}</div>
+        <ProgressiveLineChart data={chartData} />
       </div>
 
       {/* BU table */}
