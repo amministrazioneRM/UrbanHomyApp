@@ -442,6 +442,7 @@ function ForecastSection({ bus, voci, account, permessi }: {
   const actualMese = (m: number) => activeVoci.reduce((s, v) => s + (actuals.find((a) => a.voceId === v.id && a.mese === m)?.importo || 0), 0);
   const sumMesi = (f: (m: number) => number) => mesiVista.reduce((s, m) => s + f(m), 0);
   const gruppi: (number | "tot")[] = [...mesiVista, "tot"];
+  const actualCell = (m: number, voceId: string) => actuals.filter((a) => a.voceId === voceId && a.mese === m).reduce((s, a) => s + a.importo, 0);
   const targetCell = (m: number, voceId: string) => targets.find((t) => t.voceId === voceId && t.mese === m)?.importo || 0;
   const pubblicatoCell = (m: number, voceId: string): number | undefined => pubblicati[cellKey(m, voceId)];
   const pubblicatoMese = (m: number) => activeVoci.reduce((s, v) => s + (pubblicatoCell(m, v.id) ?? 0), 0);
@@ -513,7 +514,7 @@ function ForecastSection({ bus, voci, account, permessi }: {
                 const st = g === "tot" ? null : statoMese(g);
                 const corrente = g !== "tot" && anno === today.getFullYear() && g === today.getMonth() + 1;
                 return (
-                  <th key={g} colSpan={3} className={`px-3 pt-3 pb-1 text-center border-l border-stone-100 ${corrente ? "bg-stone-50" : ""}`}>
+                  <th key={g} colSpan={4} className={`px-3 pt-3 pb-1 text-center border-l border-stone-100 ${corrente ? "bg-stone-50" : ""}`}>
                     <div className="text-xs font-semibold uppercase tracking-wide whitespace-nowrap" style={{ color: g === "tot" ? "#78716C" : ACCENT }}>
                       {g === "tot" ? (vista === "anno" ? "Totale anno" : "Totale trimestre") : vista === "anno" ? MESI_SHORT[g - 1] : MESI_FULL[g - 1]}
                     </div>
@@ -551,6 +552,7 @@ function ForecastSection({ bus, voci, account, permessi }: {
                   <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-stone-400 border-b border-stone-100 border-l whitespace-nowrap">Target</th>
                   <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-stone-500 border-b border-stone-100 whitespace-nowrap">Ultimo forecast</th>
                   <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide border-b border-stone-100 whitespace-nowrap" style={{ color: ACCENT }}>Bozza</th>
+                  <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-amber-600 border-b border-stone-100 whitespace-nowrap" title="Produzione da Mews">Actual</th>
                 </React.Fragment>
               ))}
             </tr>
@@ -569,6 +571,7 @@ function ForecastSection({ bus, voci, account, permessi }: {
                         <td className="px-3 py-2.5 text-right text-stone-400 border-t border-stone-50 border-l">{t ? fmt(t) : "–"}</td>
                         <td className="px-3 py-2.5 text-right text-stone-600 font-medium border-t border-stone-50">{p ? fmt(p) : "–"}</td>
                         <td className="px-3 py-2.5 text-right font-semibold border-t border-stone-50" style={{ color: ACCENT }}>{b ? fmt(b) : "–"}</td>
+                        <td className="px-3 py-2.5 text-right text-amber-600 font-medium border-t border-stone-50">{sumMesi((m) => actualCell(m, v.id)) ? fmt(sumMesi((m) => actualCell(m, v.id))) : "–"}</td>
                       </React.Fragment>
                     );
                   }
@@ -594,6 +597,7 @@ function ForecastSection({ bus, voci, account, permessi }: {
                           <span className="font-semibold text-stone-800">{num(localValues[k]) ? fmt(num(localValues[k])) : "–"}</span>
                         )}
                       </td>
+                      <td className="px-3 py-2.5 text-right text-amber-600 font-medium border-t border-stone-50">{actualCell(g, v.id) ? fmt(actualCell(g, v.id)) : "–"}</td>
                     </React.Fragment>
                   );
                 })}
@@ -605,12 +609,13 @@ function ForecastSection({ bus, voci, account, permessi }: {
               <td className={`${stickyCell} bg-stone-50 px-5 py-2.5 font-bold text-xs uppercase tracking-wide text-stone-900 border-t-2 border-stone-200`}>Totale</td>
               {gruppi.map((g) => {
                 const f = (fn: (m: number) => number) => (g === "tot" ? sumMesi(fn) : fn(g));
-                const t = f(targetMese), p = f(pubblicatoMese), b = f(forecastMese);
+                const t = f(targetMese), p = f(pubblicatoMese), b = f(forecastMese), a = f(actualMese);
                 return (
                   <React.Fragment key={g}>
                     <td className="px-3 py-2.5 text-right font-bold text-stone-500 border-t-2 border-stone-200 border-l">{t ? fmt(t) : "–"}</td>
                     <td className="px-3 py-2.5 text-right font-bold text-stone-700 border-t-2 border-stone-200">{p ? fmt(p) : "–"}</td>
                     <td className="px-3 py-2.5 text-right font-bold border-t-2 border-stone-200" style={{ color: ACCENT }}>{fmt(b)}</td>
+                    <td className="px-3 py-2.5 text-right font-bold text-amber-600 border-t-2 border-stone-200">{a ? fmt(a) : "–"}</td>
                   </React.Fragment>
                 );
               })}
@@ -619,25 +624,17 @@ function ForecastSection({ bus, voci, account, permessi }: {
               <td className={`${stickyCell} px-5 py-2 text-xs font-semibold uppercase tracking-wide text-stone-400`}>Scostamento vs target</td>
               {gruppi.map((g) => {
                 const f = (fn: (m: number) => number) => (g === "tot" ? sumMesi(fn) : fn(g));
-                const t = f(targetMese), p = f(pubblicatoMese), b = f(forecastMese);
+                const t = f(targetMese), p = f(pubblicatoMese), b = f(forecastMese), a = f(actualMese);
                 return (
                   <React.Fragment key={g}>
                     <td className="px-3 py-2 border-l border-stone-100" />
                     <td className="px-3 py-2"><div className="flex justify-end">{t && p ? <Delta value={p} base={t} /> : <span className="text-stone-300">–</span>}</div></td>
                     <td className="px-3 py-2"><div className="flex justify-end">{t ? <Delta value={b} base={t} /> : <span className="text-stone-300">–</span>}</div></td>
+                    <td className="px-3 py-2"><div className="flex justify-end">{t && a ? <Delta value={a} base={t} /> : <span className="text-stone-300">–</span>}</div></td>
                   </React.Fragment>
                 );
               })}
             </tr>
-            {haActual && (
-              <tr>
-                <td className={`${stickyCell} px-5 py-2 text-xs font-semibold uppercase tracking-wide text-amber-500`}>Actual (Mews)</td>
-                {gruppi.map((g) => {
-                  const a = g === "tot" ? sumMesi(actualMese) : actualMese(g);
-                  return <td key={g} colSpan={3} className="px-3 py-2 text-right text-amber-600 font-medium border-l border-stone-100">{a > 0 ? fmt(a) : "–"}</td>;
-                })}
-              </tr>
-            )}
           </tfoot>
         </table>
       </div>
