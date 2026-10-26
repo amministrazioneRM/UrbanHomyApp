@@ -16,6 +16,22 @@ function hasForecastAccess(req: Request): boolean {
   );
 }
 
+// Le BU del forecast sono le sedi dell'app Utenti con una BU di Business Central associata.
+async function syncBuDaSedi(): Promise<void> {
+  const sedi = await prisma.utentiSede.findMany({ where: { buCodice: { not: null } } });
+  const ids: string[] = [];
+  for (const s of sedi) {
+    const id = `FBU-${s.id}`;
+    ids.push(id);
+    await prisma.forecastBU.upsert({
+      where: { id },
+      create: { id, nome: s.nome, codiceBC: s.buCodice, sedeCentraleId: s.id, attiva: s.attiva },
+      update: { nome: s.nome, codiceBC: s.buCodice, sedeCentraleId: s.id, attiva: s.attiva },
+    });
+  }
+  await prisma.forecastBU.updateMany({ where: { id: { notIn: ids } }, data: { attiva: false } });
+}
+
 async function allowedBuIds(req: Request): Promise<string[] | null> {
   if (req.account.ruoloGlobale === "Amministratore") return null;
   const sedi = req.account.sediAbilitate;
@@ -33,8 +49,9 @@ async function allowedBuIds(req: Request): Promise<string[] | null> {
 router.get("/bu", async (req, res, next) => {
   try {
     if (!hasForecastAccess(req)) { res.json([]); return; }
+    await syncBuDaSedi();
     const buIds = await allowedBuIds(req);
-    const where = buIds ? { id: { in: buIds } } : {};
+    const where = buIds ? { id: { in: buIds }, attiva: true } : { attiva: true };
     const bus = await prisma.forecastBU.findMany({ where, orderBy: { nome: "asc" } });
     // never expose Mews tokens to the client
     res.json(bus.map(({ mewsClientToken: _c, mewsAccessToken: _a, ...b }) => b));

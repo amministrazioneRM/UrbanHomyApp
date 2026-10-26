@@ -964,31 +964,6 @@ function ConfigSection({ bus, voci, sedi, onReload }: {
 
   return (
     <div className="space-y-6">
-      {/* BU */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4">
-          <span className="font-fraunces text-base font-semibold text-stone-900">Business Unit</span>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-semibold text-white" style={{ background: ACCENT }} onClick={openNewBU}>
-            <Plus size={14} /> Nuova BU
-          </button>
-        </div>
-        <div className="space-y-2">
-          {bus.map((bu) => (
-            <div key={bu.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-stone-100 hover:border-stone-200">
-              <div>
-                <div className="font-medium text-stone-800">{bu.nome}</div>
-                <div className="text-xs text-stone-400 mt-0.5">{bu.codiceBC ? `BC: ${bu.codiceBC}` : ""}{bu.mewsPropertyId ? ` · Mews: ${bu.mewsPropertyId}` : ""} · {sedi.find((s) => s.id === bu.sedeCentraleId)?.nome || bu.sedeCentraleId}</div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge color={bu.attiva ? "bg-emerald-100 text-emerald-700" : "bg-stone-100 text-stone-500"}>{bu.attiva ? "Attiva" : "Disattiva"}</Badge>
-                <button className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100" onClick={() => openEditBU(bu)}><Pencil size={14} /></button>
-              </div>
-            </div>
-          ))}
-          {bus.length === 0 && <p className="text-sm text-stone-400">Nessuna Business Unit configurata</p>}
-        </div>
-      </div>
-
       {/* Voci */}
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
         <div className="flex items-center justify-between mb-4">
@@ -1009,51 +984,6 @@ function ConfigSection({ bus, voci, sedi, onReload }: {
           ))}
         </div>
       </div>
-
-      {/* BU modal */}
-      {(modal?.type === "nuovaBU" || modal?.type === "modificaBU") && (
-        <Modal title={modal.type === "nuovaBU" ? "Nuova Business Unit" : "Modifica Business Unit"} onClose={() => setModal(null)}>
-          <Field label="Nome BU *">
-            <input className={inputCls} value={buForm.nome} onChange={(e) => setBuForm((p) => ({ ...p, nome: e.target.value }))} placeholder="Es. Hotel Roma Centro" />
-          </Field>
-          <Field label="Sede centrale *">
-            <select className={inputCls} value={buForm.sedeCentraleId} onChange={(e) => setBuForm((p) => ({ ...p, sedeCentraleId: e.target.value }))}>
-              <option value="">Seleziona sede…</option>
-              {sedi.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
-            </select>
-          </Field>
-          <Field label="Codice Business Central">
-            <input className={inputCls} value={buForm.codiceBC} onChange={(e) => setBuForm((p) => ({ ...p, codiceBC: e.target.value }))} placeholder="Es. DIM_BU_ROMA" />
-          </Field>
-          <div className="border-t border-stone-100 pt-3">
-            <button className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-700 mb-3" onClick={() => setShowTokens(!showTokens)}>
-              {showTokens ? <EyeOff size={12} /> : <Eye size={12} />}
-              Configurazione Mews
-            </button>
-            {showTokens && (
-              <div className="space-y-3">
-                <Field label="Mews Property ID">
-                  <input className={inputCls} value={buForm.mewsPropertyId} onChange={(e) => setBuForm((p) => ({ ...p, mewsPropertyId: e.target.value }))} placeholder="Es. abc-123-def" />
-                </Field>
-                <Field label="Mews Client Token">
-                  <input className={inputCls} type="password" value={buForm.mewsClientToken} onChange={(e) => setBuForm((p) => ({ ...p, mewsClientToken: e.target.value }))} placeholder="Lascia vuoto per non modificare" />
-                </Field>
-                <Field label="Mews Access Token">
-                  <input className={inputCls} type="password" value={buForm.mewsAccessToken} onChange={(e) => setBuForm((p) => ({ ...p, mewsAccessToken: e.target.value }))} placeholder="Lascia vuoto per non modificare" />
-                </Field>
-              </div>
-            )}
-          </div>
-          <label className="flex items-center gap-2 text-sm text-stone-700 cursor-pointer">
-            <input type="checkbox" checked={buForm.attiva} onChange={(e) => setBuForm((p) => ({ ...p, attiva: e.target.checked })) } className="accent-[#0C7873]" />
-            BU attiva
-          </label>
-          <div className="flex justify-end gap-2 pt-2 border-t border-stone-100">
-            <button className="px-4 py-2 text-sm rounded-lg text-stone-500 hover:bg-stone-100" onClick={() => setModal(null)}>Annulla</button>
-            <button className="px-4 py-2 text-sm rounded-lg font-semibold text-white" style={{ background: ACCENT }} onClick={saveBU}>Salva</button>
-          </div>
-        </Modal>
-      )}
 
       {/* Voce modal */}
       {(modal?.type === "nuovaVoce" || modal?.type === "modificaVoce") && (
