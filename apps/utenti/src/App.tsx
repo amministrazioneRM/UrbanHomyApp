@@ -363,7 +363,7 @@ export default function App(): JSX.Element {
                     [
                       { id: "ruoli" as Vista, label: "Ruoli e permessi", icon: Grid3x3 },
                       { id: "sedi" as Vista, label: "Sedi", icon: MapPin },
-                      { id: "struttureBC" as Vista, label: "Strutture BC", icon: Database },
+                      { id: "struttureBC" as Vista, label: "Business Unit (BC)", icon: Database },
                     ] as const
                   ).map((t) => (
                     <button
@@ -398,7 +398,7 @@ export default function App(): JSX.Element {
           <header className="flex items-start justify-between mb-5 flex-wrap gap-3">
             <div>
               <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">
-                {vista === "utenti" ? "Utenti" : vista === "ruoli" ? "Ruoli e permessi" : vista === "struttureBC" ? "Strutture BC" : "Sedi"}
+                {vista === "utenti" ? "Utenti" : vista === "ruoli" ? "Ruoli e permessi" : vista === "struttureBC" ? "Business Unit (BC)" : "Sedi"}
               </h1>
               <p className="text-stone-500 text-sm mt-1">
                 {vista === "utenti"
