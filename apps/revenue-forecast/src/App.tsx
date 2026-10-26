@@ -1001,7 +1001,7 @@ function ConfigSection({ voci, onReload }: { voci: ForecastVoce[]; onReload: () 
             </label>
           ))}
           {buTutte.length === 0 && (
-            <p className="text-sm text-stone-400">Nessuna sede con Business Unit (BC) associata. Associala da Utenti e accessi > Impostazioni > Sedi.</p>
+            <p className="text-sm text-stone-400">Nessuna sede con Business Unit (BC) associata. Associala da Utenti e accessi &gt; Impostazioni &gt; Sedi.</p>
           )}
         </div>
       </div>
