@@ -284,8 +284,7 @@ function ForecastSection({ bus, voci, account, permessi }: {
   const [pubblicati, setPubblicati] = useState<Record<string, number>>({});
   const [base, setBase] = useState<Record<string, string>>({});
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [publishing, setPublishing] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
   const [refreshingMews, setRefreshingMews] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const isAdmin = account.ruoloGlobale === "Amministratore";
@@ -294,7 +293,10 @@ function ForecastSection({ bus, voci, account, permessi }: {
 
   const mesiVista = vista === "anno" ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] : [trim * 3 + 1, trim * 3 + 2, trim * 3 + 3];
 
-  const load = useCallback(async () => {
+  const latest = useRef<{ base: Record<string, string>; local: Record<string, string> }>({ base: {}, local: {} });
+  latest.current = { base, local: localValues };
+
+  const load = useCallback(async (preservaAltriMesiDi?: number) => {
     if (!buId) return;
     const [e, t, a, s] = await Promise.all([
       forecastApi.getEntries({ buId, anno }),
@@ -311,8 +313,15 @@ function ForecastSection({ bus, voci, account, permessi }: {
     setActuals(a);
     const vals: Record<string, string> = {};
     e.forEach((x) => { vals[cellKey(x.mese, x.voceId)] = String(x.importo); });
+    const merged = { ...vals };
+    if (preservaAltriMesiDi !== undefined) {
+      const { base: oldBase, local: oldLocal } = latest.current;
+      Object.keys(oldLocal).forEach((k) => {
+        if (!k.startsWith(`${preservaAltriMesiDi}|`) && num(oldLocal[k]) !== num(oldBase[k])) merged[k] = oldLocal[k];
+      });
+    }
     setBase(vals);
-    setLocalValues(vals);
+    setLocalValues(merged);
   }, [buId, anno]);
 
   useEffect(() => { load(); }, [load]);
@@ -356,49 +365,50 @@ function ForecastSection({ bus, voci, account, permessi }: {
     setTimeout(() => setMsg(null), ms);
   }
 
-  async function salvaModificati(): Promise<void> {
-    const toSave = dirtyKeys.map((k) => {
-      const [m, voceId] = k.split("|");
-      return { buId, anno, mese: parseInt(m), voceId, importo: num(localValues[k]) };
-    });
-    if (toSave.length === 0) return;
-    await forecastApi.saveEntries(toSave, account.id);
+  const dirtyDelMese = (m: number) => dirtyKeys.filter((k) => k.startsWith(`${m}|`));
+
+  async function salvaMese(m: number): Promise<number> {
+    const chiavi = dirtyDelMese(m);
+    if (chiavi.length === 0) return 0;
+    await forecastApi.saveEntries(
+      chiavi.map((k) => ({ buId, anno, mese: m, voceId: k.split("|")[1], importo: num(localValues[k]) })),
+      account.id,
+    );
+    return chiavi.length;
   }
 
-  async function handleSave() {
+  async function handleSave(m: number) {
     if (!buId || !canEditForecast) return;
-    setSaving(true);
+    setBusy(`save-${m}`);
     try {
-      const n = dirtyKeys.length;
-      await salvaModificati();
-      await load();
-      flash({ type: "ok", text: n ? "Bozza salvata" : "Nessuna modifica da salvare" });
+      const n = await salvaMese(m);
+      if (n) await load(m);
+      flash({ type: "ok", text: n ? `Bozza di ${MESI_FULL[m - 1]} salvata` : `${MESI_FULL[m - 1]}: nessuna modifica da salvare` });
     } catch (e: unknown) {
       flash({ type: "err", text: (e as Error).message });
     } finally {
-      setSaving(false);
+      setBusy(null);
     }
   }
 
-  async function handlePublish() {
+  async function handlePublish(m: number) {
     if (!buId || !canEditForecast) return;
-    setPublishing(true);
+    setBusy(`pub-${m}`);
     try {
-      await salvaModificati();
-      const fresh = await forecastApi.getEntries({ buId, anno });
-      const daPubblicare = mesiVista.filter((m) => fresh.some((e) => e.mese === m && e.stato !== "pubblicato"));
-      for (const m of daPubblicare) await forecastApi.pubblicaEntries(buId, anno, m, account.id);
-      await load();
-      flash(
-        daPubblicare.length
-          ? { type: "ok", text: daPubblicare.length === 1 ? `Forecast di ${MESI_FULL[daPubblicare[0] - 1]} pubblicato` : `Forecast pubblicato per ${daPubblicare.length} mesi` }
-          : { type: "ok", text: "Niente da pubblicare nel periodo" },
-        4000,
-      );
+      await salvaMese(m);
+      const fresh = await forecastApi.getEntries({ buId, anno, mese: m });
+      if (!fresh.some((e) => e.stato !== "pubblicato")) {
+        await load(m);
+        flash({ type: "ok", text: fresh.length ? `${MESI_FULL[m - 1]} è già pubblicato` : `${MESI_FULL[m - 1]}: inserisci prima dei valori` });
+        return;
+      }
+      await forecastApi.pubblicaEntries(buId, anno, m, account.id);
+      await load(m);
+      flash({ type: "ok", text: `Forecast di ${MESI_FULL[m - 1]} pubblicato` }, 4000);
     } catch (e: unknown) {
       flash({ type: "err", text: (e as Error).message }, 4000);
     } finally {
-      setPublishing(false);
+      setBusy(null);
     }
   }
 
@@ -485,26 +495,6 @@ function ForecastSection({ bus, voci, account, permessi }: {
               Aggiorna Mews
             </button>
           )}
-          {canEditForecast && (
-            <>
-              <button
-                className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 transition disabled:opacity-50"
-                onClick={handleSave} disabled={saving || publishing}
-              >
-                <Save size={14} />
-                Salva bozza
-              </button>
-              <button
-                className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-lg font-semibold text-white transition disabled:opacity-50"
-                style={{ background: ACCENT }}
-                onClick={handlePublish} disabled={publishing || saving}
-                title={vista === "anno" ? "Pubblica i mesi dell'anno in bozza" : "Pubblica i mesi del trimestre in bozza"}
-              >
-                <Send size={14} />
-                Pubblica {vista === "anno" ? "anno" : "trimestre"}
-              </button>
-            </>
-          )}
         </div>
       </div>
 
@@ -524,6 +514,27 @@ function ForecastSection({ bus, voci, account, permessi }: {
                     <div className="mt-1 h-4">
                       {st && <Badge color={st === "pubblicato" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}>{st === "pubblicato" ? "Pubblicato" : "Bozza"}</Badge>}
                     </div>
+                    {g !== "tot" && canEditForecast && (
+                      <div className="mt-2 flex items-center justify-center gap-1.5">
+                        <button
+                          className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-md border border-stone-300 text-stone-700 hover:bg-stone-50 transition disabled:opacity-50"
+                          onClick={() => handleSave(g)} disabled={busy !== null}
+                          title={`Salva la bozza di ${MESI_FULL[g - 1]}`}
+                        >
+                          <Save size={12} />
+                          Salva
+                        </button>
+                        <button
+                          className="flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-md text-white transition disabled:opacity-50"
+                          style={{ background: ACCENT }}
+                          onClick={() => handlePublish(g)} disabled={busy !== null}
+                          title={`Pubblica il forecast di ${MESI_FULL[g - 1]}`}
+                        >
+                          <Send size={12} />
+                          Pubblica
+                        </button>
+                      </div>
+                    )}
                   </th>
                 );
               })}
