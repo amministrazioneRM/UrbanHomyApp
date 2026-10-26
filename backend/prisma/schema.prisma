@@ -240,6 +240,7 @@ model UtentiSede {
   citta     String?
   indirizzo String?
   attiva    Boolean @default(true)
+  buCodice  String?
 
   @@map("utenti_sedi")
 }

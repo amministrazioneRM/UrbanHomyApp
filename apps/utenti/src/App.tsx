@@ -44,6 +44,7 @@ interface SedeDraft {
   citta: string;
   indirizzo: string;
   attiva: boolean;
+  buCodice: string;
 }
 
 // ── Modal state types ─────────────────────────────────────────────────────────
@@ -114,6 +115,11 @@ interface ModalProps {
 }
 
 function Modal({ title, onClose, children, wide = false }: ModalProps): JSX.Element {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-stone-900/50 backdrop-blur-sm p-3 overflow-y-auto">
       <div className={`bg-[#FBF9F4] rounded-2xl shadow-2xl w-full ${wide ? "max-w-2xl" : "max-w-lg"} my-6 border border-stone-200 flex flex-col max-h-[calc(100vh-3rem)]`}>
@@ -163,9 +169,9 @@ export default function App(): JSX.Element {
   const [modaleSede, setModaleSede] = useState<ModaleSede | null>(null);
   const [vista, setVista] = useState<Vista>("utenti");
   useEffect(() => {
-    if (vista !== "struttureBC") return;
+    if (vista !== "struttureBC" && modaleSede === null) return;
     api.struttureBC.list().then(setStruttureBC).catch(() => {});
-  }, [vista]);
+  }, [vista, modaleSede === null]);
   const [appRuoliSel, setAppRuoliSel] = useState<AppId>(UHAccounts.APPS[0].id);
   const TAB_IMPOSTAZIONI: Vista[] = ["ruoli", "sedi", "struttureBC"];
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(vista));
@@ -583,6 +589,7 @@ export default function App(): JSX.Element {
       {(modaleSede?.type === "nuovo" || modaleSede?.type === "modifica") && (
         <SedeForm
           esistente={modaleSede.payload}
+          struttureBC={struttureBC}
           onSalva={salvaSede}
           onElimina={modaleSede.payload ? () => eliminaSede(modaleSede.payload!.id) : null}
           onClose={() => setModaleSede(null)}
@@ -1108,6 +1115,7 @@ function SedeCard({ sede, onModifica, onElimina }: SedeCardProps): JSX.Element {
           <span className="font-semibold text-sm text-stone-900">{sede.nome}</span>
           <Tag className="bg-stone-50 text-stone-500 border-stone-300">{sede.tipo}</Tag>
           {!sede.attiva && <Tag className="bg-rose-50 text-rose-600 border-rose-200">Non attiva</Tag>}
+          {sede.buCodice && <Tag className="bg-violet-50 text-violet-700 border-violet-200">BU {sede.buCodice}</Tag>}
         </div>
         {(sede.citta || sede.indirizzo) && (
           <div className="text-xs text-stone-500 mt-0.5">
@@ -1131,20 +1139,21 @@ function SedeCard({ sede, onModifica, onElimina }: SedeCardProps): JSX.Element {
 
 interface SedeFormProps {
   esistente: UHSede | null;
+  struttureBC: StrutturaBC[];
   onSalva: (dati: UHSede) => void;
   onElimina: (() => void) | null;
   onClose: () => void;
 }
 
-function SedeForm({ esistente, onSalva, onElimina, onClose }: SedeFormProps): JSX.Element {
-  const vuoto: SedeDraft = { id: null, nome: "", tipo: UHAccounts.TIPI_SEDE[0], citta: "", indirizzo: "", attiva: true };
-  const [f, setF] = useState<SedeDraft>(esistente ? clone(esistente) : vuoto);
+function SedeForm({ esistente, struttureBC, onSalva, onElimina, onClose }: SedeFormProps): JSX.Element {
+  const vuoto: SedeDraft = { id: null, nome: "", tipo: UHAccounts.TIPI_SEDE[0], citta: "", indirizzo: "", attiva: true, buCodice: "" };
+  const [f, setF] = useState<SedeDraft>(esistente ? { ...clone(esistente), buCodice: esistente.buCodice ?? "" } : vuoto);
   function upd(patch: Partial<SedeDraft>): void { setF((prev) => ({ ...prev, ...patch })); }
 
   function submit(e: React.FormEvent<HTMLFormElement>): void {
     e.preventDefault();
     if (!f.nome.trim()) return;
-    onSalva(f as UHSede);
+    onSalva({ ...f, buCodice: f.buCodice || null } as UHSede);
   }
 
   return (
@@ -1167,6 +1176,13 @@ function SedeForm({ esistente, onSalva, onElimina, onClose }: SedeFormProps): JS
 
         <Field label="Indirizzo (facoltativo)">
           <input className={inputCls} value={f.indirizzo} onChange={(e) => upd({ indirizzo: e.target.value })} placeholder="Via, numero civico…" />
+        </Field>
+
+        <Field label="Business Unit (BC)">
+          <select className={inputCls} value={f.buCodice} onChange={(e) => upd({ buCodice: e.target.value })}>
+            <option value="">— Nessuna —</option>
+            {struttureBC.map((b) => <option key={b.codice} value={b.codice}>{b.codice} · {b.nome}</option>)}
+          </select>
         </Field>
 
         <label className="flex items-center gap-2 text-sm font-medium text-stone-800 mb-1">

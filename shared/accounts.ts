@@ -66,6 +66,7 @@ export interface UHSede {
   citta?: string;
   indirizzo?: string;
   attiva: boolean;
+  buCodice?: string | null;
 }
 
 declare global {
