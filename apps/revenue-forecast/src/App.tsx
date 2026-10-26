@@ -439,6 +439,25 @@ function ForecastSection({ bus, voci, account, permessi }: {
   };
   const forecastMese = (m: number) => activeVoci.reduce((s, v) => s + num(localValues[cellKey(m, v.id)]), 0);
   const targetMese = (m: number) => activeVoci.reduce((s, v) => s + (targets.find((t) => t.voceId === v.id && t.mese === m)?.importo || 0), 0);
+  // Tab sposta sulla cella Bozza sotto (stesso mese); in fondo passa al mese successivo. Maiusc+Tab fa il contrario.
+  function spostaCella(e: React.KeyboardEvent<HTMLInputElement>, mese: number, riga: number) {
+    if (e.key !== "Tab") return;
+    const dir = e.shiftKey ? -1 : 1;
+    let m = mese;
+    let r = riga + dir;
+    if (r < 0 || r >= activeVoci.length) {
+      const i = mesiVista.indexOf(mese) + dir;
+      if (i < 0 || i >= mesiVista.length) return;
+      m = mesiVista[i];
+      r = dir === 1 ? 0 : activeVoci.length - 1;
+    }
+    const prossima = document.querySelector<HTMLInputElement>(`input[data-cell="${m}|${activeVoci[r].id}"]`);
+    if (!prossima) return;
+    e.preventDefault();
+    prossima.focus();
+    prossima.select();
+  }
+
   const actualCell = (m: number, voceId: string) => actuals.filter((a) => a.voceId === voceId && a.mese === m).reduce((s, a) => s + a.importo, 0);
   const VOCE_SENZA_TIPO = "FVO-SENZA-TIPO";
   const senzaTipoMese = (m: number) => actualCell(m, VOCE_SENZA_TIPO);
@@ -561,7 +580,7 @@ function ForecastSection({ bus, voci, account, permessi }: {
             </tr>
           </thead>
           <tbody>
-            {activeVoci.map((v) => (
+            {activeVoci.map((v, riga) => (
               <tr key={v.id} className="hover:bg-stone-50/50">
                 <td className={`${stickyCell} px-5 py-2.5 font-medium text-stone-800 border-t border-stone-50`}>{v.nome}</td>
                 {gruppi.map((g) => {
@@ -593,6 +612,8 @@ function ForecastSection({ bus, voci, account, permessi }: {
                             type="number"
                             className={`${inputW} text-right rounded-lg border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C7873]/30 focus:border-[#0C7873] ${modificato ? "border-amber-300 bg-amber-50/50" : diversoDaPubblicato ? "border-teal-200 bg-teal-50/40" : "border-stone-200"}`}
                             value={localValues[k] ?? ""}
+                            data-cell={`${g}|${v.id}`}
+                            onKeyDown={(e) => spostaCella(e, g, riga)}
                             onChange={(e) => setLocalValues((prev) => ({ ...prev, [k]: e.target.value }))}
                             placeholder="0"
                           />
