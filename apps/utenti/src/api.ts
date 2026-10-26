@@ -87,7 +87,15 @@ export const api = {
   sostituti: makeResource("utenti/sostituti"),
   sedi: makeResource("utenti/sedi"),
   struttureBC: { list: () => apiFetch<StrutturaBC[]>("/utenti/strutture-bc") },
+  tipiAttivitaBC: { list: () => apiFetch<TipoAttivitaBC[]>("/utenti/tipi-attivita-bc") },
 };
+
+export interface TipoAttivitaBC {
+  id: string;
+  codice: string;
+  nome: string;
+  dataImport: string;
+}
 
 export interface StrutturaBC {
   id: string;

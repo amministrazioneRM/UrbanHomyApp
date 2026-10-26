@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import {
-  ShieldCheck, Plus, Pencil, Trash2, X, ArrowLeft, Mail, Users, Grid3x3, Lock, Check, Copy, CalendarClock, Settings, ChevronDown, ChevronLeft, ChevronRight, MapPin, MapPinOff, Database
+  ShieldCheck, Plus, Pencil, Trash2, X, ArrowLeft, Mail, Users, Grid3x3, Lock, Check, Copy, CalendarClock, Settings, ChevronDown, ChevronLeft, ChevronRight, MapPin, MapPinOff, Database, Layers
 } from "lucide-react";
 import UHAccounts from "./accounts";
 import { api, useSyncedResource } from "./api";
-import type { StrutturaBC } from "./api";
+import type { StrutturaBC, TipoAttivitaBC } from "./api";
 import type { AppId, UHAccount, UHRuolo, UHSostituto, UHSede, AccessiMap, PermessiMap } from "./accounts";
 
 // ── Local draft types ──────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ type ModaleRuolo = {
 type ModaleSede = { type: "nuovo" | "modifica"; payload: UHSede | null };
 type ModaleSostituto = { type: "nuovo" | "modifica"; appId: AppId; payload: UHSostituto | null };
 
-type Vista = "utenti" | "ruoli" | "sedi" | "struttureBC";
+type Vista = "utenti" | "ruoli" | "sedi" | "struttureBC" | "tipiAttivitaBC";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -163,6 +163,7 @@ export default function App(): JSX.Element {
   const [sostituti, setSostituti] = useSyncedResource(api.sostituti, []);
   const [sedi, setSedi] = useSyncedResource(api.sedi, []);
   const [struttureBC, setStruttureBC] = useState<StrutturaBC[]>([]);
+  const [tipiAttivitaBC, setTipiAttivitaBC] = useState<TipoAttivitaBC[]>([]);
   const [modale, setModale] = useState<ModaleUtente | null>(null);
   const [erroreAccount, setErroreAccount] = useState<string | null>(null);
   const [modaleRuolo, setModaleRuolo] = useState<ModaleRuolo | null>(null);
@@ -172,8 +173,12 @@ export default function App(): JSX.Element {
     if (vista !== "struttureBC" && modaleSede === null) return;
     api.struttureBC.list().then(setStruttureBC).catch(() => {});
   }, [vista, modaleSede === null]);
+  useEffect(() => {
+    if (vista !== "tipiAttivitaBC") return;
+    api.tipiAttivitaBC.list().then(setTipiAttivitaBC).catch(() => {});
+  }, [vista]);
   const [appRuoliSel, setAppRuoliSel] = useState<AppId>(UHAccounts.APPS[0].id);
-  const TAB_IMPOSTAZIONI: Vista[] = ["ruoli", "sedi", "struttureBC"];
+  const TAB_IMPOSTAZIONI: Vista[] = ["ruoli", "sedi", "struttureBC", "tipiAttivitaBC"];
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(vista));
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => { try { return localStorage.getItem("utenti-sidebar-collapsed") === "1"; } catch { return false; } });
   const toggleSidebar = () => setSidebarCollapsed((v) => { try { localStorage.setItem("utenti-sidebar-collapsed", v ? "0" : "1"); } catch {} return !v; });
@@ -370,6 +375,7 @@ export default function App(): JSX.Element {
                       { id: "ruoli" as Vista, label: "Ruoli e permessi", icon: Grid3x3 },
                       { id: "sedi" as Vista, label: "Sedi", icon: MapPin },
                       { id: "struttureBC" as Vista, label: "Business Unit (BC)", icon: Database },
+                      { id: "tipiAttivitaBC" as Vista, label: "Tipo attività (BC)", icon: Layers },
                     ] as const
                   ).map((t) => (
                     <button
@@ -404,7 +410,7 @@ export default function App(): JSX.Element {
           <header className="flex items-start justify-between mb-5 flex-wrap gap-3">
             <div>
               <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">
-                {vista === "utenti" ? "Utenti" : vista === "ruoli" ? "Ruoli e permessi" : vista === "struttureBC" ? "Business Unit (BC)" : "Sedi"}
+                {vista === "utenti" ? "Utenti" : vista === "ruoli" ? "Ruoli e permessi" : vista === "struttureBC" ? "Business Unit (BC)" : vista === "tipiAttivitaBC" ? "Tipo attività (BC)" : "Sedi"}
               </h1>
               <p className="text-stone-500 text-sm mt-1">
                 {vista === "utenti"
@@ -413,6 +419,8 @@ export default function App(): JSX.Element {
                     ? "Per ciascuna applicazione, i ruoli disponibili e i permessi per ciascun modulo"
                     : vista === "struttureBC"
                     ? "Business Unit importate da Business Central (sola lettura)"
+                    : vista === "tipiAttivitaBC"
+                    ? "Valori della dimensione Tipo attività importati da Business Central (sola lettura)"
                     : "Anagrafica delle sedi e strutture del gruppo, condivisa tra le applicazioni del portale"}
               </p>
             </div>
@@ -519,6 +527,38 @@ export default function App(): JSX.Element {
                 />
               ))}
             </div>
+          )}
+
+          {vista === "tipiAttivitaBC" && (
+            tipiAttivitaBC.length === 0 ? (
+              <p className="text-center text-sm text-stone-400 bg-white border border-dashed border-stone-300 rounded-xl py-10">
+                Nessun tipo attività importato da Business Central.
+              </p>
+            ) : (
+              <div className="bg-white border border-stone-200 rounded-xl shadow-sm overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-400">
+                      <th className="px-4 py-3">Codice</th>
+                      <th className="px-4 py-3">Descrizione</th>
+                      <th className="px-4 py-3">Importato il</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tipiAttivitaBC.map((t) => {
+                      const marcatore = /\s-\s(Inizio|Fine)$/.test(t.nome);
+                      return (
+                        <tr key={t.id} className={`border-t border-stone-50 ${marcatore ? "bg-stone-50" : "hover:bg-stone-50/50"}`}>
+                          <td className="px-4 py-2.5 font-mono text-stone-800">{t.codice}</td>
+                          <td className={`px-4 py-2.5 ${marcatore ? "text-stone-400 text-xs font-semibold uppercase tracking-wide" : "text-stone-900"}`}>{t.nome}</td>
+                          <td className="px-4 py-2.5 text-stone-500">{new Date(t.dataImport).toLocaleDateString("it-IT")}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
           )}
 
           {vista === "struttureBC" && (() => {

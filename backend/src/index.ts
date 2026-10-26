@@ -145,6 +145,13 @@ app.use("/api/utenti/accounts", makeCrudRouter(prisma.utentiAccount as never, { 
 app.use("/api/utenti/ruoli", makeCrudRouter(prisma.utentiRuolo as never, { idPrefix: "RUOLO", modelName: "UtentiRuolo" }));
 app.use("/api/utenti/sostituti", makeCrudRouter(prisma.utentiSostituto as never, { idPrefix: "SOST", modelName: "UtentiSostituto" }));
 app.use("/api/utenti/sedi", makeCrudRouter(prisma.utentiSede as never, { idPrefix: "SEDE", modelName: "UtentiSede" }));
+app.get("/api/utenti/tipi-attivita-bc", async (_req, res, next) => {
+  try {
+    res.json(await prisma.forecastBCTipoAttivita.findMany({ orderBy: { codice: "asc" } }));
+  } catch (e) {
+    next(e);
+  }
+});
 app.get("/api/utenti/strutture-bc", async (_req, res, next) => {
   try {
     res.json(await prisma.forecastBCStruttura.findMany({ orderBy: { codice: "asc" } }));

@@ -505,3 +505,12 @@ model ForecastBCStruttura {
 
   @@map("forecast_bc_strutture")
 }
+
+model ForecastBCTipoAttivita {
+  id          String   @id
+  codice      String   @unique
+  nome        String
+  dataImport  DateTime
+
+  @@map("forecast_bc_tipi_attivita")
+}
