@@ -266,68 +266,111 @@ function Dashboard({ bus, voci, buId, anno }: {
 
 // ─── Forecast section ─────────────────────────────────────────────────────────
 
-function ForecastSection({ bus, voci, account, permessi, sedi }: {
+type VistaForecast = "trimestre" | "anno";
+const cellKey = (mese: number, voceId: string) => `${mese}|${voceId}`;
+const num = (s: string | undefined) => parseFloat(s || "0") || 0;
+
+function ForecastSection({ bus, voci, account, permessi }: {
   bus: ForecastBU[]; voci: ForecastVoce[]; account: UHAccount; permessi: PermessiMap | null; sedi: UHSede[];
 }) {
   const today = new Date();
   const [anno, setAnno] = useState(today.getFullYear());
-  const [mese, setMese] = useState(today.getMonth() + 1);
+  const [trim, setTrim] = useState(Math.floor(today.getMonth() / 3));
+  const [vista, setVista] = useState<VistaForecast>("trimestre");
   const [buId, setBuId] = useState(bus[0]?.id || "");
   const [entries, setEntries] = useState<ForecastEntry[]>([]);
   const [targets, setTargets] = useState<ForecastTarget[]>([]);
   const [actuals, setActuals] = useState<ForecastActual[]>([]);
+  const [base, setBase] = useState<Record<string, string>>({});
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [refreshingMews, setRefreshingMews] = useState(false);
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const canEditForecast = account.ruoloGlobale === "Amministratore" || canEdit(permessi, "forecast");
   const isAdmin = account.ruoloGlobale === "Amministratore";
+  const canEditForecast = isAdmin || canEdit(permessi, "forecast");
+  const activeVoci = voci.filter((v) => v.attiva);
+
+  const mesiVista = vista === "anno" ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] : [trim * 3 + 1, trim * 3 + 2, trim * 3 + 3];
 
   const load = useCallback(async () => {
     if (!buId) return;
     const [e, t, a] = await Promise.all([
-      forecastApi.getEntries({ buId, anno, mese }),
+      forecastApi.getEntries({ buId, anno }),
       forecastApi.getTargets({ buId, anno }),
-      forecastApi.getActuals({ buId, anno, mese }),
+      forecastApi.getActuals({ buId, anno }),
     ]);
     setEntries(e);
     setTargets(t);
     setActuals(a);
-    // Initialize local values
     const vals: Record<string, string> = {};
-    voci.filter((v) => v.attiva).forEach((v) => {
-      const entry = e.find((x) => x.voceId === v.id);
-      vals[v.id] = entry ? String(entry.importo) : "";
-    });
+    e.forEach((x) => { vals[cellKey(x.mese, x.voceId)] = String(x.importo); });
+    setBase(vals);
     setLocalValues(vals);
-  }, [buId, anno, mese, voci]);
+  }, [buId, anno]);
 
   useEffect(() => { load(); }, [load]);
 
-  function navMese(dir: number) {
-    let m = mese + dir;
-    let a = anno;
-    if (m < 1) { m = 12; a--; }
-    if (m > 12) { m = 1; a++; }
-    setMese(m); setAnno(a);
+  const dirtyKeys = Object.keys({ ...base, ...localValues }).filter((k) => num(base[k]) !== num(localValues[k]));
+  const dirty = dirtyKeys.length > 0;
+
+  function confermaModifiche(): boolean {
+    return !dirty || window.confirm("Ci sono modifiche non salvate: se continui andranno perse.");
+  }
+
+  function navigaPeriodo(dir: number) {
+    if (vista === "anno") {
+      if (!confermaModifiche()) return;
+      setAnno((a) => a + dir);
+      return;
+    }
+    const t = trim + dir;
+    if (t < 0 || t > 3) {
+      if (!confermaModifiche()) return;
+      setAnno((a) => a + (t < 0 ? -1 : 1));
+      setTrim(t < 0 ? 3 : 0);
+    } else {
+      setTrim(t);
+    }
+  }
+
+  function vaiAOggi() {
+    if (anno !== today.getFullYear() && !confermaModifiche()) return;
+    setAnno(today.getFullYear());
+    setTrim(Math.floor(today.getMonth() / 3));
+  }
+
+  function cambiaBU(id: string) {
+    if (!confermaModifiche()) return;
+    setBuId(id);
+  }
+
+  function flash(m: { type: "ok" | "err"; text: string }, ms = 3000) {
+    setMsg(m);
+    setTimeout(() => setMsg(null), ms);
+  }
+
+  async function salvaModificati(): Promise<void> {
+    const toSave = dirtyKeys.map((k) => {
+      const [m, voceId] = k.split("|");
+      return { buId, anno, mese: parseInt(m), voceId, importo: num(localValues[k]) };
+    });
+    if (toSave.length === 0) return;
+    await forecastApi.saveEntries(toSave, account.id);
   }
 
   async function handleSave() {
     if (!buId || !canEditForecast) return;
     setSaving(true);
     try {
-      const toSave = voci.filter((v) => v.attiva).map((v) => ({
-        buId, anno, mese, voceId: v.id, importo: parseFloat(localValues[v.id] || "0") || 0,
-      }));
-      await forecastApi.saveEntries(toSave, account.id);
+      const n = dirtyKeys.length;
+      await salvaModificati();
       await load();
-      setMsg({ type: "ok", text: "Bozza salvata" });
+      flash({ type: "ok", text: n ? "Bozza salvata" : "Nessuna modifica da salvare" });
     } catch (e: unknown) {
-      setMsg({ type: "err", text: (e as Error).message });
+      flash({ type: "err", text: (e as Error).message });
     } finally {
       setSaving(false);
-      setTimeout(() => setMsg(null), 3000);
     }
   }
 
@@ -335,15 +378,21 @@ function ForecastSection({ bus, voci, account, permessi, sedi }: {
     if (!buId || !canEditForecast) return;
     setPublishing(true);
     try {
-      await handleSave();
-      await forecastApi.pubblicaEntries(buId, anno, mese, account.id);
+      await salvaModificati();
+      const fresh = await forecastApi.getEntries({ buId, anno });
+      const daPubblicare = mesiVista.filter((m) => fresh.some((e) => e.mese === m && e.stato !== "pubblicato"));
+      for (const m of daPubblicare) await forecastApi.pubblicaEntries(buId, anno, m, account.id);
       await load();
-      setMsg({ type: "ok", text: "Forecast pubblicato" });
+      flash(
+        daPubblicare.length
+          ? { type: "ok", text: daPubblicare.length === 1 ? `Forecast di ${MESI_FULL[daPubblicare[0] - 1]} pubblicato` : `Forecast pubblicato per ${daPubblicare.length} mesi` }
+          : { type: "ok", text: "Niente da pubblicare nel periodo" },
+        4000,
+      );
     } catch (e: unknown) {
-      setMsg({ type: "err", text: (e as Error).message });
+      flash({ type: "err", text: (e as Error).message }, 4000);
     } finally {
       setPublishing(false);
-      setTimeout(() => setMsg(null), 4000);
     }
   }
 
@@ -351,51 +400,67 @@ function ForecastSection({ bus, voci, account, permessi, sedi }: {
     if (!buId) return;
     setRefreshingMews(true);
     try {
-      const a = await forecastApi.refreshActuals(buId, anno, mese);
-      setActuals(a);
-      setMsg({ type: "ok", text: "Dati Mews aggiornati" });
+      for (const m of mesiVista) await forecastApi.refreshActuals(buId, anno, m);
+      setActuals(await forecastApi.getActuals({ buId, anno }));
+      flash({ type: "ok", text: "Dati Mews aggiornati" });
     } catch (e: unknown) {
-      setMsg({ type: "err", text: (e as Error).message });
+      flash({ type: "err", text: (e as Error).message });
     } finally {
       setRefreshingMews(false);
-      setTimeout(() => setMsg(null), 3000);
     }
   }
 
-  const activeVoci = voci.filter((v) => v.attiva);
-  const stato = entries.length > 0 && entries.every((e) => e.stato === "pubblicato") ? "pubblicato"
-    : entries.length > 0 ? "bozza" : null;
+  const statoMese = (m: number): "pubblicato" | "bozza" | null => {
+    const es = entries.filter((e) => e.mese === m);
+    if (es.length === 0) return null;
+    return es.every((e) => e.stato === "pubblicato") ? "pubblicato" : "bozza";
+  };
+  const forecastMese = (m: number) => activeVoci.reduce((s, v) => s + num(localValues[cellKey(m, v.id)]), 0);
+  const targetMese = (m: number) => activeVoci.reduce((s, v) => s + (targets.find((t) => t.voceId === v.id && t.mese === m)?.importo || 0), 0);
+  const actualMese = (m: number) => activeVoci.reduce((s, v) => s + (actuals.find((a) => a.voceId === v.id && a.mese === m)?.importo || 0), 0);
+  const sumMesi = (f: (m: number) => number) => mesiVista.reduce((s, m) => s + f(m), 0);
+  const haActual = actuals.some((a) => mesiVista.includes(a.mese) && a.importo > 0);
+  const ultimaModifica = entries.length ? entries.reduce((a, b) => (a.dataModifica > b.dataModifica ? a : b)).dataModifica : null;
 
-  const forecastTotal = activeVoci.reduce((s, v) => s + (parseFloat(localValues[v.id] || "0") || 0), 0);
-  const targetTotal = activeVoci.reduce((s, v) => {
-    const t = targets.find((x) => x.voceId === v.id && x.mese === mese);
-    return s + (t?.importo || 0);
-  }, 0);
-  const actualTotal = activeVoci.reduce((s, v) => {
-    const a = actuals.find((x) => x.voceId === v.id);
-    return s + (a?.importo || 0);
-  }, 0);
+  const titoloPeriodo = vista === "anno" ? `Anno ${anno}` : `${trim + 1}° trimestre ${anno}`;
+  const sottoPeriodo = vista === "anno" ? "" : `${MESI_SHORT[trim * 3]} – ${MESI_SHORT[trim * 3 + 2]}`;
+  const inputW = vista === "anno" ? "w-24" : "w-32";
+  const thCls = "px-3 py-3 text-xs font-semibold uppercase tracking-wide text-right whitespace-nowrap";
+  const stickyCell = "sticky left-0 z-10 bg-white";
 
   return (
     <div className="space-y-4">
-      {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
         {bus.length > 1 && (
-          <select className={`${inputCls} w-48`} value={buId} onChange={(e) => setBuId(e.target.value)}>
+          <select className={`${inputCls} w-48`} value={buId} onChange={(e) => cambiaBU(e.target.value)}>
             {bus.map((b) => <option key={b.id} value={b.id}>{b.nome}</option>)}
           </select>
         )}
+
         <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-xl px-1 py-1">
-          <button className="p-1.5 rounded-lg hover:bg-stone-100 transition" onClick={() => navMese(-1)}><ChevronLeft size={16} /></button>
-          <span className="text-sm font-semibold text-stone-800 px-3 min-w-36 text-center">{MESI_FULL[mese - 1]} {anno}</span>
-          <button className="p-1.5 rounded-lg hover:bg-stone-100 transition" onClick={() => navMese(1)}><ChevronRight size={16} /></button>
+          <button className="p-1.5 rounded-lg hover:bg-stone-100 transition" onClick={() => navigaPeriodo(-1)} title={vista === "anno" ? "Anno precedente" : "Trimestre precedente"}><ChevronLeft size={16} /></button>
+          <span className="text-sm font-semibold text-stone-800 px-3 min-w-44 text-center">
+            {titoloPeriodo}{sottoPeriodo && <span className="ml-1.5 font-normal text-stone-400 text-xs">{sottoPeriodo}</span>}
+          </span>
+          <button className="p-1.5 rounded-lg hover:bg-stone-100 transition" onClick={() => navigaPeriodo(1)} title={vista === "anno" ? "Anno successivo" : "Trimestre successivo"}><ChevronRight size={16} /></button>
         </div>
-        {stato && (
-          <Badge color={stato === "pubblicato" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}>
-            {stato === "pubblicato" ? "✓ Pubblicato" : "Bozza"}
-          </Badge>
-        )}
-        <div className="ml-auto flex items-center gap-2">
+
+        <div className="flex items-center bg-white border border-stone-200 rounded-xl p-1 text-sm font-medium">
+          {(["trimestre", "anno"] as VistaForecast[]).map((v) => (
+            <button
+              key={v}
+              onClick={() => setVista(v)}
+              className={`px-3 py-1 rounded-lg transition ${vista === v ? "text-white" : "text-stone-600 hover:bg-stone-100"}`}
+              style={vista === v ? { background: ACCENT } : {}}
+            >
+              {v === "trimestre" ? "Trimestre" : "Anno"}
+            </button>
+          ))}
+        </div>
+        <button className="px-3 py-1.5 text-sm rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 transition" onClick={vaiAOggi}>Oggi</button>
+
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          {dirty && <span className="text-xs font-semibold px-3 py-1 rounded-full bg-amber-100 text-amber-700">Modifiche non salvate</span>}
           {msg && (
             <span className={`text-xs font-semibold px-3 py-1 rounded-full ${msg.type === "ok" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-600"}`}>
               {msg.text}
@@ -414,7 +479,7 @@ function ForecastSection({ bus, voci, account, permessi, sedi }: {
             <>
               <button
                 className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg border border-stone-300 text-stone-700 hover:bg-stone-50 transition disabled:opacity-50"
-                onClick={handleSave} disabled={saving}
+                onClick={handleSave} disabled={saving || publishing}
               >
                 <Save size={14} />
                 Salva bozza
@@ -423,70 +488,95 @@ function ForecastSection({ bus, voci, account, permessi, sedi }: {
                 className="flex items-center gap-1.5 px-4 py-1.5 text-sm rounded-lg font-semibold text-white transition disabled:opacity-50"
                 style={{ background: ACCENT }}
                 onClick={handlePublish} disabled={publishing || saving}
+                title={vista === "anno" ? "Pubblica i mesi dell'anno in bozza" : "Pubblica i mesi del trimestre in bozza"}
               >
                 <Send size={14} />
-                Pubblica
+                Pubblica {vista === "anno" ? "anno" : "trimestre"}
               </button>
             </>
           )}
         </div>
       </div>
 
-      {/* Table */}
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm border-separate border-spacing-0">
           <thead>
             <tr className="border-b border-stone-100">
-              <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wide text-stone-400">Voce di ricavo</th>
-              <th className="text-right px-5 py-3 text-xs font-semibold uppercase tracking-wide text-stone-400">Target</th>
-              <th className="text-right px-5 py-3 text-xs font-semibold uppercase tracking-wide" style={{ color: ACCENT }}>Forecast</th>
-              <th className="text-right px-5 py-3 text-xs font-semibold uppercase tracking-wide text-amber-500">Actual (Mews)</th>
-              <th className="text-right px-5 py-3 text-xs font-semibold uppercase tracking-wide text-stone-400">vs Target</th>
+              <th className={`${stickyCell} text-left px-5 py-3 text-xs font-semibold uppercase tracking-wide text-stone-400 border-b border-stone-100`}>Voce di ricavo</th>
+              {mesiVista.map((m) => {
+                const st = statoMese(m);
+                const corrente = anno === today.getFullYear() && m === today.getMonth() + 1;
+                return (
+                  <th key={m} className={`${thCls} border-b border-stone-100 ${corrente ? "bg-stone-50" : ""}`} style={{ color: ACCENT }}>
+                    <div>{vista === "anno" ? MESI_SHORT[m - 1] : MESI_FULL[m - 1]}</div>
+                    <div className="mt-1 h-4 normal-case tracking-normal">
+                      {st && <Badge color={st === "pubblicato" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}>{st === "pubblicato" ? "Pubblicato" : "Bozza"}</Badge>}
+                    </div>
+                  </th>
+                );
+              })}
+              <th className={`${thCls} text-stone-500 border-b border-stone-100`}>{vista === "anno" ? "Totale anno" : "Totale trim."}</th>
             </tr>
           </thead>
           <tbody>
-            {activeVoci.map((v) => {
-              const target = targets.find((t) => t.voceId === v.id && t.mese === mese);
-              const actual = actuals.find((a) => a.voceId === v.id);
-              const val = parseFloat(localValues[v.id] || "0") || 0;
-              return (
-                <tr key={v.id} className="border-t border-stone-50 hover:bg-stone-50/50">
-                  <td className="px-5 py-3 font-medium text-stone-800">{v.nome}</td>
-                  <td className="px-5 py-3 text-right text-stone-400">{target ? fmt(target.importo) : "–"}</td>
-                  <td className="px-5 py-3 text-right">
-                    {canEditForecast ? (
-                      <input
-                        type="number"
-                        className="w-36 text-right rounded-lg border border-stone-200 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C7873]/30 focus:border-[#0C7873]"
-                        value={localValues[v.id] ?? ""}
-                        onChange={(e) => setLocalValues((prev) => ({ ...prev, [v.id]: e.target.value }))}
-                        placeholder="0"
-                      />
-                    ) : (
-                      <span className="font-semibold text-stone-800">{val ? fmt(val) : "–"}</span>
-                    )}
-                  </td>
-                  <td className="px-5 py-3 text-right text-amber-600 font-medium">{actual ? fmt(actual.importo) : "–"}</td>
-                  <td className="px-5 py-3 text-right">{target ? <Delta value={val} base={target.importo} /> : <span className="text-stone-300">–</span>}</td>
-                </tr>
-              );
-            })}
+            {activeVoci.map((v) => (
+              <tr key={v.id} className="hover:bg-stone-50/50">
+                <td className={`${stickyCell} px-5 py-2.5 font-medium text-stone-800 border-t border-stone-50`}>{v.nome}</td>
+                {mesiVista.map((m) => {
+                  const k = cellKey(m, v.id);
+                  const modificato = num(base[k]) !== num(localValues[k]);
+                  return (
+                    <td key={m} className="px-3 py-2 text-right border-t border-stone-50">
+                      {canEditForecast ? (
+                        <input
+                          type="number"
+                          className={`${inputW} text-right rounded-lg border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C7873]/30 focus:border-[#0C7873] ${modificato ? "border-amber-300 bg-amber-50/40" : "border-stone-200"}`}
+                          value={localValues[k] ?? ""}
+                          onChange={(e) => setLocalValues((prev) => ({ ...prev, [k]: e.target.value }))}
+                          placeholder="0"
+                        />
+                      ) : (
+                        <span className="font-semibold text-stone-800">{num(localValues[k]) ? fmt(num(localValues[k])) : "–"}</span>
+                      )}
+                    </td>
+                  );
+                })}
+                <td className="px-3 py-2.5 text-right font-semibold text-stone-700 border-t border-stone-50">
+                  {fmt(sumMesi((m) => num(localValues[cellKey(m, v.id)])))}
+                </td>
+              </tr>
+            ))}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-stone-200 bg-stone-50/50">
-              <td className="px-5 py-3 font-bold text-stone-900 text-xs uppercase tracking-wide">TOTALE</td>
-              <td className="px-5 py-3 text-right font-bold text-stone-500">{targetTotal ? fmt(targetTotal) : "–"}</td>
-              <td className="px-5 py-3 text-right font-bold" style={{ color: ACCENT }}>{fmt(forecastTotal)}</td>
-              <td className="px-5 py-3 text-right font-bold text-amber-600">{actualTotal > 0 ? fmt(actualTotal) : "–"}</td>
-              <td className="px-5 py-3 text-right">{targetTotal ? <Delta value={forecastTotal} base={targetTotal} /> : "–"}</td>
+            <tr className="bg-stone-50/60">
+              <td className={`${stickyCell} bg-stone-50 px-5 py-2.5 font-bold text-xs uppercase tracking-wide text-stone-900 border-t-2 border-stone-200`}>Totale forecast</td>
+              {mesiVista.map((m) => <td key={m} className="px-3 py-2.5 text-right font-bold border-t-2 border-stone-200" style={{ color: ACCENT }}>{fmt(forecastMese(m))}</td>)}
+              <td className="px-3 py-2.5 text-right font-bold border-t-2 border-stone-200" style={{ color: ACCENT }}>{fmt(sumMesi(forecastMese))}</td>
             </tr>
+            <tr>
+              <td className={`${stickyCell} px-5 py-2 text-xs font-semibold uppercase tracking-wide text-stone-400`}>Target</td>
+              {mesiVista.map((m) => <td key={m} className="px-3 py-2 text-right text-stone-500">{targetMese(m) ? fmt(targetMese(m)) : "–"}</td>)}
+              <td className="px-3 py-2 text-right font-semibold text-stone-500">{sumMesi(targetMese) ? fmt(sumMesi(targetMese)) : "–"}</td>
+            </tr>
+            <tr>
+              <td className={`${stickyCell} px-5 py-2 text-xs font-semibold uppercase tracking-wide text-stone-400`}>Forecast vs target</td>
+              {mesiVista.map((m) => <td key={m} className="px-3 py-2"><div className="flex justify-end">{targetMese(m) ? <Delta value={forecastMese(m)} base={targetMese(m)} /> : <span className="text-stone-300">–</span>}</div></td>)}
+              <td className="px-3 py-2"><div className="flex justify-end">{sumMesi(targetMese) ? <Delta value={sumMesi(forecastMese)} base={sumMesi(targetMese)} /> : <span className="text-stone-300">–</span>}</div></td>
+            </tr>
+            {haActual && (
+              <tr>
+                <td className={`${stickyCell} px-5 py-2 text-xs font-semibold uppercase tracking-wide text-amber-500`}>Actual (Mews)</td>
+                {mesiVista.map((m) => <td key={m} className="px-3 py-2 text-right text-amber-600 font-medium">{actualMese(m) > 0 ? fmt(actualMese(m)) : "–"}</td>)}
+                <td className="px-3 py-2 text-right font-semibold text-amber-600">{fmt(sumMesi(actualMese))}</td>
+              </tr>
+            )}
           </tfoot>
         </table>
       </div>
 
-      {entries.length > 0 && (
+      {ultimaModifica && (
         <p className="text-xs text-stone-400 text-right">
-          Ultima modifica: {new Date(entries[0].dataModifica).toLocaleString("it-IT")}
+          Ultima modifica: {new Date(ultimaModifica).toLocaleString("it-IT")}
         </p>
       )}
     </div>
