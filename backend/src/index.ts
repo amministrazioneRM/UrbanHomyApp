@@ -147,7 +147,7 @@ app.use("/api/utenti/sostituti", makeCrudRouter(prisma.utentiSostituto as never,
 app.use("/api/utenti/sedi", makeCrudRouter(prisma.utentiSede as never, { idPrefix: "SEDE", modelName: "UtentiSede" }));
 app.get("/api/utenti/strutture-bc", async (_req, res, next) => {
   try {
-    res.json(await prisma.forecastBCStruttura.findMany({ orderBy: [{ societa: "asc" }, { codice: "asc" }] }));
+    res.json(await prisma.forecastBCStruttura.findMany({ orderBy: { codice: "asc" } }));
   } catch (e) {
     next(e);
   }

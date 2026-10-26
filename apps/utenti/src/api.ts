@@ -91,10 +91,8 @@ export const api = {
 
 export interface StrutturaBC {
   id: string;
-  societa: string;
   codice: string;
   nome: string;
-  bloccata: boolean;
   dataImport: string;
 }
 

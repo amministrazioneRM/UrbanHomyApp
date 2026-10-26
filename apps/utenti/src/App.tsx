@@ -157,7 +157,6 @@ export default function App(): JSX.Element {
   const [sostituti, setSostituti] = useSyncedResource(api.sostituti, []);
   const [sedi, setSedi] = useSyncedResource(api.sedi, []);
   const [struttureBC, setStruttureBC] = useState<StrutturaBC[]>([]);
-  const [societaBC, setSocietaBC] = useState<string>("");
   const [modale, setModale] = useState<ModaleUtente | null>(null);
   const [erroreAccount, setErroreAccount] = useState<string | null>(null);
   const [modaleRuolo, setModaleRuolo] = useState<ModaleRuolo | null>(null);
@@ -407,7 +406,7 @@ export default function App(): JSX.Element {
                   : vista === "ruoli"
                     ? "Per ciascuna applicazione, i ruoli disponibili e i permessi per ciascun modulo"
                     : vista === "struttureBC"
-                    ? "Business Unit importate da Business Central, per società (sola lettura)"
+                    ? "Business Unit importate da Business Central (sola lettura)"
                     : "Anagrafica delle sedi e strutture del gruppo, condivisa tra le applicazioni del portale"}
               </p>
             </div>
@@ -517,16 +516,9 @@ export default function App(): JSX.Element {
           )}
 
           {vista === "struttureBC" && (() => {
-            const societa = [...new Set(struttureBC.map((s) => s.societa))];
-            const righe = struttureBC.filter((s) => !societaBC || s.societa === societaBC);
+            const righe = struttureBC;
             return (
               <div>
-                <div className="flex items-center gap-2 mb-5 flex-wrap">
-                  <button onClick={() => setSocietaBC("")} className={pillCls(societaBC === "")}>Tutte</button>
-                  {societa.map((s) => (
-                    <button key={s} onClick={() => setSocietaBC(s)} className={pillCls(societaBC === s)}>{s}</button>
-                  ))}
-                </div>
                 {struttureBC.length === 0 ? (
                   <p className="text-center text-sm text-stone-400 bg-white border border-dashed border-stone-300 rounded-xl py-10">
                     Nessuna struttura importata da Business Central.
@@ -536,24 +528,16 @@ export default function App(): JSX.Element {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-400">
-                          <th className="px-4 py-3">Società</th>
                           <th className="px-4 py-3">Codice BU</th>
                           <th className="px-4 py-3">Descrizione</th>
-                          <th className="px-4 py-3">Stato</th>
                           <th className="px-4 py-3">Importata il</th>
                         </tr>
                       </thead>
                       <tbody>
                         {righe.map((s) => (
                           <tr key={s.id} className="border-t border-stone-50 hover:bg-stone-50/50">
-                            <td className="px-4 py-2.5 text-stone-600">{s.societa}</td>
                             <td className="px-4 py-2.5 font-mono text-stone-800">{s.codice}</td>
                             <td className="px-4 py-2.5 text-stone-900">{s.nome}</td>
-                            <td className="px-4 py-2.5">
-                              <Tag className={s.bloccata ? "bg-stone-50 text-stone-400 border-stone-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}>
-                                {s.bloccata ? "Bloccata" : "Attiva"}
-                              </Tag>
-                            </td>
                             <td className="px-4 py-2.5 text-stone-500">{new Date(s.dataImport).toLocaleDateString("it-IT")}</td>
                           </tr>
                         ))}

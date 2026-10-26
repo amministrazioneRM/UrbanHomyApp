@@ -498,12 +498,9 @@ model ForecastActual {
 
 model ForecastBCStruttura {
   id          String   @id
-  societa     String
-  codice      String
+  codice      String   @unique
   nome        String
-  bloccata    Boolean  @default(false)
   dataImport  DateTime
 
-  @@unique([societa, codice])
   @@map("forecast_bc_strutture")
 }
