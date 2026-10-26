@@ -304,13 +304,15 @@ router.post("/actuals/refresh", async (req, res, next) => {
   try {
     const { buId, anno, mese } = req.body as { buId: string; anno: number; mese: number };
     const bu = await prisma.forecastBU.findUnique({ where: { id: buId } });
-    if (!bu?.mewsClientToken || !bu?.mewsAccessToken) {
-      res.status(400).json({ error: "BU non configurata per Mews (token mancanti)" });
+    const clientToken = bu?.mewsClientToken || process.env.MEWS_CLIENT_TOKEN;
+    const accessToken = bu?.mewsAccessToken || process.env.MEWS_ACCESS_TOKEN;
+    if (!clientToken || !accessToken) {
+      res.status(400).json({ error: "Credenziali Mews mancanti: imposta MEWS_CLIENT_TOKEN e MEWS_ACCESS_TOKEN nel file .env" });
       return;
     }
     const startUtc = new Date(anno, mese - 1, 1).toISOString();
     const endUtc   = new Date(anno, mese, 0, 23, 59, 59).toISOString();
-    const mewsRevenue = await callMewsRevenue(bu.mewsClientToken, bu.mewsAccessToken, startUtc, endUtc);
+    const mewsRevenue = await callMewsRevenue(clientToken, accessToken, startUtc, endUtc);
     const voci = await prisma.forecastVoce.findMany({ where: { attiva: true } });
     const now = new Date();
     for (const voce of voci) {
