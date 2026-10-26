@@ -947,10 +947,17 @@ type GruppoAttivita = { chiave: string; codiceGruppo: string; titolo: string; ti
 function ConfigSection({ onReload }: { onReload: () => void }) {
   const [buTutte, setBuTutte] = useState<ForecastBU[]>([]);
   const [tipiBC, setTipiBC] = useState<TipoAttivitaBC[]>([]);
+  const [classif, setClassif] = useState<Record<string, string>>({});
+
+  async function cambiaClassificazione(classificazione: string, codice: string) {
+    setClassif((p) => ({ ...p, [classificazione]: codice }));
+    try { await forecastApi.setClassificazioneMews(classificazione, codice); } catch { forecastApi.getClassificazioniMews().then((r) => setClassif(Object.fromEntries(r.map((x) => [x.classificazione, x.codiceAttivita])))).catch(() => {}); }
+  }
 
   const caricaBU = useCallback(() => { forecastApi.getBU(true).then(setBuTutte).catch(() => {}); }, []);
   useEffect(() => {
     forecastApi.getVoci().then(() => forecastApi.getTipiAttivita()).then(setTipiBC).catch(() => {});
+    forecastApi.getClassificazioniMews().then((r) => setClassif(Object.fromEntries(r.map((x) => [x.classificazione, x.codiceAttivita])))).catch(() => {});
     caricaBU();
   }, [caricaBU]);
 
@@ -1071,6 +1078,36 @@ function ConfigSection({ onReload }: { onReload: () => void }) {
           </div>
         );
       })}
+
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
+        <div className="font-semibold text-stone-900">Mews: tipo attività per classificazione</div>
+        <p className="text-sm text-stone-500 mt-1 mb-4">
+          La produzione di Mews va nel tipo attività indicato dal Codice attività della categoria in Business Central. Per le categorie in cui BC non lo riporta, vale il tipo attività scelto qui per la loro classificazione.
+        </p>
+        <div className="space-y-2">
+          {[
+            ["Accommodation", "Alloggio"],
+            ["FoodAndBeverage", "Ristorazione"],
+            ["Events", "Eventi"],
+            ["Facilities", "Servizi e coworking"],
+            ["SundryIncome", "Ricavi vari"],
+          ].map(([chiave, etichetta]) => (
+            <div key={chiave} className="flex items-center justify-between gap-4 px-4 py-2.5 rounded-xl border border-stone-100">
+              <div>
+                <div className="font-medium text-stone-800">{etichetta}</div>
+                <div className="text-xs text-stone-400">{chiave}</div>
+              </div>
+              <select className={`${inputCls} max-w-xs`} value={classif[chiave] || ""} onChange={(e) => cambiaClassificazione(chiave, e.target.value)}>
+                {gruppi.map((g) => (
+                  <optgroup key={g.chiave} label={g.titolo}>
+                    {g.tipi.map((t) => <option key={t.codice} value={t.codice}>{t.nome}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

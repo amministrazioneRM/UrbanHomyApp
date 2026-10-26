@@ -539,3 +539,10 @@ model ForecastMewsCategoria {
 
   @@map("forecast_mews_categorie")
 }
+
+model ForecastMewsClassificazione {
+  classificazione String @id
+  codiceAttivita  String
+
+  @@map("forecast_mews_classificazioni")
+}

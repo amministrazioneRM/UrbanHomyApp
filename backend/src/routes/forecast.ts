@@ -316,6 +316,42 @@ router.get("/actuals", async (req, res, next) => {
 
 const VOCE_SENZA_TIPO = "FVO-SENZA-TIPO";
 
+// Tipo attività di riserva per classificazione Mews, usato quando in BC la categoria non ha il Codice attività.
+const CLASSIFICAZIONI_DEFAULT: Record<string, string> = {
+  Accommodation: "1.1.01",
+  FoodAndBeverage: "1.1.02",
+  Events: "1.1.04",
+  SundryIncome: "1.1.05",
+  Facilities: "1.2.01",
+};
+
+async function mappaClassificazioni(): Promise<Record<string, string>> {
+  for (const [classificazione, codiceAttivita] of Object.entries(CLASSIFICAZIONI_DEFAULT)) {
+    await prisma.forecastMewsClassificazione.upsert({ where: { classificazione }, create: { classificazione, codiceAttivita }, update: {} });
+  }
+  const righe = await prisma.forecastMewsClassificazione.findMany();
+  return Object.fromEntries(righe.map((r) => [r.classificazione, r.codiceAttivita]));
+}
+
+router.get("/mews/classificazioni", async (req, res, next) => {
+  try {
+    if (!hasForecastAccess(req)) { res.json([]); return; }
+    const mappa = await mappaClassificazioni();
+    res.json(Object.entries(mappa).map(([classificazione, codiceAttivita]) => ({ classificazione, codiceAttivita })));
+  } catch (e) { next(e); }
+});
+
+router.put("/mews/classificazioni/:classificazione", async (req, res, next) => {
+  try {
+    if (!hasForecastAccess(req)) { res.status(403).json({ error: "Accesso negato" }); return; }
+    const { classificazione } = req.params;
+    const codiceAttivita = String(req.body.codiceAttivita || "");
+    if (!codiceAttivita) { res.status(400).json({ error: "Tipo attività mancante" }); return; }
+    await prisma.forecastMewsClassificazione.upsert({ where: { classificazione }, create: { classificazione, codiceAttivita }, update: { codiceAttivita } });
+    res.json({ classificazione, codiceAttivita });
+  } catch (e) { next(e); }
+});
+
 // Produzione del mese da Mews, sommata per tipo attività: ogni categoria contabile Mews è collegata a un codice attività
 // nella tabella BC "BKMEWS Category" (importata in forecast_mews_categorie). Le tasse non sono produzione e si escludono;
 // le categorie senza codice attività finiscono nella voce "Senza tipo attività".
@@ -341,12 +377,14 @@ router.post("/actuals/refresh", async (req, res, next) => {
 
     const [categorie, voci] = await Promise.all([prisma.forecastMewsCategoria.findMany(), prisma.forecastVoce.findMany({ select: { id: true } })]);
     const categoria = new Map(categorie.map((c) => [c.mewsId, c]));
+    const perClassificazione = await mappaClassificazioni();
     const vociEsistenti = new Set(voci.map((v) => v.id));
     const perVoce: Record<string, number> = {};
     for (const [mewsId, importo] of Object.entries(nettoPerCategoria)) {
       const c = categoria.get(mewsId);
       if (c?.classificazione === "Taxes") continue;
-      const voceId = c?.codiceAttivita && vociEsistenti.has(`FVO-${c.codiceAttivita}`) ? `FVO-${c.codiceAttivita}` : VOCE_SENZA_TIPO;
+      const codice = c?.codiceAttivita || (c?.classificazione ? perClassificazione[c.classificazione] : undefined);
+      const voceId = codice && vociEsistenti.has(`FVO-${codice}`) ? `FVO-${codice}` : VOCE_SENZA_TIPO;
       perVoce[voceId] = (perVoce[voceId] ?? 0) + importo;
     }
 

@@ -74,6 +74,9 @@ export const forecastApi = {
   getBU: (tutte = false) => apiFetch<ForecastBU[]>(`/forecast/bu${tutte ? "?tutte=1" : ""}`),
   setBUAttiva: (id: string, attiva: boolean) =>
     apiFetch<ForecastBU>(`/forecast/bu/${id}/attiva`, { method: "PUT", body: JSON.stringify({ attiva }) }),
+  getClassificazioniMews: () => apiFetch<{ classificazione: string; codiceAttivita: string }[]>("/forecast/mews/classificazioni"),
+  setClassificazioneMews: (classificazione: string, codiceAttivita: string) =>
+    apiFetch<{ classificazione: string; codiceAttivita: string }>(`/forecast/mews/classificazioni/${classificazione}`, { method: "PUT", body: JSON.stringify({ codiceAttivita }) }),
   setBUVoci: (id: string, voceIds: string[]) =>
     apiFetch<{ voceIds: string[] }>(`/forecast/bu/${id}/voci`, { method: "PUT", body: JSON.stringify({ voceIds }) }),
   getTipiAttivita: () => apiFetch<TipoAttivitaBC[]>("/forecast/tipi-attivita"),
