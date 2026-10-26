@@ -29,6 +29,12 @@ function pct(a: number, b: number): string {
   return ((a / b) * 100).toFixed(1) + "%";
 }
 
+// Le voci di ricavo di una BU sono i tipi attività di BC abilitati in Impostazioni per quella BU.
+function vociAbilitate(voci: ForecastVoce[], bus: ForecastBU[], buId: string): ForecastVoce[] {
+  const ids = bus.find((b) => b.id === buId)?.voceIds || [];
+  return voci.filter((v) => v.attiva && ids.includes(v.id));
+}
+
 // ─── Permission helpers ──────────────────────────────────────────────────────
 
 function canEdit(perm: PermessiMap | null, modulo: string): boolean {
@@ -289,7 +295,7 @@ function ForecastSection({ bus, voci, account, permessi }: {
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const isAdmin = account.ruoloGlobale === "Amministratore";
   const canEditForecast = isAdmin || canEdit(permessi, "forecast");
-  const activeVoci = voci.filter((v) => v.attiva);
+  const activeVoci = vociAbilitate(voci, bus, buId);
 
   const mesiVista = vista === "anno" ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] : [trim * 3 + 1, trim * 3 + 2, trim * 3 + 3];
 
@@ -663,7 +669,7 @@ function TargetSection({ bus, voci, account, permessi }: {
     const t = await forecastApi.getTargets({ buId, anno });
     setTargets(t);
     const vals: Record<string, string> = {};
-    voci.filter((v) => v.attiva).forEach((v) => {
+    vociAbilitate(voci, bus, buId).forEach((v) => {
       for (let m = 1; m <= 12; m++) {
         const key = `${v.id}:${m}`;
         const found = t.find((x) => x.voceId === v.id && x.mese === m);
@@ -680,7 +686,7 @@ function TargetSection({ bus, voci, account, permessi }: {
     setSaving(true);
     try {
       const toSave: Array<{ buId: string; anno: number; mese: number; voceId: string; importo: number }> = [];
-      voci.filter((v) => v.attiva).forEach((v) => {
+      vociAbilitate(voci, bus, buId).forEach((v) => {
         for (let m = 1; m <= 12; m++) {
           toSave.push({ buId, anno, mese: m, voceId: v.id, importo: parseFloat(localVals[`${v.id}:${m}`] || "0") || 0 });
         }
@@ -696,7 +702,7 @@ function TargetSection({ bus, voci, account, permessi }: {
     }
   }
 
-  const activeVoci = voci.filter((v) => v.attiva);
+  const activeVoci = vociAbilitate(voci, bus, buId);
   const colTotals = Array.from({ length: 12 }, (_, i) =>
     activeVoci.reduce((s, v) => s + (parseFloat(localVals[`${v.id}:${i + 1}`] || "0") || 0), 0)
   );
@@ -808,10 +814,10 @@ function StoricoSection({ bus, voci, account }: { bus: ForecastBU[]; voci: Forec
 
   // Group by data/tipo and show evolution per voce
   const byVoce: Record<string, ForecastStorico[]> = {};
-  voci.filter((v) => v.attiva).forEach((v) => { byVoce[v.id] = storici.filter((s) => s.voceId === v.id); });
+  vociAbilitate(voci, bus, buId).forEach((v) => { byVoce[v.id] = storici.filter((s) => s.voceId === v.id); });
 
   const dates = [...new Set(storici.map((s) => s.dataRegistrazione.slice(0, 16)))].sort().reverse();
-  const activeVoci = voci.filter((v) => v.attiva);
+  const activeVoci = vociAbilitate(voci, bus, buId);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   useEffect(() => { setPage(1); }, [buId, anno, mese, pageSize]);
@@ -917,22 +923,36 @@ function StoricoSection({ bus, voci, account }: { bus: ForecastBU[]; voci: Forec
 
 // ─── Configurazione section ───────────────────────────────────────────────────
 
-type ModalConf = { type: "nuovaVoce" } | { type: "modificaVoce"; voce: ForecastVoce };
-
 const eMarcatore = (t: TipoAttivitaBC) => /\s-\s(Inizio|Fine)$/.test(t.nome);
+const voceIdDi = (codice: string) => `FVO-${codice}`;
 
-function ConfigSection({ voci, onReload }: { voci: ForecastVoce[]; onReload: () => void }) {
-  const [modal, setModal] = useState<ModalConf | null>(null);
-  const [voceForm, setVoceForm] = useState<{ nome: string; ordine: number; tipi: string[] }>({ nome: "", ordine: 0, tipi: [] });
+type GruppoAttivita = { chiave: string; codiceGruppo: string; titolo: string; tipi: TipoAttivitaBC[] };
+
+function ConfigSection({ onReload }: { onReload: () => void }) {
   const [buTutte, setBuTutte] = useState<ForecastBU[]>([]);
   const [tipiBC, setTipiBC] = useState<TipoAttivitaBC[]>([]);
-  const [errore, setErrore] = useState<string | null>(null);
 
   const caricaBU = useCallback(() => { forecastApi.getBU(true).then(setBuTutte).catch(() => {}); }, []);
   useEffect(() => {
+    forecastApi.getVoci().then(() => forecastApi.getTipiAttivita()).then(setTipiBC).catch(() => {});
     caricaBU();
-    forecastApi.getTipiAttivita().then(setTipiBC).catch(() => {});
   }, [caricaBU]);
+
+  // La riga ".00 - Inizio" rappresenta il gruppo e abilita tutte le voci del gruppo; la ".99 - Fine" non si mostra.
+  const gruppi = useMemo<GruppoAttivita[]>(() => {
+    const out: GruppoAttivita[] = [];
+    tipiBC.forEach((t) => {
+      const chiave = t.codice.split(".").slice(0, -1).join(".");
+      if (eMarcatore(t)) {
+        if (t.nome.endsWith("Inizio")) out.push({ chiave, codiceGruppo: t.codice, titolo: t.nome.replace(/\s-\s(Inizio|Fine)$/, ""), tipi: [] });
+        return;
+      }
+      let g = out.find((x) => x.chiave === chiave);
+      if (!g) { g = { chiave, codiceGruppo: `${chiave}.00`, titolo: chiave, tipi: [] }; out.push(g); }
+      g.tipi.push(t);
+    });
+    return out.filter((g) => g.tipi.length > 0);
+  }, [tipiBC]);
 
   async function toggleBU(bu: ForecastBU) {
     setBuTutte((prev) => prev.map((b) => (b.id === bu.id ? { ...b, attiva: !bu.attiva } : b)));
@@ -944,143 +964,97 @@ function ConfigSection({ voci, onReload }: { voci: ForecastVoce[]; onReload: () 
     }
   }
 
-  async function saveVoce() {
-    if (!voceForm.nome.trim()) return;
-    setErrore(null);
+  async function impostaVoci(bu: ForecastBU, voceIds: string[]) {
+    setBuTutte((prev) => prev.map((b) => (b.id === bu.id ? { ...b, voceIds } : b)));
     try {
-      const dati = { nome: voceForm.nome, ordine: voceForm.ordine, tipiAttivita: voceForm.tipi };
-      if (modal?.type === "nuovaVoce") await forecastApi.createVoce(dati);
-      else if (modal?.type === "modificaVoce") await forecastApi.updateVoce(modal.voce.id, dati);
-      setModal(null);
+      await forecastApi.setBUVoci(bu.id, voceIds);
       onReload();
-    } catch (e: unknown) {
-      setErrore((e as Error).message);
+    } catch {
+      caricaBU();
     }
   }
 
-  const nomeTipo = (codice: string) => tipiBC.find((t) => t.codice === codice)?.nome || codice;
-  const voceDelTipo = (codice: string, escludi?: string) => voci.find((v) => v.id !== escludi && v.tipiAttivita?.includes(codice));
+  function toggleVoce(bu: ForecastBU, codice: string) {
+    const id = voceIdDi(codice);
+    const attuali = bu.voceIds || [];
+    impostaVoci(bu, attuali.includes(id) ? attuali.filter((x) => x !== id) : [...attuali, id]);
+  }
 
-  const gruppi = useMemo(() => {
-    const out: { chiave: string; titolo: string; tipi: TipoAttivitaBC[] }[] = [];
-    tipiBC.forEach((t) => {
-      const chiave = t.codice.split(".").slice(0, -1).join(".");
-      if (eMarcatore(t)) {
-        if (t.nome.endsWith("Inizio")) out.push({ chiave, titolo: t.nome.replace(/\s-\s(Inizio|Fine)$/, ""), tipi: [] });
-        return;
-      }
-      let g = out.find((x) => x.chiave === chiave);
-      if (!g) { g = { chiave, titolo: chiave, tipi: [] }; out.push(g); }
-      g.tipi.push(t);
-    });
-    return out.filter((g) => g.tipi.length > 0);
-  }, [tipiBC]);
-
-  function apriVoce(voce: ForecastVoce | null) {
-    setErrore(null);
-    setVoceForm(voce ? { nome: voce.nome, ordine: voce.ordine, tipi: voce.tipiAttivita || [] } : { nome: "", ordine: voci.length, tipi: [] });
-    setModal(voce ? { type: "modificaVoce", voce } : { type: "nuovaVoce" });
+  function toggleGruppo(bu: ForecastBU, g: GruppoAttivita) {
+    const idsGruppo = g.tipi.map((t) => voceIdDi(t.codice));
+    const attuali = bu.voceIds || [];
+    const tutte = idsGruppo.every((id) => attuali.includes(id));
+    impostaVoci(bu, tutte ? attuali.filter((id) => !idsGruppo.includes(id)) : [...new Set([...attuali, ...idsGruppo])]);
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-        <div className="mb-1 font-fraunces text-base font-semibold text-stone-900">Sedi del forecast</div>
-        <p className="text-sm text-stone-500 mb-4">Scegli le sedi per cui si gestisce il forecast. Compaiono le sedi dell'app Utenti e accessi con una Business Unit (BC) associata.</p>
-        <div className="space-y-2">
-          {buTutte.map((bu) => (
-            <label key={bu.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-stone-100 hover:border-stone-200 cursor-pointer">
+      <div>
+        <div className="font-fraunces text-lg font-semibold text-stone-900">Sedi del forecast</div>
+        <p className="text-sm text-stone-500 mt-1">
+          Scegli le sedi per cui si gestisce il forecast e, per ciascuna, le voci di ricavo abilitate. Compaiono le sedi dell'app Utenti e accessi con una Business Unit (BC) associata; le voci sono i tipi attività di Business Central.
+        </p>
+      </div>
+
+      {buTutte.length === 0 && (
+        <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5 text-sm text-stone-400">
+          Nessuna sede con Business Unit (BC) associata. Associala da Utenti e accessi &gt; Impostazioni &gt; Sedi.
+        </div>
+      )}
+
+      {buTutte.map((bu) => {
+        const abilitate = bu.voceIds || [];
+        return (
+          <div key={bu.id} className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
+            <label className="flex items-center justify-between cursor-pointer">
               <div>
-                <div className="font-medium text-stone-800">{bu.nome}</div>
-                <div className="text-xs text-stone-400 mt-0.5 font-mono">BU {bu.codiceBC}</div>
+                <div className="font-semibold text-stone-900">{bu.nome}</div>
               </div>
               <span className="flex items-center gap-2 text-sm text-stone-600">
                 {bu.attiva ? "Forecast attivo" : "Non gestita"}
                 <input type="checkbox" className="accent-[#0C7873] w-4 h-4" checked={bu.attiva} onChange={() => toggleBU(bu)} />
               </span>
             </label>
-          ))}
-          {buTutte.length === 0 && (
-            <p className="text-sm text-stone-400">Nessuna sede con Business Unit (BC) associata. Associala da Utenti e accessi &gt; Impostazioni &gt; Sedi.</p>
-          )}
-        </div>
-      </div>
 
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4">
-          <span className="font-fraunces text-base font-semibold text-stone-900">Voci di ricavo</span>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-semibold text-white" style={{ background: ACCENT }} onClick={() => apriVoce(null)}>
-            <Plus size={14} /> Nuova voce
-          </button>
-        </div>
-        <div className="space-y-2">
-          {voci.map((v) => (
-            <div key={v.id} className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl border border-stone-100 hover:border-stone-200">
-              <div className="min-w-0">
-                <div className="font-medium text-stone-800">{v.nome}</div>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {(v.tipiAttivita || []).length === 0 && <span className="text-xs text-stone-400">Nessun tipo attività associato</span>}
-                  {(v.tipiAttivita || []).map((c) => (
-                    <span key={c} className="text-xs px-2 py-0.5 rounded-md bg-teal-50 text-teal-800 border border-teal-100" title={nomeTipo(c)}>
-                      <span className="font-mono">{c}</span> {nomeTipo(c)}
-                    </span>
-                  ))}
+            {bu.attiva && (
+              <div className="mt-4 pt-4 border-t border-stone-100">
+                <div className="text-xs font-semibold uppercase tracking-wide text-stone-500 mb-2">
+                  Voci di ricavo abilitate <span className="font-normal normal-case text-stone-400">({abilitate.length})</span>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Badge color={v.attiva ? "bg-emerald-100 text-emerald-700" : "bg-stone-100 text-stone-500"}>{v.attiva ? "Attiva" : "Inattiva"}</Badge>
-                <button className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100" onClick={() => apriVoce(v)}><Pencil size={14} /></button>
-              </div>
-            </div>
-          ))}
-          {voci.length === 0 && <p className="text-sm text-stone-400">Nessuna voce. Creane una e associale i tipi attività di Business Central.</p>}
-        </div>
-      </div>
-
-      {modal && (
-        <Modal title={modal.type === "nuovaVoce" ? "Nuova voce" : "Modifica voce"} onClose={() => setModal(null)} wide>
-          <Field label="Nome voce *">
-            <input className={inputCls} value={voceForm.nome} onChange={(e) => setVoceForm((p) => ({ ...p, nome: e.target.value }))} placeholder="Es. Accommodation" />
-          </Field>
-          <Field label="Ordine">
-            <input type="number" className={inputCls} value={voceForm.ordine} onChange={(e) => setVoceForm((p) => ({ ...p, ordine: parseInt(e.target.value) || 0 }))} />
-          </Field>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-stone-500">Tipo attività (BC)</div>
-            <p className="text-xs text-stone-400 mt-0.5 mb-2">Le righe di Business Central con questi codici confluiscono nella voce. Un codice può stare in una sola voce.</p>
-            <div className="max-h-72 overflow-y-auto rounded-lg border border-stone-200 px-3 py-2">
-              {gruppi.map((g) => (
-                <div key={g.chiave} className="mb-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-stone-400 mb-1">{g.titolo}</div>
-                  {g.tipi.map((t) => {
-                    const altra = voceDelTipo(t.codice, modal.type === "modificaVoce" ? modal.voce.id : undefined);
-                    const sel = voceForm.tipi.includes(t.codice);
+                {gruppi.length === 0 && <p className="text-sm text-stone-400">Nessun tipo attività importato da Business Central.</p>}
+                <div className="grid gap-x-8 gap-y-3 md:grid-cols-2">
+                  {gruppi.map((g) => {
+                    const ids = g.tipi.map((t) => voceIdDi(t.codice));
+                    const n = ids.filter((id) => abilitate.includes(id)).length;
                     return (
-                      <label key={t.codice} className={`flex items-center gap-2 py-1 text-sm ${altra ? "text-stone-400" : "text-stone-800 cursor-pointer"}`}>
-                        <input
-                          type="checkbox"
-                          className="accent-[#0C7873]"
-                          checked={sel}
-                          onChange={(e) => setVoceForm((p) => ({ ...p, tipi: e.target.checked ? [...p.tipi, t.codice] : p.tipi.filter((c) => c !== t.codice) }))}
-                        />
-                        <span className="font-mono text-xs w-14 shrink-0">{t.codice}</span>
-                        <span>{t.nome}</span>
-                        {altra && !sel && <span className="ml-auto text-xs">già in {altra.nome} (verrà spostato)</span>}
-                      </label>
+                      <div key={g.chiave} className="rounded-xl border border-stone-100 px-3 py-2">
+                        <label className="flex items-center gap-2 cursor-pointer text-sm font-semibold text-stone-800">
+                          <input
+                            type="checkbox"
+                            className="accent-[#0C7873]"
+                            checked={n === ids.length}
+                            ref={(el) => { if (el) el.indeterminate = n > 0 && n < ids.length; }}
+                            onChange={() => toggleGruppo(bu, g)}
+                          />
+                          <span className="uppercase tracking-wide text-xs">{g.titolo}</span>
+                        </label>
+                        <div className="mt-1 pl-6">
+                          {g.tipi.map((t) => (
+                            <label key={t.codice} className="flex items-center gap-2 py-0.5 text-sm text-stone-700 cursor-pointer">
+                              <input type="checkbox" className="accent-[#0C7873]" checked={abilitate.includes(voceIdDi(t.codice))} onChange={() => toggleVoce(bu, t.codice)} />
+                              {t.nome}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
-              ))}
-              {gruppi.length === 0 && <p className="text-sm text-stone-400">Nessun tipo attività importato da Business Central.</p>}
-            </div>
+              </div>
+            )}
           </div>
-          {errore && <p className="text-sm text-rose-600">{errore}</p>}
-          <div className="flex justify-end gap-2 pt-2 border-t border-stone-100">
-            <button className="px-4 py-2 text-sm rounded-lg text-stone-500 hover:bg-stone-100" onClick={() => setModal(null)}>Annulla</button>
-            <button className="px-4 py-2 text-sm rounded-lg font-semibold text-white" style={{ background: ACCENT }} onClick={saveVoce}>Salva</button>
-          </div>
-        </Modal>
-      )}
+        );
+      })}
     </div>
   );
 }
@@ -1260,7 +1234,7 @@ export default function App() {
           <div className="hidden md:flex flex-col border-t border-white/10 mt-auto">
             {!sidebarCollapsed && (
               <div className="px-5 py-3 text-[11px] text-stone-500">
-                {bus.filter((b) => b.attiva).length} BU attive · {voci.filter((v) => v.attiva).length} voci
+                {bus.filter((b) => b.attiva).length} BU attive
               </div>
             )}
             <button
@@ -1292,7 +1266,7 @@ export default function App() {
                 <StoricoSection bus={bus} voci={voci} account={account} />
               )}
               {section === "configurazione" && (
-                <ConfigSection voci={voci} onReload={loadMasterData} />
+                <ConfigSection onReload={loadMasterData} />
               )}
             </>
           )}

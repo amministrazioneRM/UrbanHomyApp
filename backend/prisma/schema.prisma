@@ -412,6 +412,7 @@ model ForecastBU {
   targets  ForecastTarget[]
   storici  ForecastStorico[]
   actuals  ForecastActual[]
+  voci     ForecastBuVoce[]
 
   @@index([sedeCentraleId])
   @@map("forecast_bu")
@@ -427,19 +428,20 @@ model ForecastVoce {
   targets  ForecastTarget[]
   storici  ForecastStorico[]
   actuals  ForecastActual[]
-  tipiAttivita ForecastVoceTipoAttivita[]
+  buAbilitate ForecastBuVoce[]
 
   @@map("forecast_voci")
 }
 
-model ForecastVoceTipoAttivita {
+model ForecastBuVoce {
   id      String       @id
+  buId    String
+  bu      ForecastBU   @relation(fields: [buId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   voceId  String
   voce    ForecastVoce @relation(fields: [voceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  codice  String       @unique
 
-  @@index([voceId])
-  @@map("forecast_voce_tipi_attivita")
+  @@unique([buId, voceId])
+  @@map("forecast_bu_voci")
 }
 
 model ForecastEntry {

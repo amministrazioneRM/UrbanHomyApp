@@ -57,9 +57,9 @@ router.get("/bu", async (req, res, next) => {
       ...(buIds ? { id: { in: buIds } } : {}),
       ...(soloAttive ? { attiva: true } : {}),
     };
-    const bus = await prisma.forecastBU.findMany({ where, orderBy: { nome: "asc" } });
+    const bus = await prisma.forecastBU.findMany({ where, orderBy: { nome: "asc" }, include: { voci: { select: { voceId: true } } } });
     // never expose Mews tokens to the client
-    res.json(bus.map(({ mewsClientToken: _c, mewsAccessToken: _a, ...b }) => b));
+    res.json(bus.map(({ mewsClientToken: _c, mewsAccessToken: _a, voci, ...b }) => ({ ...b, voceIds: voci.map((v) => v.voceId) })));
   } catch (e) { next(e); }
 });
 
@@ -110,47 +110,49 @@ router.put("/bu/:id/attiva", async (req, res, next) => {
 
 // ─── VOCI ────────────────────────────────────────────────────────────────────
 
-const voceConTipi = { include: { tipiAttivita: { select: { codice: true } } } } as const;
-type VoceConTipi = { tipiAttivita: { codice: string }[] } & Record<string, unknown>;
-const serializzaVoce = ({ tipiAttivita, ...v }: VoceConTipi) => ({ ...v, tipiAttivita: tipiAttivita.map((t) => t.codice).sort() });
+const eMarcatore = (nome: string) => /\s-\s(Inizio|Fine)$/.test(nome);
 
-// Un tipo attività appartiene a una sola voce: assegnarlo a una voce lo toglie dalle altre.
-async function impostaTipiAttivita(voceId: string, codici: string[]): Promise<void> {
-  const unici = [...new Set(codici)];
-  await prisma.$transaction([
-    prisma.forecastVoceTipoAttivita.deleteMany({ where: { OR: [{ voceId }, { codice: { in: unici } }] } }),
-    prisma.forecastVoceTipoAttivita.createMany({ data: unici.map((codice) => ({ id: uid("FVT"), voceId, codice })) }),
-  ]);
+// Le voci di ricavo sono i tipi attività di Business Central (escluse le righe "Inizio"/"Fine" dei gruppi).
+async function syncVociDaTipiAttivita(): Promise<void> {
+  const tipi = await prisma.forecastBCTipoAttivita.findMany({ orderBy: { codice: "asc" } });
+  let ordine = 0;
+  for (const t of tipi) {
+    if (eMarcatore(t.nome)) continue;
+    ordine += 1;
+    await prisma.forecastVoce.upsert({
+      where: { id: `FVO-${t.codice}` },
+      create: { id: `FVO-${t.codice}`, nome: t.nome, ordine, attiva: true },
+      update: { nome: t.nome, ordine },
+    });
+  }
 }
+
+router.put("/bu/:id/attiva", async (req, res, next) => {
+  try {
+    if (!hasForecastAccess(req)) { res.status(403).json({ error: "Accesso negato" }); return; }
+    const bu = await prisma.forecastBU.update({ where: { id: req.params.id }, data: { attiva: req.body.attiva === true } });
+    const { mewsClientToken: _c, mewsAccessToken: _a, ...safe } = bu;
+    res.json(safe);
+  } catch (e) { next(e); }
+});
+
+router.put("/bu/:id/voci", async (req, res, next) => {
+  try {
+    if (!hasForecastAccess(req)) { res.status(403).json({ error: "Accesso negato" }); return; }
+    await syncVociDaTipiAttivita();
+    const voceIds = [...new Set((req.body.voceIds as string[]) || [])];
+    await prisma.$transaction([
+      prisma.forecastBuVoce.deleteMany({ where: { buId: req.params.id } }),
+      prisma.forecastBuVoce.createMany({ data: voceIds.map((voceId) => ({ id: uid("FBV"), buId: req.params.id, voceId })) }),
+    ]);
+    res.json({ voceIds });
+  } catch (e) { next(e); }
+});
 
 router.get("/voci", async (req, res, next) => {
   try {
-    const voci = await prisma.forecastVoce.findMany({ orderBy: { ordine: "asc" }, ...voceConTipi });
-    res.json(voci.map((v) => serializzaVoce(v as unknown as VoceConTipi)));
-  } catch (e) { next(e); }
-});
-
-router.post("/voci", async (req, res, next) => {
-  try {
-    const { nome, ordine, tipiAttivita } = req.body as { nome: string; ordine?: number; tipiAttivita?: string[] };
-    const id = uid("FVO");
-    await prisma.forecastVoce.create({ data: { id, nome, ordine: ordine ?? 0, attiva: true } });
-    if (tipiAttivita) await impostaTipiAttivita(id, tipiAttivita);
-    const voce = await prisma.forecastVoce.findUniqueOrThrow({ where: { id }, ...voceConTipi });
-    res.json(serializzaVoce(voce as unknown as VoceConTipi));
-  } catch (e) { next(e); }
-});
-
-router.put("/voci/:id", async (req, res, next) => {
-  try {
-    const { nome, ordine, attiva, tipiAttivita } = req.body as { nome?: string; ordine?: number; attiva?: boolean; tipiAttivita?: string[] };
-    await prisma.forecastVoce.update({
-      where: { id: req.params.id },
-      data: { ...(nome !== undefined && { nome }), ...(ordine !== undefined && { ordine }), ...(attiva !== undefined && { attiva }) },
-    });
-    if (tipiAttivita) await impostaTipiAttivita(req.params.id, tipiAttivita);
-    const voce = await prisma.forecastVoce.findUniqueOrThrow({ where: { id: req.params.id }, ...voceConTipi });
-    res.json(serializzaVoce(voce as unknown as VoceConTipi));
+    await syncVociDaTipiAttivita();
+    res.json(await prisma.forecastVoce.findMany({ orderBy: { ordine: "asc" } }));
   } catch (e) { next(e); }
 });
 

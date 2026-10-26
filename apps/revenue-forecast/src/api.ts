@@ -44,7 +44,7 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export interface ForecastBU {
   id: string; nome: string; codiceBC?: string; sedeCentraleId: string;
-  mewsPropertyId?: string; attiva: boolean;
+  mewsPropertyId?: string; attiva: boolean; voceIds?: string[];
 }
 export interface ForecastVoce { id: string; nome: string; ordine: number; attiva: boolean; tipiAttivita?: string[]; }
 export interface TipoAttivitaBC { id: string; codice: string; nome: string; }
@@ -74,6 +74,8 @@ export const forecastApi = {
   getBU: (tutte = false) => apiFetch<ForecastBU[]>(`/forecast/bu${tutte ? "?tutte=1" : ""}`),
   setBUAttiva: (id: string, attiva: boolean) =>
     apiFetch<ForecastBU>(`/forecast/bu/${id}/attiva`, { method: "PUT", body: JSON.stringify({ attiva }) }),
+  setBUVoci: (id: string, voceIds: string[]) =>
+    apiFetch<{ voceIds: string[] }>(`/forecast/bu/${id}/voci`, { method: "PUT", body: JSON.stringify({ voceIds }) }),
   getTipiAttivita: () => apiFetch<TipoAttivitaBC[]>("/forecast/tipi-attivita"),
   createBU: (data: Omit<ForecastBU, "id"> & { mewsClientToken?: string; mewsAccessToken?: string }) =>
     apiFetch<ForecastBU>("/forecast/bu", { method: "POST", body: JSON.stringify(data) }),
