@@ -382,7 +382,7 @@ router.post("/actuals/refresh", async (req, res, next) => {
     const perVoce: Record<string, number> = {};
     for (const [mewsId, importo] of Object.entries(nettoPerCategoria)) {
       const c = categoria.get(mewsId);
-      if (c?.classificazione === "Taxes") continue;
+      if (c?.classificazione === "Taxes" || (c && /\b(city|tourist)\s*tax\b|tassa di soggiorno/i.test(c.nome))) continue;
       const codice = c?.codiceAttivita || (c?.classificazione ? perClassificazione[c.classificazione] : undefined);
       const voceId = codice && vociEsistenti.has(`FVO-${codice}`) ? `FVO-${codice}` : VOCE_SENZA_TIPO;
       perVoce[voceId] = (perVoce[voceId] ?? 0) + importo;
