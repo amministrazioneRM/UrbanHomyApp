@@ -314,8 +314,14 @@ router.get("/actuals", async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+const VOCE_SENZA_TIPO = "FVO-SENZA-TIPO";
+
+// Produzione del mese da Mews, sommata per tipo attività: ogni categoria contabile Mews è collegata a un codice attività
+// nella tabella BC "BKMEWS Category" (importata in forecast_mews_categorie). Le tasse non sono produzione e si escludono;
+// le categorie senza codice attività finiscono nella voce "Senza tipo attività".
 router.post("/actuals/refresh", async (req, res, next) => {
   try {
+    if (req.account.ruoloGlobale !== "Amministratore") { res.status(403).json({ error: "Solo un amministratore può aggiornare i dati da Mews" }); return; }
     const { buId, anno, mese } = req.body as { buId: string; anno: number; mese: number };
     const bu = await prisma.forecastBU.findUnique({ where: { id: buId } });
     const clientToken = process.env.MEWS_CLIENT_TOKEN;
@@ -324,19 +330,33 @@ router.post("/actuals/refresh", async (req, res, next) => {
       res.status(400).json({ error: `Credenziali Mews mancanti: imposta MEWS_CLIENT_TOKEN e ${mewsEnvName(bu?.codiceBC) || "MEWS_ACCESS_TOKEN_<codice BU>"} nel file .env` });
       return;
     }
-    const startUtc = new Date(anno, mese - 1, 1).toISOString();
-    const endUtc   = new Date(anno, mese, 0, 23, 59, 59).toISOString();
-    const mewsRevenue = await callMewsRevenue(clientToken, accessToken, startUtc, endUtc);
-    const voci = await prisma.forecastVoce.findMany({ where: { attiva: true } });
-    const now = new Date();
-    for (const voce of voci) {
-      const importo = mewsRevenue[voce.nome] ?? 0;
-      await prisma.forecastActual.upsert({
-        where: { buId_anno_mese_voceId: { buId, anno, mese, voceId: voce.id } },
-        create: { id: uid("FAC"), buId, anno, mese, voceId: voce.id, importo, dataAggiornamento: now },
-        update: { importo, dataAggiornamento: now },
-      });
+
+    const nettoPerCategoria = await callMewsOrderItems(clientToken, accessToken, inizioMeseRomaUtc(anno, mese - 1), inizioMeseRomaUtc(anno, mese));
+    await syncVociDaTipiAttivita();
+    await prisma.forecastVoce.upsert({
+      where: { id: VOCE_SENZA_TIPO },
+      create: { id: VOCE_SENZA_TIPO, nome: "Senza tipo attività", ordine: 9999, attiva: true },
+      update: {},
+    });
+
+    const [categorie, voci] = await Promise.all([prisma.forecastMewsCategoria.findMany(), prisma.forecastVoce.findMany({ select: { id: true } })]);
+    const categoria = new Map(categorie.map((c) => [c.mewsId, c]));
+    const vociEsistenti = new Set(voci.map((v) => v.id));
+    const perVoce: Record<string, number> = {};
+    for (const [mewsId, importo] of Object.entries(nettoPerCategoria)) {
+      const c = categoria.get(mewsId);
+      if (c?.classificazione === "Taxes") continue;
+      const voceId = c?.codiceAttivita && vociEsistenti.has(`FVO-${c.codiceAttivita}`) ? `FVO-${c.codiceAttivita}` : VOCE_SENZA_TIPO;
+      perVoce[voceId] = (perVoce[voceId] ?? 0) + importo;
     }
+
+    const now = new Date();
+    await prisma.$transaction([
+      prisma.forecastActual.deleteMany({ where: { buId, anno, mese } }),
+      prisma.forecastActual.createMany({
+        data: Object.entries(perVoce).map(([voceId, importo]) => ({ id: uid("FAC"), buId, anno, mese, voceId, importo: Math.round(importo * 100) / 100, dataAggiornamento: now })),
+      }),
+    ]);
     const actuals = await prisma.forecastActual.findMany({ where: { buId, anno, mese } });
     res.json(actuals.map((a) => ({ ...a, importo: Number(a.importo) })));
   } catch (e) { next(e); }
@@ -380,60 +400,60 @@ router.get("/dashboard", async (req, res, next) => {
 
 // ─── MEWS helper ──────────────────────────────────────────────────────────────
 
-async function callMewsRevenue(
-  clientToken: string,
-  accessToken: string,
-  startUtc: string,
-  endUtc: string,
-): Promise<Record<string, number>> {
+// Mezzanotte locale (Europe/Rome) del primo giorno del mese (mese0 = 0..12), espressa in UTC.
+function inizioMeseRomaUtc(anno: number, mese0: number): string {
+  const ipotesi = Date.UTC(anno, mese0, 1, 0, 0, 0);
+  const parti = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Rome", hour12: false, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(new Date(ipotesi));
+  const n = (t: string) => Number(parti.find((p) => p.type === t)?.value);
+  const comeLocale = Date.UTC(n("year"), n("month") - 1, n("day"), n("hour") % 24, n("minute"), n("second"));
+  return new Date(ipotesi - (comeLocale - ipotesi)).toISOString();
+}
+
+function mewsPost(path: string, body: Record<string, unknown>): Promise<{ status: number; json: Record<string, unknown> }> {
   return new Promise((resolve, reject) => {
-    const body = JSON.stringify({
-      ClientToken: clientToken,
-      AccessToken: accessToken,
-      StartUtc: startUtc,
-      EndUtc: endUtc,
-      TimeFilter: "Consumed",
-    });
-    const options = {
-      hostname: "api.mews.com",
-      path: "/api/connector/v1/accountingItems/getAll",
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(body) },
-    };
-    const req = https.request(options, (res) => {
-      let raw = "";
-      res.on("data", (c) => { raw += c; });
-      res.on("end", () => {
-        try {
-          const json = JSON.parse(raw);
-          const revenue: Record<string, number> = {};
-          for (const item of json.AccountingItems ?? []) {
-            const svc = (item.ServiceName as string | undefined) ?? "";
-            const cat = mapMewsCategory(svc);
-            revenue[cat] = (revenue[cat] ?? 0) + (Number(item.Amount?.GrossValue) || 0);
-          }
-          resolve(revenue);
-        } catch (e) { reject(e); }
-      });
-    });
+    const data = JSON.stringify(body);
+    const req = https.request(
+      { hostname: "api.mews.com", path: `/api/connector/v1/${path}`, method: "POST", headers: { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data) } },
+      (res) => {
+        let raw = "";
+        res.on("data", (c) => { raw += c; });
+        res.on("end", () => {
+          try { resolve({ status: res.statusCode ?? 0, json: JSON.parse(raw) }); }
+          catch { resolve({ status: res.statusCode ?? 0, json: { Message: raw.slice(0, 200) } }); }
+        });
+      },
+    );
     req.on("error", reject);
-    req.write(body);
+    req.write(data);
     req.end();
   });
 }
 
-function mapMewsCategory(serviceName: string): string {
-  const s = serviceName.toLowerCase();
-  if (s.includes("accommodation") || s.includes("alloggio") || s.includes("camera") || s.includes("room")) {
-    return "Accommodation";
-  }
-  if (s.includes("food") || s.includes("beverage") || s.includes("ristoran") || s.includes("bar") || s.includes("ristorazione")) {
-    return "Food & Beverage";
-  }
-  if (s.includes("spa") || s.includes("wellness") || s.includes("fitness")) {
-    return "Spa & Wellness";
-  }
-  return "Altri Ricavi";
+// Netto (Amount.NetValue) dei consumi del periodo, per categoria contabile Mews (orderItems/getAll, con paginazione).
+async function callMewsOrderItems(clientToken: string, accessToken: string, startUtc: string, endUtc: string): Promise<Record<string, number>> {
+  const netto: Record<string, number> = {};
+  const PAGINA = 1000;
+  let cursor: string | undefined;
+  do {
+    const { status, json } = await mewsPost("orderItems/getAll", {
+      ClientToken: clientToken,
+      AccessToken: accessToken,
+      Client: "UrbanHomy-RevenueForecast 1.0",
+      ConsumedUtc: { StartUtc: startUtc, EndUtc: endUtc },
+      AccountingStates: ["Open", "Closed"],
+      Limitation: { Count: PAGINA, ...(cursor ? { Cursor: cursor } : {}) },
+    });
+    if (status !== 200) throw new Error(`Mews ha risposto ${status}: ${(json.Message as string) || "errore"}`);
+    const items = (json.OrderItems as Array<{ AccountingCategoryId?: string | null; Amount?: { NetValue?: number } }>) ?? [];
+    for (const it of items) {
+      const k = it.AccountingCategoryId || "(nessuna)";
+      netto[k] = (netto[k] ?? 0) + (it.Amount?.NetValue ?? 0);
+    }
+    cursor = items.length === PAGINA ? (json.Cursor as string | undefined) : undefined;
+  } while (cursor);
+  return netto;
 }
 
 export default router;

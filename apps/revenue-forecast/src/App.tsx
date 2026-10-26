@@ -3,7 +3,7 @@ import {
   LayoutDashboard, TrendingUp, Target, History, Settings,
   ChevronLeft, ChevronRight, ChevronDown, ArrowLeft, LogOut, RefreshCw, Save, Send,
   Plus, Pencil, Trash2, X, Check, AlertTriangle, Building2,
-  ArrowUp, ArrowDown, Minus, Eye, EyeOff,
+  ArrowUp, ArrowDown, Minus, Eye, EyeOff, Layers,
 } from "lucide-react";
 import UHAccounts from "./accounts";
 import type { UHAccount, UHRuolo, UHSede, PermessiMap } from "./accounts";
@@ -1059,9 +1059,134 @@ function ConfigSection({ onReload }: { onReload: () => void }) {
   );
 }
 
+// ─── Produzione section ───────────────────────────────────────────────────────
+
+function ProduzioneSection({ bus, voci, account }: { bus: ForecastBU[]; voci: ForecastVoce[]; account: UHAccount }) {
+  const today = new Date();
+  const [anno, setAnno] = useState(today.getFullYear());
+  const [buId, setBuId] = useState(bus[0]?.id || "");
+  const [actuals, setActuals] = useState<ForecastActual[]>([]);
+  const [progresso, setProgresso] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; testo: string } | null>(null);
+  const isAdmin = account.ruoloGlobale === "Amministratore";
+
+  const carica = useCallback(async () => {
+    if (!buId) return;
+    setActuals(await forecastApi.getActuals({ buId, anno }));
+  }, [buId, anno]);
+  useEffect(() => { carica(); }, [carica]);
+
+  const ultimoMese = anno < today.getFullYear() ? 12 : anno === today.getFullYear() ? today.getMonth() + 1 : 0;
+
+  async function aggiorna() {
+    if (!buId || !ultimoMese) return;
+    setMsg(null);
+    try {
+      for (let m = 1; m <= ultimoMese; m++) {
+        setProgresso(`${MESI_FULL[m - 1]} (${m}/${ultimoMese})`);
+        await forecastApi.refreshActuals(buId, anno, m);
+      }
+      await carica();
+      setMsg({ ok: true, testo: "Produzione aggiornata da Mews" });
+    } catch (e: unknown) {
+      setMsg({ ok: false, testo: (e as Error).message });
+    } finally {
+      setProgresso(null);
+    }
+  }
+
+  const abilitate = new Set(bus.find((b) => b.id === buId)?.voceIds || []);
+  const conDati = new Set(actuals.map((a) => a.voceId));
+  const righe = voci.filter((v) => abilitate.has(v.id) || conDati.has(v.id)).sort((a, b) => a.ordine - b.ordine);
+  const importo = (voceId: string, m: number) => actuals.filter((a) => a.voceId === voceId && a.mese === m).reduce((s, a) => s + a.importo, 0);
+  const totVoce = (voceId: string) => actuals.filter((a) => a.voceId === voceId).reduce((s, a) => s + a.importo, 0);
+  const totMese = (m: number) => actuals.filter((a) => a.mese === m).reduce((s, a) => s + a.importo, 0);
+  const totale = actuals.reduce((s, a) => s + a.importo, 0);
+  const ultimoAggiornamento = actuals.length ? actuals.reduce((a, b) => (a.dataAggiornamento > b.dataAggiornamento ? a : b)).dataAggiornamento : null;
+  const senzaTipo = actuals.filter((a) => a.voceId === "FVO-SENZA-TIPO").reduce((s, a) => s + a.importo, 0);
+  const thCls = "px-3 py-3 text-xs font-semibold uppercase tracking-wide text-right whitespace-nowrap text-stone-500";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        {bus.length > 1 && (
+          <select className={`${inputCls} w-48`} value={buId} onChange={(e) => setBuId(e.target.value)}>
+            {bus.map((b) => <option key={b.id} value={b.id}>{b.nome}</option>)}
+          </select>
+        )}
+        <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-xl px-1 py-1">
+          <button className="p-1.5 rounded-lg hover:bg-stone-100 transition" onClick={() => setAnno((a) => a - 1)} title="Anno precedente"><ChevronLeft size={16} /></button>
+          <span className="text-sm font-semibold text-stone-800 px-3 min-w-24 text-center">Anno {anno}</span>
+          <button className="p-1.5 rounded-lg hover:bg-stone-100 transition" onClick={() => setAnno((a) => a + 1)} title="Anno successivo"><ChevronRight size={16} /></button>
+        </div>
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          {msg && <span className={`text-xs font-semibold px-3 py-1 rounded-full ${msg.ok ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-600"}`}>{msg.testo}</span>}
+          {ultimoAggiornamento && !progresso && <span className="text-xs text-stone-400">Aggiornato il {new Date(ultimoAggiornamento).toLocaleString("it-IT")}</span>}
+          {isAdmin && (
+            <button
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg font-semibold text-white transition disabled:opacity-60"
+              style={{ background: ACCENT }}
+              onClick={aggiorna} disabled={progresso !== null || !ultimoMese}
+              title={ultimoMese ? "Rilegge da Mews la produzione dei mesi dell'anno già iniziati" : "Nessun mese da aggiornare per questo anno"}
+            >
+              <RefreshCw size={14} className={progresso ? "animate-spin" : ""} />
+              {progresso ? `Aggiorno ${progresso}` : "Aggiorna da Mews"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-x-auto">
+        <table className="w-full text-sm border-separate border-spacing-0">
+          <thead>
+            <tr>
+              <th className="sticky left-0 z-10 bg-white text-left px-5 py-3 text-xs font-semibold uppercase tracking-wide text-stone-400 border-b border-stone-100">Tipo attività</th>
+              {MESI_SHORT.map((m) => <th key={m} className={`${thCls} border-b border-stone-100`}>{m}</th>)}
+              <th className={`${thCls} border-b border-stone-100 border-l`} style={{ color: ACCENT }}>Totale</th>
+            </tr>
+          </thead>
+          <tbody>
+            {righe.map((v) => (
+              <tr key={v.id} className="hover:bg-stone-50/50">
+                <td className="sticky left-0 z-10 bg-white px-5 py-2.5 font-medium text-stone-800 border-t border-stone-50 whitespace-nowrap">
+                  {v.nome}
+                  {!abilitate.has(v.id) && <span className="ml-2 text-[11px] font-normal text-stone-400">non abilitata per questa sede</span>}
+                </td>
+                {MESI_SHORT.map((_, i) => {
+                  const x = importo(v.id, i + 1);
+                  return <td key={i} className="px-3 py-2.5 text-right text-stone-700 border-t border-stone-50 whitespace-nowrap">{x ? fmt(x) : "–"}</td>;
+                })}
+                <td className="px-3 py-2.5 text-right font-semibold border-t border-stone-50 border-l whitespace-nowrap" style={{ color: ACCENT }}>{fmt(totVoce(v.id))}</td>
+              </tr>
+            ))}
+            {righe.length === 0 && (
+              <tr><td colSpan={14} className="px-5 py-8 text-center text-sm text-stone-400">Nessuna voce abilitata per questa sede. Abilitale da Impostazioni.</td></tr>
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="bg-stone-50/60">
+              <td className="sticky left-0 z-10 bg-stone-50 px-5 py-2.5 font-bold text-xs uppercase tracking-wide text-stone-900 border-t-2 border-stone-200">Totale</td>
+              {MESI_SHORT.map((_, i) => <td key={i} className="px-3 py-2.5 text-right font-bold text-stone-700 border-t-2 border-stone-200 whitespace-nowrap">{totMese(i + 1) ? fmt(totMese(i + 1)) : "–"}</td>)}
+              <td className="px-3 py-2.5 text-right font-bold border-t-2 border-stone-200 border-l whitespace-nowrap" style={{ color: ACCENT }}>{fmt(totale)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {senzaTipo !== 0 && (
+        <p className="text-xs text-stone-500 flex items-start gap-1.5">
+          <AlertTriangle size={13} className="text-amber-500 mt-0.5 shrink-0" />
+          {fmt(senzaTipo)} di produzione sono su categorie Mews senza codice attività in Business Central (tasse escluse). Compila il campo Codice attività nella pagina Categorie Mews di BC e reimporta le categorie per distribuirli.
+        </p>
+      )}
+      <p className="text-xs text-stone-400">Produzione per data di consumo, valore netto, dalle categorie contabili di Mews. Include importi aperti e chiusi, esclusi gli annullati.</p>
+    </div>
+  );
+}
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
-type Section = "dashboard" | "forecast" | "target" | "storico" | "configurazione";
+type Section = "dashboard" | "forecast" | "produzione" | "target" | "storico" | "configurazione";
 
 export default function App() {
   const [account, setAccount] = useState<UHAccount | null>(() => UHAccounts.loadSession());
@@ -1150,6 +1275,7 @@ export default function App() {
   const nav: { id: Section; label: string; icon: React.ElementType }[] = [
     { id: "dashboard", label: "Cruscotto", icon: LayoutDashboard },
     { id: "forecast", label: "Forecast", icon: TrendingUp },
+    { id: "produzione", label: "Produzione", icon: Layers },
     { id: "target", label: "Target", icon: Target },
     { id: "storico", label: "Storico", icon: History },
   ].filter((n) => canSeeSection(n.id));
@@ -1258,6 +1384,9 @@ export default function App() {
               )}
               {section === "forecast" && (
                 <ForecastSection bus={bus} voci={voci} account={account} permessi={permessi} sedi={sedi} />
+              )}
+              {section === "produzione" && (
+                <ProduzioneSection bus={bus} voci={voci} account={account} />
               )}
               {section === "target" && (
                 <TargetSection bus={bus} voci={voci} account={account} permessi={permessi} />

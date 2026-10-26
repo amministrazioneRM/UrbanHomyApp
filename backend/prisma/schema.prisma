@@ -527,3 +527,15 @@ model ForecastBCTipoAttivita {
 
   @@map("forecast_bc_tipi_attivita")
 }
+
+model ForecastMewsCategoria {
+  id              String   @id
+  mewsId          String   @unique
+  nome            String
+  classificazione String?
+  societa         String
+  codiceAttivita  String?
+  dataImport      DateTime
+
+  @@map("forecast_mews_categorie")
+}

@@ -53,4 +53,24 @@ for (const [codice, nome] of tipi) {
   });
 }
 console.log(`Tipi attività importati: ${tipi.size}`);
+
+// Categorie contabili Mews (tabella BC "BKMEWS Category"): il campo "Activity Code" le collega al tipo attività.
+let nCat = 0, nConCodice = 0;
+for (const dir of dirs) {
+  const f = fs.readdirSync(path.join(base, dir)).find((x) => /^mews_BKMEWS_Category_[0-9a-f-]+\.csv$/.test(x));
+  if (!f) continue;
+  const righe = fs.readFileSync(path.join(base, dir, f), "utf8").replace(/^﻿/, "").split(/\r?\n/).filter(Boolean).map((l) => l.split(";"));
+  const h = righe[0];
+  const ix = (n) => h.indexOf(n);
+  for (const r of righe.slice(1)) {
+    const mewsId = r[ix("Mews Id")];
+    if (!mewsId) continue;
+    const codiceAttivita = r[ix("Activity Code")] || null;
+    const dati = { nome: r[ix("Name")], classificazione: r[ix("Classification")] || null, societa: dir, codiceAttivita, dataImport: now };
+    await prisma.forecastMewsCategoria.upsert({ where: { mewsId }, create: { id: `MCA-${mewsId}`, mewsId, ...dati }, update: dati });
+    nCat++;
+    if (codiceAttivita) nConCodice++;
+  }
+}
+console.log(`Categorie Mews importate: ${nCat} (con codice attività: ${nConCodice})`);
 await prisma.$disconnect();
