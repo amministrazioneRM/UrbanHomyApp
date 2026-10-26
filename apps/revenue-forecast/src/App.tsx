@@ -439,7 +439,10 @@ function ForecastSection({ bus, voci, account, permessi }: {
   };
   const forecastMese = (m: number) => activeVoci.reduce((s, v) => s + num(localValues[cellKey(m, v.id)]), 0);
   const targetMese = (m: number) => activeVoci.reduce((s, v) => s + (targets.find((t) => t.voceId === v.id && t.mese === m)?.importo || 0), 0);
-  const actualMese = (m: number) => activeVoci.reduce((s, v) => s + (actuals.find((a) => a.voceId === v.id && a.mese === m)?.importo || 0), 0);
+  const VOCE_SENZA_TIPO = "FVO-SENZA-TIPO";
+  const senzaTipoMese = (m: number) => actualCell(m, VOCE_SENZA_TIPO);
+  const haSenzaTipo = mesiVista.some((m) => senzaTipoMese(m) !== 0);
+  const actualMese = (m: number) => activeVoci.reduce((s, v) => s + actualCell(m, v.id), 0) + senzaTipoMese(m);
   const sumMesi = (f: (m: number) => number) => mesiVista.reduce((s, m) => s + f(m), 0);
   const gruppi: (number | "tot")[] = [...mesiVista, "tot"];
   const actualCell = (m: number, voceId: string) => actuals.filter((a) => a.voceId === voceId && a.mese === m).reduce((s, a) => s + a.importo, 0);
@@ -603,6 +606,22 @@ function ForecastSection({ bus, voci, account, permessi }: {
                 })}
               </tr>
             ))}
+            {haSenzaTipo && (
+              <tr className="hover:bg-stone-50/50">
+                <td className={`${stickyCell} px-5 py-2.5 font-medium text-stone-500 border-t border-stone-50`} title="Produzione Mews su categorie senza codice attività in Business Central">Senza tipo attività</td>
+                {gruppi.map((g) => {
+                  const a = g === "tot" ? sumMesi(senzaTipoMese) : senzaTipoMese(g);
+                  return (
+                    <React.Fragment key={g}>
+                      <td className="px-3 py-2.5 text-right text-stone-300 border-t border-stone-50 border-l">–</td>
+                      <td className="px-3 py-2.5 text-right text-stone-300 border-t border-stone-50">–</td>
+                      <td className="px-3 py-2.5 text-right text-stone-300 border-t border-stone-50">–</td>
+                      <td className="px-3 py-2.5 text-right text-amber-600 font-medium border-t border-stone-50">{a ? fmt(a) : "–"}</td>
+                    </React.Fragment>
+                  );
+                })}
+              </tr>
+            )}
           </tbody>
           <tfoot>
             <tr className="bg-stone-50/60">
