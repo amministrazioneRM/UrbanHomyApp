@@ -145,6 +145,13 @@ app.use("/api/utenti/accounts", makeCrudRouter(prisma.utentiAccount as never, { 
 app.use("/api/utenti/ruoli", makeCrudRouter(prisma.utentiRuolo as never, { idPrefix: "RUOLO", modelName: "UtentiRuolo" }));
 app.use("/api/utenti/sostituti", makeCrudRouter(prisma.utentiSostituto as never, { idPrefix: "SOST", modelName: "UtentiSostituto" }));
 app.use("/api/utenti/sedi", makeCrudRouter(prisma.utentiSede as never, { idPrefix: "SEDE", modelName: "UtentiSede" }));
+app.get("/api/utenti/strutture-bc", async (_req, res, next) => {
+  try {
+    res.json(await prisma.forecastBCStruttura.findMany({ orderBy: [{ societa: "asc" }, { codice: "asc" }] }));
+  } catch (e) {
+    next(e);
+  }
+});
 
 // Ticket IT
 app.use("/api/ticket/strutture", makeCrudRouter(prisma.ticketStruttura as never, { idPrefix: "TSTR", modelName: "TicketStruttura" }));

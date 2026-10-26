@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import {
-  ShieldCheck, Plus, Pencil, Trash2, X, ArrowLeft, Mail, Users, Grid3x3, Lock, Check, Copy, CalendarClock, Settings, ChevronDown, ChevronLeft, ChevronRight, MapPin, MapPinOff
+  ShieldCheck, Plus, Pencil, Trash2, X, ArrowLeft, Mail, Users, Grid3x3, Lock, Check, Copy, CalendarClock, Settings, ChevronDown, ChevronLeft, ChevronRight, MapPin, MapPinOff, Database
 } from "lucide-react";
 import UHAccounts from "./accounts";
 import { api, useSyncedResource } from "./api";
+import type { StrutturaBC } from "./api";
 import type { AppId, UHAccount, UHRuolo, UHSostituto, UHSede, AccessiMap, PermessiMap } from "./accounts";
 
 // ── Local draft types ──────────────────────────────────────────────────────────
@@ -57,7 +58,7 @@ type ModaleRuolo = {
 type ModaleSede = { type: "nuovo" | "modifica"; payload: UHSede | null };
 type ModaleSostituto = { type: "nuovo" | "modifica"; appId: AppId; payload: UHSostituto | null };
 
-type Vista = "utenti" | "ruoli" | "sedi";
+type Vista = "utenti" | "ruoli" | "sedi" | "struttureBC";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -155,13 +156,19 @@ export default function App(): JSX.Element {
   const [ruoli, setRuoli] = useSyncedResource(api.ruoli, UHAccounts.DEFAULT_ROLES);
   const [sostituti, setSostituti] = useSyncedResource(api.sostituti, []);
   const [sedi, setSedi] = useSyncedResource(api.sedi, []);
+  const [struttureBC, setStruttureBC] = useState<StrutturaBC[]>([]);
+  const [societaBC, setSocietaBC] = useState<string>("");
   const [modale, setModale] = useState<ModaleUtente | null>(null);
   const [erroreAccount, setErroreAccount] = useState<string | null>(null);
   const [modaleRuolo, setModaleRuolo] = useState<ModaleRuolo | null>(null);
   const [modaleSede, setModaleSede] = useState<ModaleSede | null>(null);
   const [vista, setVista] = useState<Vista>("utenti");
+  useEffect(() => {
+    if (vista !== "struttureBC") return;
+    api.struttureBC.list().then(setStruttureBC).catch(() => {});
+  }, [vista]);
   const [appRuoliSel, setAppRuoliSel] = useState<AppId>(UHAccounts.APPS[0].id);
-  const TAB_IMPOSTAZIONI: Vista[] = ["ruoli", "sedi"];
+  const TAB_IMPOSTAZIONI: Vista[] = ["ruoli", "sedi", "struttureBC"];
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(vista));
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => { try { return localStorage.getItem("utenti-sidebar-collapsed") === "1"; } catch { return false; } });
   const toggleSidebar = () => setSidebarCollapsed((v) => { try { localStorage.setItem("utenti-sidebar-collapsed", v ? "0" : "1"); } catch {} return !v; });
@@ -357,6 +364,7 @@ export default function App(): JSX.Element {
                     [
                       { id: "ruoli" as Vista, label: "Ruoli e permessi", icon: Grid3x3 },
                       { id: "sedi" as Vista, label: "Sedi", icon: MapPin },
+                      { id: "struttureBC" as Vista, label: "Strutture BC", icon: Database },
                     ] as const
                   ).map((t) => (
                     <button
@@ -391,13 +399,15 @@ export default function App(): JSX.Element {
           <header className="flex items-start justify-between mb-5 flex-wrap gap-3">
             <div>
               <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">
-                {vista === "utenti" ? "Utenti" : vista === "ruoli" ? "Ruoli e permessi" : "Sedi"}
+                {vista === "utenti" ? "Utenti" : vista === "ruoli" ? "Ruoli e permessi" : vista === "struttureBC" ? "Strutture BC" : "Sedi"}
               </h1>
               <p className="text-stone-500 text-sm mt-1">
                 {vista === "utenti"
                   ? "Chi può accedere al portale e con quale ruolo, applicazione per applicazione"
                   : vista === "ruoli"
                     ? "Per ciascuna applicazione, i ruoli disponibili e i permessi per ciascun modulo"
+                    : vista === "struttureBC"
+                    ? "Business Unit importate da Business Central, per società (sola lettura)"
                     : "Anagrafica delle sedi e strutture del gruppo, condivisa tra le applicazioni del portale"}
               </p>
             </div>
@@ -506,6 +516,54 @@ export default function App(): JSX.Element {
             </div>
           )}
 
+          {vista === "struttureBC" && (() => {
+            const societa = [...new Set(struttureBC.map((s) => s.societa))];
+            const righe = struttureBC.filter((s) => !societaBC || s.societa === societaBC);
+            return (
+              <div>
+                <div className="flex items-center gap-2 mb-5 flex-wrap">
+                  <button onClick={() => setSocietaBC("")} className={pillCls(societaBC === "")}>Tutte</button>
+                  {societa.map((s) => (
+                    <button key={s} onClick={() => setSocietaBC(s)} className={pillCls(societaBC === s)}>{s}</button>
+                  ))}
+                </div>
+                {struttureBC.length === 0 ? (
+                  <p className="text-center text-sm text-stone-400 bg-white border border-dashed border-stone-300 rounded-xl py-10">
+                    Nessuna struttura importata da Business Central.
+                  </p>
+                ) : (
+                  <div className="bg-white border border-stone-200 rounded-xl shadow-sm overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wide text-stone-400">
+                          <th className="px-4 py-3">Società</th>
+                          <th className="px-4 py-3">Codice BU</th>
+                          <th className="px-4 py-3">Descrizione</th>
+                          <th className="px-4 py-3">Stato</th>
+                          <th className="px-4 py-3">Importata il</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {righe.map((s) => (
+                          <tr key={s.id} className="border-t border-stone-50 hover:bg-stone-50/50">
+                            <td className="px-4 py-2.5 text-stone-600">{s.societa}</td>
+                            <td className="px-4 py-2.5 font-mono text-stone-800">{s.codice}</td>
+                            <td className="px-4 py-2.5 text-stone-900">{s.nome}</td>
+                            <td className="px-4 py-2.5">
+                              <Tag className={s.bloccata ? "bg-stone-50 text-stone-400 border-stone-200" : "bg-emerald-50 text-emerald-700 border-emerald-200"}>
+                                {s.bloccata ? "Bloccata" : "Attiva"}
+                              </Tag>
+                            </td>
+                            <td className="px-4 py-2.5 text-stone-500">{new Date(s.dataImport).toLocaleDateString("it-IT")}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
         </main>
       </div>

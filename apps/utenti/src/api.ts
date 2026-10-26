@@ -86,7 +86,17 @@ export const api = {
   ruoli: makeResource("utenti/ruoli"),
   sostituti: makeResource("utenti/sostituti"),
   sedi: makeResource("utenti/sedi"),
+  struttureBC: { list: () => apiFetch<StrutturaBC[]>("/utenti/strutture-bc") },
 };
+
+export interface StrutturaBC {
+  id: string;
+  societa: string;
+  codice: string;
+  nome: string;
+  bloccata: boolean;
+  dataImport: string;
+}
 
 /**
  * Si comporta come useState, ma:
