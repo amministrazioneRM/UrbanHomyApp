@@ -1062,6 +1062,27 @@ function ConfigSection({ onReload }: { onReload: () => void }) {
   const [buTutte, setBuTutte] = useState<ForecastBU[]>([]);
   const [tipiBC, setTipiBC] = useState<TipoAttivitaBC[]>([]);
   const [classif, setClassif] = useState<Record<string, string>>({});
+  const [bcStato, setBcStato] = useState<{ configurato: boolean; ultimaSincronizzazione: string | null } | null>(null);
+  const [bcInCorso, setBcInCorso] = useState(false);
+  const [bcEsito, setBcEsito] = useState<{ ok: boolean; testo: string } | null>(null);
+
+  async function sincronizzaBC() {
+    setBcInCorso(true);
+    setBcEsito(null);
+    try {
+      const r = await forecastApi.sincronizzaBC();
+      const testo = `${r.strutture} BU, ${r.tipiAttivita} tipi attività, ${r.categorieMews} categorie Mews (${r.categorieConCodice} con codice attività)`;
+      setBcEsito({ ok: r.errori.length === 0, testo: r.errori.length ? `${testo}. Errori: ${r.errori.join(" · ")}` : testo });
+      forecastApi.getBCStato().then(setBcStato).catch(() => {});
+      forecastApi.getVoci().then(() => forecastApi.getTipiAttivita()).then(setTipiBC).catch(() => {});
+      caricaBU();
+      onReload();
+    } catch (e: unknown) {
+      setBcEsito({ ok: false, testo: (e as Error).message });
+    } finally {
+      setBcInCorso(false);
+    }
+  }
 
   async function cambiaClassificazione(classificazione: string, codice: string) {
     setClassif((p) => ({ ...p, [classificazione]: codice }));
@@ -1071,6 +1092,7 @@ function ConfigSection({ onReload }: { onReload: () => void }) {
   const caricaBU = useCallback(() => { forecastApi.getBU(true).then(setBuTutte).catch(() => {}); }, []);
   useEffect(() => {
     forecastApi.getVoci().then(() => forecastApi.getTipiAttivita()).then(setTipiBC).catch(() => {});
+    forecastApi.getBCStato().then(setBcStato).catch(() => {});
     forecastApi.getClassificazioniMews().then((r) => setClassif(Object.fromEntries(r.map((x) => [x.classificazione, x.codiceAttivita])))).catch(() => {});
     caricaBU();
   }, [caricaBU]);
@@ -1126,6 +1148,31 @@ function ConfigSection({ onReload }: { onReload: () => void }) {
 
   return (
     <div className="space-y-6">
+      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-5">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="font-semibold text-stone-900">Business Central</div>
+            <p className="text-sm text-stone-500 mt-1">
+              Legge dal database di Business Central le Business Unit, i tipi attività e le categorie contabili Mews con il loro Codice attività.
+            </p>
+            <p className="text-xs text-stone-400 mt-1">
+              {bcStato === null ? "…" : !bcStato.configurato ? "Credenziali non configurate: imposta BC_DB_USER e BC_DB_PASSWORD nel file .env." : "Credenziali configurate."}
+              {bcStato?.ultimaSincronizzazione && ` Ultima sincronizzazione: ${new Date(bcStato.ultimaSincronizzazione).toLocaleString("it-IT")}.`}
+            </p>
+          </div>
+          <button
+            className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg font-semibold text-white transition disabled:opacity-60"
+            style={{ background: ACCENT }}
+            onClick={sincronizzaBC}
+            disabled={bcInCorso}
+          >
+            <RefreshCw size={14} className={bcInCorso ? "animate-spin" : ""} />
+            {bcInCorso ? "Sincronizzo…" : "Sincronizza da Business Central"}
+          </button>
+        </div>
+        {bcEsito && <p className={`mt-3 text-sm ${bcEsito.ok ? "text-emerald-700" : "text-rose-600"}`}>{bcEsito.ok ? "Sincronizzato: " : ""}{bcEsito.testo}</p>}
+      </div>
+
       <div>
         <div className="font-fraunces text-lg font-semibold text-stone-900">Sedi del forecast</div>
         <p className="text-sm text-stone-500 mt-1">

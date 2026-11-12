@@ -2,6 +2,8 @@ import express from "express";
 import type { Request } from "express";
 import https from "https";
 import prisma from "../prisma.js";
+import { bcConfigurato } from "../bc.js";
+import { sincronizzaDaBC } from "../bcSync.js";
 
 const router = express.Router();
 
@@ -119,6 +121,24 @@ router.put("/bu/:id/attiva", async (req, res, next) => {
     const bu = await prisma.forecastBU.update({ where: { id: req.params.id }, data: { attiva: req.body.attiva === true } });
     const { mewsClientToken: _c, mewsAccessToken: _a, ...safe } = bu;
     res.json(safe);
+  } catch (e) { next(e); }
+});
+
+// ─── BUSINESS CENTRAL ────────────────────────────────────────────────────────
+
+router.get("/bc/stato", async (req, res, next) => {
+  try {
+    if (!hasForecastAccess(req)) { res.json({ configurato: false, ultimaSincronizzazione: null }); return; }
+    const ultima = await prisma.forecastBCStruttura.aggregate({ _max: { dataImport: true } });
+    res.json({ configurato: bcConfigurato(), ultimaSincronizzazione: ultima._max.dataImport });
+  } catch (e) { next(e); }
+});
+
+router.post("/bc/sincronizza", async (req, res, next) => {
+  try {
+    if (req.account.ruoloGlobale !== "Amministratore") { res.status(403).json({ error: "Solo un amministratore può sincronizzare da Business Central" }); return; }
+    if (!bcConfigurato()) { res.status(400).json({ error: "Credenziali Business Central mancanti: imposta BC_DB_USER e BC_DB_PASSWORD nel file .env" }); return; }
+    res.json(await sincronizzaDaBC());
   } catch (e) { next(e); }
 });
 
