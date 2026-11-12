@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  ShieldCheck, Plus, Pencil, Trash2, X, ArrowLeft, Mail, Users, Grid3x3, Lock, Check, Copy, CalendarClock, Settings, ChevronDown, ChevronLeft, ChevronRight, MapPin, MapPinOff, Database, Layers
+  ShieldCheck, Plus, Pencil, Trash2, X, ArrowLeft, Mail, Users, Grid3x3, Lock, Check, Copy, CalendarClock, Settings, ChevronDown, ChevronLeft, ChevronRight, MapPin, MapPinOff, Database, Layers, RefreshCw
 } from "lucide-react";
 import UHAccounts from "./accounts";
 import { api, useSyncedResource } from "./api";
@@ -177,6 +177,23 @@ export default function App(): JSX.Element {
     if (vista !== "tipiAttivitaBC") return;
     api.tipiAttivitaBC.list().then(setTipiAttivitaBC).catch(() => {});
   }, [vista]);
+  const [bcInCorso, setBcInCorso] = useState(false);
+  const [bcEsito, setBcEsito] = useState<{ ok: boolean; testo: string } | null>(null);
+  async function sincronizzaBC() {
+    setBcInCorso(true);
+    setBcEsito(null);
+    try {
+      const r = await api.sincronizzaBC();
+      const testo = `${r.strutture} Business Unit e ${r.tipiAttivita} tipi attività letti da Business Central`;
+      setBcEsito({ ok: r.errori.length === 0, testo: r.errori.length ? `${testo}. Errori: ${r.errori.join(" · ")}` : testo });
+      api.struttureBC.list().then(setStruttureBC).catch(() => {});
+      api.tipiAttivitaBC.list().then(setTipiAttivitaBC).catch(() => {});
+    } catch (e) {
+      setBcEsito({ ok: false, testo: e instanceof Error ? e.message : "Sincronizzazione non riuscita" });
+    } finally {
+      setBcInCorso(false);
+    }
+  }
   const [appRuoliSel, setAppRuoliSel] = useState<AppId>(UHAccounts.APPS[0].id);
   const TAB_IMPOSTAZIONI: Vista[] = ["ruoli", "sedi", "struttureBC", "tipiAttivitaBC"];
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(vista));
@@ -439,7 +456,16 @@ export default function App(): JSX.Element {
                 <Plus size={16} /> Nuova sede
               </button>
             )}
+            {(vista === "struttureBC" || vista === "tipiAttivitaBC") && (
+              <button onClick={sincronizzaBC} disabled={bcInCorso} className="flex items-center gap-2 bg-[#5B4B9E] hover:bg-[#493c80] disabled:opacity-60 text-white text-sm font-semibold px-4 py-2.5 rounded-lg shadow-sm transition">
+                <RefreshCw size={16} className={bcInCorso ? "animate-spin" : ""} /> {bcInCorso ? "Sincronizzo…" : "Sincronizza da Business Central"}
+              </button>
+            )}
           </header>
+
+          {(vista === "struttureBC" || vista === "tipiAttivitaBC") && bcEsito && (
+            <p className={`text-sm mb-4 ${bcEsito.ok ? "text-emerald-700" : "text-rose-600"}`}>{bcEsito.ok ? "Sincronizzato: " : ""}{bcEsito.testo}</p>
+          )}
 
           {vista === "utenti" && (
             <div className="grid gap-3">

@@ -88,6 +88,8 @@ export const api = {
   sedi: makeResource("utenti/sedi"),
   struttureBC: { list: () => apiFetch<StrutturaBC[]>("/utenti/strutture-bc") },
   tipiAttivitaBC: { list: () => apiFetch<TipoAttivitaBC[]>("/utenti/tipi-attivita-bc") },
+  sincronizzaBC: () =>
+    apiFetch<{ strutture: number; tipiAttivita: number; categorieMews: number; categorieConCodice: number; errori: string[] }>("/forecast/bc/sincronizza", { method: "POST" }),
 };
 
 export interface TipoAttivitaBC {
