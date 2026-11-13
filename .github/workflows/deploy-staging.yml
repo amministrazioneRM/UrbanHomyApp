@@ -171,7 +171,7 @@ jobs:
             --namespace=staging
 
       - name: Wait for backend rollout
-        run: kubectl rollout status deployment/backend --timeout=120s --namespace=staging
+        run: kubectl rollout status deployment/backend --timeout=300s --namespace=staging
 
       - name: Wait for portal rollout
         run: kubectl rollout status deployment/portal --timeout=120s --namespace=staging
