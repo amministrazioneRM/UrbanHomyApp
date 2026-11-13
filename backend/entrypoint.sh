@@ -13,7 +13,7 @@ echo "Running Prisma migrations..."
 # Se una migration precedente è rimasta in stato 'failed', marcala come rolled-back
 # prima di procedere con deploy (idempotente: non fa nulla se non ci sono migration fallite)
 npx prisma migrate resolve --rolled-back 20261021000000_password_nullable 2>/dev/null || true
-npx prisma migrate deploy
+timeout 60 npx prisma migrate deploy || true
 
 if [ "$SEED_SAMPLE_DATA" = "true" ]; then
   echo "SEED_SAMPLE_DATA=true — seeding sample data..."
