@@ -18,6 +18,30 @@ spec:
     spec:
       imagePullSecrets:
         - name: ghcr-secret
+      initContainers:
+        - name: migrate
+          image: ghcr.io/amministrazionerm/urban-homy-amministrazionerm/backend:staging
+          imagePullPolicy: Always
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Waiting for SQL Server to be ready..."
+              until nc -z db 1433 2>/dev/null; do
+                echo "SQL Server is unavailable - sleeping 2s"
+                sleep 2
+              done
+              echo "SQL Server port is open - waiting 1s for full readiness..."
+              sleep 1
+              echo "Resolving any failed migrations..."
+              npx prisma migrate resolve --rolled-back 20261021000000_password_nullable 2>/dev/null || true
+              echo "Running Prisma migrations..."
+              npx prisma migrate deploy
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: urbanhomy-backend-secret
+                  key: DATABASE_URL
       containers:
         - name: backend
           image: ghcr.io/amministrazionerm/urban-homy-amministrazionerm/backend:staging
@@ -56,14 +80,14 @@ spec:
             httpGet:
               path: /api/health
               port: 4000
-            initialDelaySeconds: 60
+            initialDelaySeconds: 10
             periodSeconds: 10
             failureThreshold: 3
           livenessProbe:
             httpGet:
               path: /api/health
               port: 4000
-            initialDelaySeconds: 90
+            initialDelaySeconds: 20
             periodSeconds: 20
             failureThreshold: 3
 ---

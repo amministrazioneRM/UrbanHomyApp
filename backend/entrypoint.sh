@@ -1,19 +1,8 @@
 #!/bin/sh
 set -e
 
-echo "Waiting for SQL Server to be ready..."
-until nc -z db 1433 2>/dev/null; do
-  echo "SQL Server is unavailable - sleeping 2s"
-  sleep 2
-done
-echo "SQL Server port is open - waiting 1s for full readiness..."
-sleep 1
-
-echo "Running Prisma migrations..."
-# Se una migration precedente è rimasta in stato 'failed', marcala come rolled-back
-# prima di procedere con deploy (idempotente: non fa nulla se non ci sono migration fallite)
-npx prisma migrate resolve --rolled-back 20261021000000_password_nullable 2>/dev/null || true
-timeout 60 npx prisma migrate deploy || true
+# Le migrazioni Prisma vengono eseguite nell'init container "migrate".
+# Qui il DB è già pronto e le migrazioni già applicate.
 
 if [ "$SEED_SAMPLE_DATA" = "true" ]; then
   echo "SEED_SAMPLE_DATA=true — seeding sample data..."
