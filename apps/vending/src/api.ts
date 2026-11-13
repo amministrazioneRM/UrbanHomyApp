@@ -111,7 +111,47 @@ export const api = {
   strutture: makeResource("vending/strutture"),
   macchine: makeResource("vending/macchine"),
   vendite: makeResource("vending/vendite"),
+  magazzini: makeResource("vending/magazzini"),
+  prodotti: makeResource("vending/prodotti"),
+  fornitori: makeResource("vending/fornitori"),
 };
+
+export function fetchProdottoByBarcode<T>(barcode: string): Promise<T> {
+  return apiFetch<T>(`/vending/prodotti/barcode/${encodeURIComponent(barcode)}`);
+}
+
+export function fetchStock<T>(magazzinoId: string): Promise<T[]> {
+  return apiFetch<T[]>(`/vending/stock?magazzinoId=${encodeURIComponent(magazzinoId)}`);
+}
+
+export function fetchMovimenti<T>(params: {
+  tipo?: string;
+  magazzinoId?: string;
+  dal?: string;
+  al?: string;
+}): Promise<T[]> {
+  const qs = new URLSearchParams();
+  if (params.tipo) qs.set("tipo", params.tipo);
+  if (params.magazzinoId) qs.set("magazzinoId", params.magazzinoId);
+  if (params.dal) qs.set("dal", params.dal);
+  if (params.al) qs.set("al", params.al);
+  return apiFetch<T[]>(`/vending/movimenti?${qs.toString()}`);
+}
+
+export function creaMovimento<T>(body: object): Promise<T> {
+  return apiFetch<T>("/vending/movimenti", { method: "POST", body: JSON.stringify(body) });
+}
+
+export function sincronizzaFornitoriBC<T>(): Promise<T> {
+  return apiFetch<T>("/vending/fornitori/sincronizza-bc", { method: "POST" });
+}
+
+export function toggleFornitoreAbilitato<T>(id: string, abilitatoCarico: boolean): Promise<T> {
+  return apiFetch<T>(`/vending/fornitori/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ abilitatoCarico }),
+  });
+}
 
 /**
  * Si comporta come useState, ma:

@@ -5,17 +5,29 @@ import {
   ShoppingCart, LayoutGrid, Wallet, Plus, Pencil, Trash2, X, ArrowLeft,
   Settings, MapPin, Package, Euro, ChevronDown, ChevronLeft, ChevronRight, CheckCircle2,
   Search, Upload, AlertTriangle, Banknote, CreditCard, Smartphone, RotateCcw,
+  Boxes, TruckIcon, ArrowDownToLine, ArrowUpFromLine, ClipboardList, RefreshCw, ToggleLeft, ToggleRight,
 } from "lucide-react";
 // @ts-ignore
 import * as XLSX from "xlsx";
 import UHAccounts from "./accounts";
-import { api, useSyncedResource, useBackendOffline, fetchVenditeDashboard, fetchVenditeStats } from "./api";
+import { api, useSyncedResource, useBackendOffline, fetchVenditeDashboard, fetchVenditeStats, fetchProdottoByBarcode, fetchStock, fetchMovimenti, creaMovimento, sincronizzaFornitoriBC, toggleFornitoreAbilitato } from "./api";
 import type { PageSize, VenditeStats } from "./api";
+import { BarcodeScanner } from "./BarcodeScanner";
 const APP_ID = "vendingMachine";
 
 interface VendingStruttura { id: string; sedeCentraleId: string; nome: string; citta: string; attiva: boolean }
 interface VendingMacchina { id: string; strutturaId: string; nome: string; tipo: string; attiva: boolean }
 interface VendingVendita { id: string; strutturaId: string; macchinaId?: string; macchinaNome?: string; data: string; ora: string; prodotto: string; quantita: number; prezzoUnitario: number; metodoPagamento: string; stato: string }
+
+interface VendingMagazzino { id: string; nome: string; sedeId: string; note?: string; attivo: boolean }
+interface VendingProdotto { id: string; barcode: string; nome: string; unita: string; note?: string }
+interface VendingFornitore { id: string; codiceBC: string; ragioneSociale: string; abilitatoCarico: boolean }
+interface VendingMovimentoRiga { prodottoId: string; quantita: number; quantitaPrecedente?: number }
+interface VendingMovimento { id: string; tipo: "CARICO" | "SCARICO" | "INVENTARIO"; magazzinoId: string; data: string; ddtNumero?: string; ddtData?: string; fornitoreId?: string; macchinaDestinazioneId?: string; note?: string; operatoreNome?: string; righe: Array<VendingMovimentoRiga & { prodotto?: VendingProdotto }>; fornitore?: VendingFornitore; macchinaDestinazione?: VendingMacchina }
+interface VendingStockItem { magazzinoId: string; prodottoId: string; quantita: number; prodotto: VendingProdotto }
+
+type RigaInserimento = { prodotto: VendingProdotto; quantita: number };
+type FaseCensimento = { barcode: string } | null;
 
 type VenditaFormFields = Omit<VendingVendita, "quantita" | "prezzoUnitario"> & { quantita: number | string; prezzoUnitario: number | string };
 type MacchinaFormState = Omit<VendingMacchina, "id"> & { id: string | null };
@@ -1448,6 +1460,828 @@ function FieldGroup({ label, children }: FieldProps) {
 const inputCls = "w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#CA8A04]/40 focus:border-[#CA8A04]";
 
 /* ------------------------------------------------------------------ */
+/*  MAGAZZINO — COMPONENTI VISTA                                         */
+/* ------------------------------------------------------------------ */
+
+function SelectorMagazzino({ magazzini, selezionato, onSeleziona }: {
+  magazzini: VendingMagazzino[]; selezionato: string; onSeleziona: (id: string) => void;
+}) {
+  if (magazzini.length === 0) {
+    return <p className="text-stone-500 text-sm">Nessun magazzino configurato. Vai in Impostazioni → Magazzini per crearne uno.</p>;
+  }
+  return (
+    <select value={selezionato} onChange={(e) => onSeleziona(e.target.value)} className={inputCls + " max-w-xs"}>
+      <option value="">— Seleziona magazzino —</option>
+      {magazzini.filter((m) => m.attivo).map((m) => (
+        <option key={m.id} value={m.id}>{m.nome}</option>
+      ))}
+    </select>
+  );
+}
+
+function MagazzinoStock({ magazzini, stock, magazzinoSelezionato, onSelezionaMagazzino }: {
+  magazzini: VendingMagazzino[]; stock: VendingStockItem[];
+  magazzinoSelezionato: string; onSelezionaMagazzino: (id: string) => void;
+}) {
+  return (
+    <div>
+      <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900 mb-5">Stock attuale</h1>
+      <div className="mb-4">
+        <SelectorMagazzino magazzini={magazzini} selezionato={magazzinoSelezionato} onSeleziona={onSelezionaMagazzino} />
+      </div>
+      {magazzinoSelezionato && (
+        stock.length === 0
+          ? <p className="text-stone-500 text-sm mt-4">Magazzino vuoto — nessun prodotto caricato.</p>
+          : (
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b border-stone-100 text-stone-500 text-xs uppercase tracking-wide">
+                  <th className="text-left px-4 py-3">Prodotto</th>
+                  <th className="text-left px-4 py-3">Barcode</th>
+                  <th className="text-right px-4 py-3">Quantità</th>
+                  <th className="text-left px-4 py-3">Unità</th>
+                </tr></thead>
+                <tbody>
+                  {stock.map((s) => (
+                    <tr key={s.prodottoId} className="border-b border-stone-50 hover:bg-stone-50">
+                      <td className="px-4 py-3 font-medium">{s.prodotto.nome}</td>
+                      <td className="px-4 py-3 text-stone-400 font-mono text-xs">{s.prodotto.barcode}</td>
+                      <td className={`px-4 py-3 text-right font-semibold ${s.quantita === 0 ? "text-rose-500" : s.quantita <= 3 ? "text-amber-500" : "text-emerald-600"}`}>{s.quantita}</td>
+                      <td className="px-4 py-3 text-stone-400">{s.prodotto.unita}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+      )}
+    </div>
+  );
+}
+
+function FlussoBarcodeRighe({ stock, macchineDisponibili, tipo, onConferma, onAnnulla }: {
+  stock: VendingStockItem[];
+  macchineDisponibili?: VendingMacchina[];
+  tipo: "CARICO" | "SCARICO" | "INVENTARIO";
+  onConferma: (righe: RigaInserimento[], extra: Record<string, string>) => void;
+  onAnnulla: () => void;
+}) {
+  const [righe, setRighe] = useState<RigaInserimento[]>([]);
+  const [scanner, setScanner] = useState(false);
+  const [censimento, setCensimento] = useState<{ barcode: string } | null>(null);
+  const [censNome, setCensNome] = useState("");
+  const [censUnita, setCensUnita] = useState("pz");
+  const [censErr, setCensErr] = useState("");
+  const [errMsg, setErrMsg] = useState("");
+  const [macchinaId, setMacchinaId] = useState("");
+  const [ddtNumero, setDdtNumero] = useState("");
+  const [ddtData, setDdtData] = useState("");
+  const [fornitoreId, setFornitoreId] = useState("");
+
+  async function handleBarcode(barcode: string) {
+    setScanner(false);
+    try {
+      const p = await fetchProdottoByBarcode<VendingProdotto>(barcode);
+      setRighe((r) => {
+        const idx = r.findIndex((x) => x.prodotto.id === p.id);
+        if (idx >= 0) return r.map((x, i) => i === idx ? { ...x, quantita: x.quantita + 1 } : x);
+        return [...r, { prodotto: p, quantita: 1 }];
+      });
+    } catch {
+      setCensimento({ barcode });
+    }
+  }
+
+  async function confermaCensimento() {
+    if (!censNome.trim()) { setCensErr("Inserisci il nome del prodotto"); return; }
+    try {
+      const p = await api.prodotti.create({ id: `PRD-${Date.now()}`, barcode: censimento!.barcode, nome: censNome.trim(), unita: censUnita } as VendingProdotto);
+      setCensimento(null); setCensNome(""); setCensErr("");
+      setRighe((r) => [...r, { prodotto: p, quantita: 1 }]);
+    } catch (e) { setCensErr((e as Error).message); }
+  }
+
+  function confermaFlusso() {
+    if (righe.length === 0) { setErrMsg("Aggiungi almeno un prodotto"); return; }
+    if (tipo === "SCARICO") {
+      for (const r of righe) {
+        const s = stock.find((x) => x.prodottoId === r.prodotto.id);
+        if ((s?.quantita ?? 0) < r.quantita) {
+          setErrMsg(`Stock insufficiente per "${r.prodotto.nome}": disponibile ${s?.quantita ?? 0}`);
+          return;
+        }
+      }
+      if (macchineDisponibili && macchineDisponibili.length > 0 && !macchinaId) {
+        setErrMsg("Seleziona la macchina di destinazione"); return;
+      }
+    }
+    setErrMsg("");
+    onConferma(righe, { macchinaId, ddtNumero, ddtData, fornitoreId });
+  }
+
+  if (censimento) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 mt-4">
+        <p className="font-semibold text-amber-800 mb-1">Prodotto non trovato</p>
+        <p className="text-sm text-amber-700 mb-3">Barcode: <code className="font-mono">{censimento.barcode}</code> — registralo per continuare.</p>
+        <input value={censNome} onChange={(e) => setCensNome(e.target.value)} placeholder="Nome prodotto" className={inputCls + " mb-2"} />
+        <select value={censUnita} onChange={(e) => setCensUnita(e.target.value)} className={inputCls + " mb-2"}>
+          {["pz", "kg", "lt", "conf"].map((u) => <option key={u}>{u}</option>)}
+        </select>
+        {censErr && <p className="text-rose-500 text-xs mb-2">{censErr}</p>}
+        <div className="flex gap-2">
+          <button onClick={confermaCensimento} className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Registra e aggiungi</button>
+          <button onClick={() => setCensimento(null)} className="text-stone-500 text-sm px-3 py-2 hover:underline">Annulla</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 space-y-4">
+      {scanner && <BarcodeScanner onDetect={handleBarcode} onCancel={() => setScanner(false)} />}
+
+      <button onClick={() => setScanner(true)} className="flex items-center gap-2 bg-[#CA8A04] hover:bg-yellow-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
+        <Search size={15} /> Scansiona prodotto
+      </button>
+
+      {righe.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-stone-100 text-stone-400 text-xs uppercase">
+              <th className="text-left px-4 py-3">Prodotto</th>
+              <th className="text-right px-4 py-3">Qtà</th>
+              {tipo === "INVENTARIO" && <th className="text-right px-4 py-3">Stock attuale</th>}
+              <th className="px-3 py-3"></th>
+            </tr></thead>
+            <tbody>
+              {righe.map((r, i) => {
+                const stockDis = stock.find((s) => s.prodottoId === r.prodotto.id)?.quantita ?? 0;
+                const errQta = tipo === "SCARICO" && r.quantita > stockDis;
+                return (
+                  <tr key={r.prodotto.id} className="border-b border-stone-50">
+                    <td className="px-4 py-3 font-medium">{r.prodotto.nome}</td>
+                    <td className="px-4 py-3 text-right">
+                      <input
+                        type="number" min={1}
+                        value={r.quantita}
+                        onChange={(e) => setRighe((rs) => rs.map((x, j) => j === i ? { ...x, quantita: Math.max(1, parseInt(e.target.value) || 1) } : x))}
+                        className={`w-20 text-right rounded border px-2 py-1 text-sm ${errQta ? "border-rose-400 text-rose-600" : "border-stone-200"}`}
+                      />
+                    </td>
+                    {tipo === "INVENTARIO" && <td className="px-4 py-3 text-right text-stone-400">{stockDis}</td>}
+                    <td className="px-3 py-3">
+                      <button onClick={() => setRighe((rs) => rs.filter((_, j) => j !== i))} className="text-stone-300 hover:text-rose-400"><X size={14} /></button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tipo === "SCARICO" && macchineDisponibili && macchineDisponibili.length > 0 && (
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Macchina di destinazione</label>
+          <select value={macchinaId} onChange={(e) => setMacchinaId(e.target.value)} className={inputCls + " max-w-xs"}>
+            <option value="">— Seleziona —</option>
+            {macchineDisponibili.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+          </select>
+        </div>
+      )}
+
+      {errMsg && <p className="text-rose-500 text-sm">{errMsg}</p>}
+
+      <div className="flex gap-2 pt-2">
+        <button onClick={confermaFlusso} className="bg-[#1F1A12] hover:bg-stone-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg">
+          Conferma {tipo === "CARICO" ? "carico" : tipo === "SCARICO" ? "scarico" : "inventario"}
+        </button>
+        <button onClick={onAnnulla} className="text-stone-500 text-sm px-3 py-2 hover:underline">Annulla</button>
+      </div>
+    </div>
+  );
+}
+
+function MagazzinoCarico({ magazzini, fornitori, stock, magazzinoSelezionato, onSelezionaMagazzino, onConferma }: {
+  magazzini: VendingMagazzino[]; fornitori: VendingFornitore[]; stock: VendingStockItem[];
+  magazzinoSelezionato: string; onSelezionaMagazzino: (id: string) => void;
+  onConferma: (body: object) => Promise<void>;
+}) {
+  const [ddtNumero, setDdtNumero] = useState("");
+  const [ddtData, setDdtData] = useState("");
+  const [fornitoreId, setFornitoreId] = useState("");
+  const [errMsg, setErrMsg] = useState("");
+  const [righe, setRighe] = useState<RigaInserimento[]>([]);
+  const [scanner, setScanner] = useState(false);
+  const [censimento, setCensimento] = useState<{ barcode: string } | null>(null);
+  const [censNome, setCensNome] = useState("");
+  const [censUnita, setCensUnita] = useState("pz");
+  const [censErr, setCensErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleBarcode(barcode: string) {
+    setScanner(false);
+    try {
+      const p = await fetchProdottoByBarcode<VendingProdotto>(barcode);
+      setRighe((r) => {
+        const idx = r.findIndex((x) => x.prodotto.id === p.id);
+        if (idx >= 0) return r.map((x, i) => i === idx ? { ...x, quantita: x.quantita + 1 } : x);
+        return [...r, { prodotto: p, quantita: 1 }];
+      });
+    } catch { setCensimento({ barcode }); }
+  }
+
+  async function confermaCensimento() {
+    if (!censNome.trim()) { setCensErr("Inserisci il nome"); return; }
+    try {
+      const p = await api.prodotti.create({ id: `PRD-${Date.now()}`, barcode: censimento!.barcode, nome: censNome.trim(), unita: censUnita } as VendingProdotto);
+      setCensimento(null); setCensNome(""); setCensErr("");
+      setRighe((r) => [...r, { prodotto: p, quantita: 1 }]);
+    } catch (e) { setCensErr((e as Error).message); }
+  }
+
+  async function conferma() {
+    if (!magazzinoSelezionato) { setErrMsg("Seleziona un magazzino"); return; }
+    if (righe.length === 0) { setErrMsg("Aggiungi almeno un prodotto"); return; }
+    setErrMsg(""); setLoading(true);
+    try {
+      await onConferma({
+        tipo: "CARICO", magazzinoId: magazzinoSelezionato,
+        data: new Date().toISOString(),
+        ddtNumero: ddtNumero || undefined, ddtData: ddtData || undefined,
+        fornitoreId: fornitoreId || undefined,
+        righe: righe.map((r) => ({ prodottoId: r.prodotto.id, quantita: r.quantita })),
+      });
+      setRighe([]); setDdtNumero(""); setDdtData(""); setFornitoreId("");
+    } catch (e) { setErrMsg((e as Error).message); }
+    setLoading(false);
+  }
+
+  if (censimento) {
+    return (
+      <div>
+        <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900 mb-5">Nuovo carico</h1>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+          <p className="font-semibold text-amber-800 mb-1">Prodotto non trovato</p>
+          <p className="text-sm text-amber-700 mb-3">Barcode: <code className="font-mono">{censimento.barcode}</code></p>
+          <input value={censNome} onChange={(e) => setCensNome(e.target.value)} placeholder="Nome prodotto" className={inputCls + " mb-2"} />
+          <select value={censUnita} onChange={(e) => setCensUnita(e.target.value)} className={inputCls + " mb-2"}>
+            {["pz", "kg", "lt", "conf"].map((u) => <option key={u}>{u}</option>)}
+          </select>
+          {censErr && <p className="text-rose-500 text-xs mb-2">{censErr}</p>}
+          <div className="flex gap-2">
+            <button onClick={confermaCensimento} className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Registra e aggiungi</button>
+            <button onClick={() => setCensimento(null)} className="text-stone-500 text-sm px-3 py-2">Annulla</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900 mb-5">Nuovo carico</h1>
+      {scanner && <BarcodeScanner onDetect={handleBarcode} onCancel={() => setScanner(false)} />}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 max-w-2xl">
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Magazzino</label>
+          <SelectorMagazzino magazzini={magazzini} selezionato={magazzinoSelezionato} onSeleziona={onSelezionaMagazzino} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Fornitore</label>
+          <select value={fornitoreId} onChange={(e) => setFornitoreId(e.target.value)} className={inputCls}>
+            <option value="">— Seleziona fornitore (opz.) —</option>
+            {fornitori.map((f) => <option key={f.id} value={f.id}>{f.ragioneSociale}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">N° DDT</label>
+          <input value={ddtNumero} onChange={(e) => setDdtNumero(e.target.value)} placeholder="es. DDT-2026-001" className={inputCls} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Data DDT</label>
+          <input type="date" value={ddtData} onChange={(e) => setDdtData(e.target.value)} className={inputCls} />
+        </div>
+      </div>
+
+      <button onClick={() => setScanner(true)} className="flex items-center gap-2 mb-4 bg-[#CA8A04] hover:bg-yellow-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
+        <Search size={15} /> Scansiona prodotto
+      </button>
+
+      {righe.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-stone-100 text-stone-400 text-xs uppercase">
+              <th className="text-left px-4 py-3">Prodotto</th><th className="text-left px-4 py-3">Barcode</th>
+              <th className="text-right px-4 py-3">Qtà</th><th className="px-3 py-3"></th>
+            </tr></thead>
+            <tbody>
+              {righe.map((r, i) => (
+                <tr key={r.prodotto.id} className="border-b border-stone-50">
+                  <td className="px-4 py-3 font-medium">{r.prodotto.nome}</td>
+                  <td className="px-4 py-3 text-stone-400 font-mono text-xs">{r.prodotto.barcode}</td>
+                  <td className="px-4 py-3 text-right">
+                    <input type="number" min={1} value={r.quantita}
+                      onChange={(e) => setRighe((rs) => rs.map((x, j) => j === i ? { ...x, quantita: Math.max(1, parseInt(e.target.value) || 1) } : x))}
+                      className="w-20 text-right rounded border border-stone-200 px-2 py-1 text-sm" />
+                  </td>
+                  <td className="px-3 py-3"><button onClick={() => setRighe((rs) => rs.filter((_, j) => j !== i))} className="text-stone-300 hover:text-rose-400"><X size={14} /></button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {errMsg && <p className="text-rose-500 text-sm mb-3">{errMsg}</p>}
+      <button onClick={conferma} disabled={loading} className="bg-[#1F1A12] hover:bg-stone-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg disabled:opacity-50">
+        {loading ? "Salvataggio…" : "Conferma carico"}
+      </button>
+    </div>
+  );
+}
+
+function MagazzinoScarico({ magazzini, macchine, stock, magazzinoSelezionato, onSelezionaMagazzino, onConferma }: {
+  magazzini: VendingMagazzino[]; macchine: VendingMacchina[]; stock: VendingStockItem[];
+  magazzinoSelezionato: string; onSelezionaMagazzino: (id: string) => void;
+  onConferma: (body: object) => Promise<void>;
+}) {
+  const [macchinaId, setMacchinaId] = useState("");
+  const [righe, setRighe] = useState<RigaInserimento[]>([]);
+  const [scanner, setScanner] = useState(false);
+  const [censimento, setCensimento] = useState<{ barcode: string } | null>(null);
+  const [censNome, setCensNome] = useState("");
+  const [censUnita, setCensUnita] = useState("pz");
+  const [censErr, setCensErr] = useState("");
+  const [errMsg, setErrMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleBarcode(barcode: string) {
+    setScanner(false);
+    try {
+      const p = await fetchProdottoByBarcode<VendingProdotto>(barcode);
+      const inStock = stock.find((s) => s.prodottoId === p.id);
+      if (!inStock || inStock.quantita === 0) {
+        setErrMsg(`"${p.nome}" non è in stock nel magazzino selezionato`);
+        return;
+      }
+      setRighe((r) => {
+        const idx = r.findIndex((x) => x.prodotto.id === p.id);
+        if (idx >= 0) return r.map((x, i) => i === idx ? { ...x, quantita: x.quantita + 1 } : x);
+        return [...r, { prodotto: p, quantita: 1 }];
+      });
+    } catch { setCensimento({ barcode }); }
+  }
+
+  async function confermaCensimento() {
+    if (!censNome.trim()) { setCensErr("Inserisci il nome"); return; }
+    try {
+      const p = await api.prodotti.create({ id: `PRD-${Date.now()}`, barcode: censimento!.barcode, nome: censNome.trim(), unita: censUnita } as VendingProdotto);
+      setCensimento(null); setCensNome(""); setCensErr("");
+      setRighe((r) => [...r, { prodotto: p, quantita: 1 }]);
+    } catch (e) { setCensErr((e as Error).message); }
+  }
+
+  async function conferma() {
+    if (!magazzinoSelezionato) { setErrMsg("Seleziona un magazzino"); return; }
+    if (righe.length === 0) { setErrMsg("Aggiungi almeno un prodotto"); return; }
+    for (const r of righe) {
+      const s = stock.find((x) => x.prodottoId === r.prodotto.id);
+      if ((s?.quantita ?? 0) < r.quantita) {
+        setErrMsg(`Stock insufficiente per "${r.prodotto.nome}": disponibile ${s?.quantita ?? 0}, richiesto ${r.quantita}`);
+        return;
+      }
+    }
+    setErrMsg(""); setLoading(true);
+    try {
+      await onConferma({
+        tipo: "SCARICO", magazzinoId: magazzinoSelezionato, data: new Date().toISOString(),
+        macchinaDestinazioneId: macchinaId || undefined,
+        righe: righe.map((r) => ({ prodottoId: r.prodotto.id, quantita: r.quantita })),
+      });
+      setRighe([]); setMacchinaId("");
+    } catch (e) { setErrMsg((e as Error).message); }
+    setLoading(false);
+  }
+
+  if (censimento) {
+    return (
+      <div>
+        <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900 mb-5">Nuovo scarico</h1>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+          <p className="font-semibold text-amber-800 mb-1">Prodotto non trovato nel catalogo</p>
+          <p className="text-sm text-amber-700 mb-3">Barcode: <code className="font-mono">{censimento.barcode}</code></p>
+          <input value={censNome} onChange={(e) => setCensNome(e.target.value)} placeholder="Nome prodotto" className={inputCls + " mb-2"} />
+          <select value={censUnita} onChange={(e) => setCensUnita(e.target.value)} className={inputCls + " mb-2"}>
+            {["pz", "kg", "lt", "conf"].map((u) => <option key={u}>{u}</option>)}
+          </select>
+          {censErr && <p className="text-rose-500 text-xs mb-2">{censErr}</p>}
+          <div className="flex gap-2">
+            <button onClick={confermaCensimento} className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Registra e aggiungi</button>
+            <button onClick={() => setCensimento(null)} className="text-stone-500 text-sm px-3 py-2">Annulla</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900 mb-5">Nuovo scarico</h1>
+      {scanner && <BarcodeScanner onDetect={handleBarcode} onCancel={() => setScanner(false)} />}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5 max-w-2xl">
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Magazzino di origine</label>
+          <SelectorMagazzino magazzini={magazzini} selezionato={magazzinoSelezionato} onSeleziona={(id) => { setRighe([]); onSelezionaMagazzino(id); }} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold uppercase tracking-wide text-stone-500 mb-1">Macchina di destinazione</label>
+          <select value={macchinaId} onChange={(e) => setMacchinaId(e.target.value)} className={inputCls}>
+            <option value="">— Seleziona (opzionale) —</option>
+            {macchine.map((m) => <option key={m.id} value={m.id}>{m.nome}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <button onClick={() => setScanner(true)} className="flex items-center gap-2 mb-4 bg-[#CA8A04] hover:bg-yellow-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
+        <Search size={15} /> Scansiona prodotto
+      </button>
+
+      {righe.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-stone-100 text-stone-400 text-xs uppercase">
+              <th className="text-left px-4 py-3">Prodotto</th>
+              <th className="text-right px-4 py-3">Qtà</th>
+              <th className="text-right px-4 py-3">In stock</th>
+              <th className="px-3 py-3"></th>
+            </tr></thead>
+            <tbody>
+              {righe.map((r, i) => {
+                const stockDis = stock.find((s) => s.prodottoId === r.prodotto.id)?.quantita ?? 0;
+                const errQta = r.quantita > stockDis;
+                return (
+                  <tr key={r.prodotto.id} className="border-b border-stone-50">
+                    <td className="px-4 py-3 font-medium">{r.prodotto.nome}</td>
+                    <td className="px-4 py-3 text-right">
+                      <input type="number" min={1} value={r.quantita}
+                        onChange={(e) => setRighe((rs) => rs.map((x, j) => j === i ? { ...x, quantita: Math.max(1, parseInt(e.target.value) || 1) } : x))}
+                        className={`w-20 text-right rounded border px-2 py-1 text-sm ${errQta ? "border-rose-400 text-rose-600" : "border-stone-200"}`} />
+                    </td>
+                    <td className={`px-4 py-3 text-right ${stockDis === 0 ? "text-rose-500" : stockDis <= 3 ? "text-amber-500" : "text-stone-500"}`}>{stockDis}</td>
+                    <td className="px-3 py-3"><button onClick={() => setRighe((rs) => rs.filter((_, j) => j !== i))} className="text-stone-300 hover:text-rose-400"><X size={14} /></button></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {errMsg && <p className="text-rose-500 text-sm mb-3">{errMsg}</p>}
+      <button onClick={conferma} disabled={loading} className="bg-[#1F1A12] hover:bg-stone-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg disabled:opacity-50">
+        {loading ? "Salvataggio…" : "Conferma scarico"}
+      </button>
+    </div>
+  );
+}
+
+function MagazzinoInventario({ magazzini, stock, magazzinoSelezionato, onSelezionaMagazzino, onConferma }: {
+  magazzini: VendingMagazzino[]; stock: VendingStockItem[];
+  magazzinoSelezionato: string; onSelezionaMagazzino: (id: string) => void;
+  onConferma: (body: object) => Promise<void>;
+}) {
+  const [conteggi, setConteggi] = useState<Record<string, number>>({});
+  const [scanner, setScanner] = useState(false);
+  const [censimento, setCensimento] = useState<{ barcode: string } | null>(null);
+  const [censNome, setCensNome] = useState("");
+  const [censUnita, setCensUnita] = useState("pz");
+  const [censErr, setCensErr] = useState("");
+  const [errMsg, setErrMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleBarcode(barcode: string) {
+    setScanner(false);
+    try {
+      const p = await fetchProdottoByBarcode<VendingProdotto>(barcode);
+      setConteggi((c) => ({ ...c, [p.id]: (c[p.id] ?? 0) + 1 }));
+    } catch { setCensimento({ barcode }); }
+  }
+
+  async function confermaCensimento() {
+    if (!censNome.trim()) { setCensErr("Inserisci il nome"); return; }
+    try {
+      const p = await api.prodotti.create({ id: `PRD-${Date.now()}`, barcode: censimento!.barcode, nome: censNome.trim(), unita: censUnita } as VendingProdotto);
+      setCensimento(null); setCensNome(""); setCensErr("");
+      setConteggi((c) => ({ ...c, [p.id]: 1 }));
+    } catch (e) { setCensErr((e as Error).message); }
+  }
+
+  const tuttiProdotti = useMemo(() => {
+    const dallStock = stock.map((s) => s.prodotto);
+    const extra = Object.keys(conteggi).filter((id) => !dallStock.find((p) => p.id === id));
+    return dallStock;
+  }, [stock, conteggi]);
+
+  async function conferma() {
+    if (!magazzinoSelezionato) { setErrMsg("Seleziona un magazzino"); return; }
+    const righe = tuttiProdotti.map((p) => ({
+      prodottoId: p.id,
+      quantita: conteggi[p.id] ?? 0,
+    }));
+    if (righe.length === 0) { setErrMsg("Nessun prodotto in inventario"); return; }
+    setErrMsg(""); setLoading(true);
+    try {
+      await onConferma({ tipo: "INVENTARIO", magazzinoId: magazzinoSelezionato, data: new Date().toISOString(), righe });
+      setConteggi({});
+    } catch (e) { setErrMsg((e as Error).message); }
+    setLoading(false);
+  }
+
+  if (censimento) {
+    return (
+      <div>
+        <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900 mb-5">Inventario</h1>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
+          <p className="font-semibold text-amber-800 mb-1">Prodotto non trovato</p>
+          <p className="text-sm text-amber-700 mb-3">Barcode: <code className="font-mono">{censimento.barcode}</code></p>
+          <input value={censNome} onChange={(e) => setCensNome(e.target.value)} placeholder="Nome prodotto" className={inputCls + " mb-2"} />
+          <select value={censUnita} onChange={(e) => setCensUnita(e.target.value)} className={inputCls + " mb-2"}>
+            {["pz", "kg", "lt", "conf"].map((u) => <option key={u}>{u}</option>)}
+          </select>
+          {censErr && <p className="text-rose-500 text-xs mb-2">{censErr}</p>}
+          <div className="flex gap-2">
+            <button onClick={confermaCensimento} className="bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold px-4 py-2 rounded-lg">Registra</button>
+            <button onClick={() => setCensimento(null)} className="text-stone-500 text-sm px-3 py-2">Annulla</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900 mb-5">Inventario</h1>
+      {scanner && <BarcodeScanner onDetect={handleBarcode} onCancel={() => setScanner(false)} />}
+
+      <div className="mb-4">
+        <SelectorMagazzino magazzini={magazzini} selezionato={magazzinoSelezionato} onSeleziona={(id) => { setConteggi({}); onSelezionaMagazzino(id); }} />
+      </div>
+
+      {magazzinoSelezionato && (
+        <>
+          <button onClick={() => setScanner(true)} className="flex items-center gap-2 mb-4 bg-[#CA8A04] hover:bg-yellow-600 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
+            <Search size={15} /> Scansiona prodotto
+          </button>
+
+          {tuttiProdotti.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-4">
+              <table className="w-full text-sm">
+                <thead><tr className="border-b border-stone-100 text-stone-400 text-xs uppercase">
+                  <th className="text-left px-4 py-3">Prodotto</th>
+                  <th className="text-right px-4 py-3">Stock attuale</th>
+                  <th className="text-right px-4 py-3">Conteggio</th>
+                  <th className="text-right px-4 py-3">Differenza</th>
+                </tr></thead>
+                <tbody>
+                  {tuttiProdotti.map((p) => {
+                    const stockQ = stock.find((s) => s.prodottoId === p.id)?.quantita ?? 0;
+                    const contQ = conteggi[p.id] ?? 0;
+                    const diff = contQ - stockQ;
+                    return (
+                      <tr key={p.id} className="border-b border-stone-50">
+                        <td className="px-4 py-3 font-medium">{p.nome}</td>
+                        <td className="px-4 py-3 text-right text-stone-400">{stockQ}</td>
+                        <td className="px-4 py-3 text-right">
+                          <input type="number" min={0} value={contQ}
+                            onChange={(e) => setConteggi((c) => ({ ...c, [p.id]: Math.max(0, parseInt(e.target.value) || 0) }))}
+                            className="w-20 text-right rounded border border-stone-200 px-2 py-1 text-sm" />
+                        </td>
+                        <td className={`px-4 py-3 text-right font-semibold ${diff > 0 ? "text-emerald-600" : diff < 0 ? "text-rose-500" : "text-stone-300"}`}>
+                          {diff > 0 ? `+${diff}` : diff}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {errMsg && <p className="text-rose-500 text-sm mb-3">{errMsg}</p>}
+          <button onClick={conferma} disabled={loading} className="bg-[#1F1A12] hover:bg-stone-900 text-white text-sm font-semibold px-5 py-2.5 rounded-lg disabled:opacity-50">
+            {loading ? "Salvataggio…" : "Conferma inventario"}
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+function MagazzinoMovimenti({ magazzini, movimenti, magazzinoSelezionato, onSelezionaMagazzino }: {
+  magazzini: VendingMagazzino[]; movimenti: VendingMovimento[];
+  magazzinoSelezionato: string; onSelezionaMagazzino: (id: string) => void;
+}) {
+  const [aperto, setAperto] = useState<string | null>(null);
+  const TIPO_COLOR: Record<string, string> = {
+    CARICO: "bg-emerald-100 text-emerald-700",
+    SCARICO: "bg-amber-100 text-amber-700",
+    INVENTARIO: "bg-blue-100 text-blue-700",
+  };
+  return (
+    <div>
+      <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900 mb-5">Storico movimenti</h1>
+      <div className="mb-4">
+        <SelectorMagazzino magazzini={magazzini} selezionato={magazzinoSelezionato} onSeleziona={onSelezionaMagazzino} />
+      </div>
+      {magazzinoSelezionato && (
+        movimenti.length === 0
+          ? <p className="text-stone-500 text-sm mt-4">Nessun movimento registrato.</p>
+          : (
+            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+              {movimenti.map((m) => (
+                <div key={m.id} className="border-b border-stone-50 last:border-0">
+                  <button
+                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-stone-50 text-left"
+                    onClick={() => setAperto(aperto === m.id ? null : m.id)}
+                  >
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${TIPO_COLOR[m.tipo] ?? ""}`}>{m.tipo}</span>
+                    <span className="text-sm font-medium text-stone-700 flex-1">{new Date(m.data).toLocaleDateString("it-IT")}</span>
+                    {m.ddtNumero && <span className="text-xs text-stone-400">DDT {m.ddtNumero}</span>}
+                    {m.fornitore && <span className="text-xs text-stone-400">{m.fornitore.ragioneSociale}</span>}
+                    {m.macchinaDestinazione && <span className="text-xs text-stone-400">{m.macchinaDestinazione.nome}</span>}
+                    <span className="text-xs text-stone-400">{m.righe.length} prodotti</span>
+                    <ChevronDown size={14} className={`text-stone-300 transition-transform ${aperto === m.id ? "rotate-180" : ""}`} />
+                  </button>
+                  {aperto === m.id && (
+                    <div className="px-4 pb-3 bg-stone-50">
+                      <table className="w-full text-xs">
+                        <thead><tr className="text-stone-400 uppercase">
+                          <th className="text-left py-1">Prodotto</th><th className="text-right py-1">Qtà</th>
+                          {m.tipo === "INVENTARIO" && <th className="text-right py-1">Precedente</th>}
+                        </tr></thead>
+                        <tbody>
+                          {m.righe.map((r, i) => (
+                            <tr key={i} className="border-t border-stone-100">
+                              <td className="py-1">{r.prodotto?.nome ?? r.prodottoId}</td>
+                              <td className="text-right py-1 font-medium">{r.quantita}</td>
+                              {m.tipo === "INVENTARIO" && <td className="text-right py-1 text-stone-400">{r.quantitaPrecedente ?? "—"}</td>}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {m.operatoreNome && <p className="text-xs text-stone-400 mt-1">Operatore: {m.operatoreNome}</p>}
+                      {m.note && <p className="text-xs text-stone-400 mt-0.5">{m.note}</p>}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )
+      )}
+    </div>
+  );
+}
+
+function MagazziniImpostazioni({ magazzini, sediCentrali, onSalva, onElimina }: {
+  magazzini: VendingMagazzino[]; sediCentrali: UHSede[];
+  onSalva: (m: VendingMagazzino) => void; onElimina: (id: string) => void;
+}) {
+  const [form, setForm] = useState<Partial<VendingMagazzino> | null>(null);
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function salva() {
+    if (!form?.nome?.trim()) { setErr("Inserisci il nome"); return; }
+    if (!form?.sedeId) { setErr("Seleziona la sede"); return; }
+    setErr(""); setLoading(true);
+    try {
+      if (form.id) {
+        const r = await api.magazzini.update(form.id, form as VendingMagazzino);
+        onSalva(r);
+      } else {
+        const r = await api.magazzini.create({ id: `MAG-${Date.now()}`, attivo: true, ...form } as VendingMagazzino);
+        onSalva(r);
+      }
+      setForm(null);
+    } catch (e) { setErr((e as Error).message); }
+    setLoading(false);
+  }
+
+  async function elimina(id: string) {
+    if (!confirm("Eliminare questo magazzino?")) return;
+    await api.magazzini.remove(id);
+    onElimina(id);
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Magazzini</h1>
+        <button onClick={() => setForm({})} className="flex items-center gap-2 bg-[#1F1A12] hover:bg-stone-800 text-white text-sm font-semibold px-4 py-2.5 rounded-lg">
+          <Plus size={15} /> Nuovo magazzino
+        </button>
+      </div>
+      {form !== null && (
+        <div className="bg-white rounded-xl shadow-sm p-5 mb-5 max-w-lg">
+          <h2 className="font-semibold text-stone-800 mb-4">{form.id ? "Modifica" : "Nuovo"} magazzino</h2>
+          <label className="block text-xs font-semibold uppercase text-stone-500 mb-1">Nome</label>
+          <input value={form.nome ?? ""} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} className={inputCls + " mb-3"} />
+          <label className="block text-xs font-semibold uppercase text-stone-500 mb-1">Sede</label>
+          <select value={form.sedeId ?? ""} onChange={(e) => setForm((f) => ({ ...f, sedeId: e.target.value }))} className={inputCls + " mb-3"}>
+            <option value="">— Seleziona —</option>
+            {sediCentrali.map((s) => <option key={s.id} value={s.id}>{s.nome}</option>)}
+          </select>
+          <label className="block text-xs font-semibold uppercase text-stone-500 mb-1">Note</label>
+          <input value={form.note ?? ""} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} className={inputCls + " mb-3"} />
+          <label className="flex items-center gap-2 text-sm text-stone-600 mb-3">
+            <input type="checkbox" checked={form.attivo ?? true} onChange={(e) => setForm((f) => ({ ...f, attivo: e.target.checked }))} />
+            Magazzino attivo
+          </label>
+          {err && <p className="text-rose-500 text-xs mb-2">{err}</p>}
+          <div className="flex gap-2">
+            <button onClick={salva} disabled={loading} className="bg-[#1F1A12] text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50">Salva</button>
+            <button onClick={() => setForm(null)} className="text-stone-500 text-sm px-3 py-2">Annulla</button>
+          </div>
+        </div>
+      )}
+      {magazzini.length === 0
+        ? <p className="text-stone-500 text-sm">Nessun magazzino configurato.</p>
+        : (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            {magazzini.map((m) => (
+              <div key={m.id} className="flex items-center gap-3 px-4 py-3 border-b border-stone-50 last:border-0">
+                <div className="flex-1">
+                  <div className="font-medium text-stone-800">{m.nome}</div>
+                  <div className="text-xs text-stone-400">{sediCentrali.find((s) => s.id === m.sedeId)?.nome ?? m.sedeId}</div>
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${m.attivo ? "bg-emerald-100 text-emerald-700" : "bg-stone-100 text-stone-400"}`}>{m.attivo ? "Attivo" : "Inattivo"}</span>
+                <button onClick={() => setForm(m)} className="text-stone-400 hover:text-stone-700 p-1"><Pencil size={14} /></button>
+                <button onClick={() => elimina(m.id)} className="text-stone-300 hover:text-rose-400 p-1"><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </div>
+        )
+      }
+    </div>
+  );
+}
+
+function FornitoriImpostazioni({ fornitori, sincFornitori, onSincronizza, onToggleAbilitato }: {
+  fornitori: VendingFornitore[];
+  sincFornitori: { loading: boolean; risultato?: string } | null;
+  onSincronizza: () => Promise<void>;
+  onToggleAbilitato: (id: string, abilitato: boolean) => Promise<void>;
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="font-[Fraunces] text-2xl font-semibold text-stone-900">Fornitori</h1>
+        <button
+          onClick={onSincronizza}
+          disabled={sincFornitori?.loading}
+          className="flex items-center gap-2 bg-[#1F1A12] hover:bg-stone-800 text-white text-sm font-semibold px-4 py-2.5 rounded-lg disabled:opacity-50"
+        >
+          <RefreshCw size={15} className={sincFornitori?.loading ? "animate-spin" : ""} />
+          Sincronizza da Business Central
+        </button>
+      </div>
+      {sincFornitori?.risultato && (
+        <div className="bg-stone-50 border border-stone-200 rounded-lg px-4 py-2 text-sm text-stone-600 mb-4">{sincFornitori.risultato}</div>
+      )}
+      <p className="text-sm text-stone-500 mb-4">
+        Abilita i fornitori che possono essere associati ai carichi di magazzino. I fornitori non abilitati non appariranno nella lista durante il carico.
+      </p>
+      {fornitori.length === 0
+        ? <p className="text-stone-400 text-sm">Nessun fornitore. Usa il pulsante "Sincronizza da Business Central" per importarli.</p>
+        : (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            {fornitori.map((f) => (
+              <div key={f.id} className="flex items-center gap-3 px-4 py-3 border-b border-stone-50 last:border-0">
+                <div className="flex-1">
+                  <div className="font-medium text-stone-800">{f.ragioneSociale}</div>
+                  <div className="text-xs text-stone-400 font-mono">{f.codiceBC}</div>
+                </div>
+                <button
+                  onClick={() => onToggleAbilitato(f.id, !f.abilitatoCarico)}
+                  className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition ${f.abilitatoCarico ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200" : "bg-stone-100 text-stone-400 hover:bg-stone-200"}`}
+                >
+                  {f.abilitatoCarico ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                  {f.abilitatoCarico ? "Abilitato" : "Non abilitato"}
+                </button>
+              </div>
+            ))}
+          </div>
+        )
+      }
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  APP                                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -1460,9 +2294,31 @@ export default function App() {
   const [venditePageSize, setVenditePageSize] = useState<PageSize>(20);
   const backendOffline = useBackendOffline();
 
+  const [magazzini, setMagazzini] = useSyncedResource(api.magazzini, []);
+  const [prodotti, setProdotti] = useSyncedResource(api.prodotti, []);
+  const [fornitori, setFornitori] = useSyncedResource(api.fornitori, []);
+  const [stock, setStock] = useState<VendingStockItem[]>([]);
+  const [movimenti, setMovimenti] = useState<VendingMovimento[]>([]);
+  const [magazzinoSelezionato, setMagazzinoSelezionato] = useState<string>("");
+  const [magazzinoAperto, setMagazzinoAperto] = useState<boolean>(false);
+  const [scannerAttivo, setScannerAttivo] = useState<boolean>(false);
+  const [censimento, setCensimento] = useState<FaseCensimento>(null);
+  const [righeFlusso, setRigheFlusso] = useState<RigaInserimento[]>([]);
+  const [sincFornitori, setSincFornitori] = useState<{ loading: boolean; risultato?: string } | null>(null);
+
+  const reloadStock = (magId: string) => {
+    if (!magId) return;
+    fetchStock<VendingStockItem>(magId).then(setStock).catch(() => {});
+  };
+  const reloadMovimenti = (magId?: string) => {
+    fetchMovimenti<VendingMovimento>({ magazzinoId: magId }).then(setMovimenti).catch(() => {});
+  };
+
   const [tab, setTab] = useState<string>("dashboard");
-  const TAB_IMPOSTAZIONI = ["sedi"];
+  const TAB_IMPOSTAZIONI = ["sedi", "magazzini-impostazioni", "fornitori-impostazioni"];
+  const TAB_MAGAZZINO = ["magazzino-stock", "magazzino-carico", "magazzino-scarico", "magazzino-inventario", "magazzino-movimenti"];
   const [impostazioniAperte, setImpostazioniAperte] = useState<boolean>(TAB_IMPOSTAZIONI.includes(tab));
+  const [magazzinoAperto2, setMagazzinoAperto2] = useState<boolean>(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
     try { return localStorage.getItem("vending-sidebar-collapsed") === "1"; } catch { return false; }
   });
@@ -1692,6 +2548,43 @@ export default function App() {
               </button>
             ))}
 
+            {/* Sezione Magazzino */}
+            <div className="md:mt-1">
+              <button
+                onClick={() => setMagazzinoAperto2((v) => !v)}
+                title={sidebarCollapsed ? "Magazzino" : undefined}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${
+                  TAB_MAGAZZINO.includes(tab) ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
+                }`}
+              >
+                <Boxes size={16} />
+                {!sidebarCollapsed && <>Magazzino<ChevronDown size={14} className={`ml-auto transition-transform hidden md:block ${magazzinoAperto2 ? "rotate-180" : ""}`} /></>}
+              </button>
+              {magazzinoAperto2 && (
+                <div className={`flex md:flex-col gap-1 md:mt-1 ${sidebarCollapsed ? "" : "md:pl-4 md:border-l md:border-white/10 md:ml-4"}`}>
+                  {[
+                    { id: "magazzino-stock", label: "Stock attuale", icon: Package },
+                    { id: "magazzino-carico", label: "Nuovo carico", icon: ArrowDownToLine },
+                    { id: "magazzino-scarico", label: "Nuovo scarico", icon: ArrowUpFromLine },
+                    { id: "magazzino-inventario", label: "Inventario", icon: ClipboardList },
+                    { id: "magazzino-movimenti", label: "Storico movimenti", icon: RefreshCw },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setTab(t.id)}
+                      title={sidebarCollapsed ? t.label : undefined}
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${sidebarCollapsed ? "md:justify-center md:px-0" : ""} ${
+                        tab === t.id ? "bg-white/10 text-white" : "text-stone-400 hover:text-stone-200 hover:bg-white/5"
+                      }`}
+                    >
+                      <t.icon size={15} />
+                      {!sidebarCollapsed && t.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {isAdminApp && (
             <div className="md:mt-1">
               <button
@@ -1706,7 +2599,11 @@ export default function App() {
               </button>
               {impostazioniAperte && (
                 <div className={`flex md:flex-col gap-1 md:mt-1 ${sidebarCollapsed ? "" : "md:pl-4 md:border-l md:border-white/10 md:ml-4"}`}>
-                  {[{ id: "sedi", label: "Sedi", icon: MapPin }].map((t) => (
+                  {[
+                    { id: "sedi", label: "Sedi", icon: MapPin },
+                    { id: "magazzini-impostazioni", label: "Magazzini", icon: Boxes },
+                    { id: "fornitori-impostazioni", label: "Fornitori", icon: TruckIcon },
+                  ].map((t) => (
                     <button
                       key={t.id}
                       onClick={() => setTab(t.id)}
@@ -1808,6 +2705,104 @@ export default function App() {
               onApriMacchina={(m) => setModale({ type: "modificaMacchina", payload: m })}
               onEliminaMacchina={eliminaMacchina}
               onToggleMacchinaAttiva={toggleMacchinaAttiva}
+            />
+          )}
+
+          {/* ── MAGAZZINO ── */}
+          {tab === "magazzino-stock" && (
+            <MagazzinoStock
+              magazzini={magazzini}
+              stock={stock}
+              magazzinoSelezionato={magazzinoSelezionato}
+              onSelezionaMagazzino={(id) => { setMagazzinoSelezionato(id); reloadStock(id); }}
+            />
+          )}
+          {tab === "magazzino-carico" && (
+            <MagazzinoCarico
+              magazzini={magazzini}
+              fornitori={fornitori.filter((f) => f.abilitatoCarico)}
+              stock={stock}
+              magazzinoSelezionato={magazzinoSelezionato}
+              onSelezionaMagazzino={(id) => { setMagazzinoSelezionato(id); reloadStock(id); }}
+              onConferma={async (body) => {
+                await creaMovimento(body);
+                reloadStock(body.magazzinoId);
+                reloadMovimenti(body.magazzinoId);
+                setTab("magazzino-stock");
+              }}
+            />
+          )}
+          {tab === "magazzino-scarico" && (
+            <MagazzinoScarico
+              magazzini={magazzini}
+              macchine={macchine.filter((m) => m.attiva)}
+              stock={stock}
+              magazzinoSelezionato={magazzinoSelezionato}
+              onSelezionaMagazzino={(id) => { setMagazzinoSelezionato(id); reloadStock(id); }}
+              onConferma={async (body) => {
+                await creaMovimento(body);
+                reloadStock(body.magazzinoId);
+                reloadMovimenti(body.magazzinoId);
+                setTab("magazzino-stock");
+              }}
+            />
+          )}
+          {tab === "magazzino-inventario" && (
+            <MagazzinoInventario
+              magazzini={magazzini}
+              stock={stock}
+              magazzinoSelezionato={magazzinoSelezionato}
+              onSelezionaMagazzino={(id) => { setMagazzinoSelezionato(id); reloadStock(id); }}
+              onConferma={async (body) => {
+                await creaMovimento(body);
+                reloadStock(body.magazzinoId);
+                reloadMovimenti(body.magazzinoId);
+                setTab("magazzino-stock");
+              }}
+            />
+          )}
+          {tab === "magazzino-movimenti" && (
+            <MagazzinoMovimenti
+              magazzini={magazzini}
+              movimenti={movimenti}
+              magazzinoSelezionato={magazzinoSelezionato}
+              onSelezionaMagazzino={(id) => { setMagazzinoSelezionato(id); reloadMovimenti(id); }}
+            />
+          )}
+
+          {/* ── IMPOSTAZIONI MAGAZZINO ── */}
+          {tab === "magazzini-impostazioni" && isAdminApp && (
+            <MagazziniImpostazioni
+              magazzini={magazzini}
+              sediCentrali={sediCentrali}
+              onSalva={(m) => {
+                if (magazzini.find((x) => x.id === m.id)) {
+                  setMagazzini((ms) => ms.map((x) => x.id === m.id ? m : x));
+                } else {
+                  setMagazzini((ms) => [...ms, m]);
+                }
+              }}
+              onElimina={(id) => setMagazzini((ms) => ms.filter((x) => x.id !== id))}
+            />
+          )}
+          {tab === "fornitori-impostazioni" && isAdminApp && (
+            <FornitoriImpostazioni
+              fornitori={fornitori}
+              sincFornitori={sincFornitori}
+              onSincronizza={async () => {
+                setSincFornitori({ loading: true });
+                try {
+                  const r = await sincronizzaFornitoriBC<{ importati: number; aggiornati: number; errori: string[] }>();
+                  setSincFornitori({ loading: false, risultato: `Importati: ${r.importati}, Aggiornati: ${r.aggiornati}${r.errori.length ? `, Errori: ${r.errori.length}` : ""}` });
+                  setFornitori(await api.fornitori.list());
+                } catch (e) {
+                  setSincFornitori({ loading: false, risultato: `Errore: ${(e as Error).message}` });
+                }
+              }}
+              onToggleAbilitato={async (id, abilitato) => {
+                await toggleFornitoreAbilitato(id, abilitato);
+                setFornitori((fs) => fs.map((f) => f.id === id ? { ...f, abilitatoCarico: abilitato } : f));
+              }}
             />
           )}
 

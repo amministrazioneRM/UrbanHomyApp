@@ -369,8 +369,9 @@ model VendingMacchina {
   struttura   VendingStruttura @relation(fields: [strutturaId], references: [id])
   nome        String
   tipo        String
-  attiva      Boolean          @default(true)
-  vendite     VendingVendita[]
+  attiva               Boolean            @default(true)
+  vendite              VendingVendita[]
+  movimentiScarico     VendingMovimento[]
 
   @@index([strutturaId])
   @@map("vending_macchine")
@@ -394,6 +395,87 @@ model VendingVendita {
   @@index([strutturaId])
   @@index([macchinaId])
   @@map("vending_vendite")
+}
+
+model VendingMagazzino {
+  id        String             @id
+  nome      String
+  sedeId    String
+  note      String?
+  attivo    Boolean            @default(true)
+  movimenti VendingMovimento[]
+  stock     VendingStock[]
+
+  @@map("vending_magazzini")
+}
+
+model VendingProdotto {
+  id        String                 @id
+  barcode   String                 @unique
+  nome      String
+  unita     String                 @default("pz")
+  note      String?
+  createdAt DateTime               @default(now())
+  righe     VendingMovimentoRiga[]
+  stock     VendingStock[]
+
+  @@map("vending_prodotti")
+}
+
+model VendingFornitore {
+  id              String             @id
+  codiceBC        String             @unique
+  ragioneSociale  String
+  abilitatoCarico Boolean            @default(false)
+  dataImport      DateTime
+  movimenti       VendingMovimento[]
+
+  @@map("vending_fornitori")
+}
+
+model VendingMovimento {
+  id                     String                 @id
+  tipo                   String
+  magazzinoId            String
+  magazzino              VendingMagazzino       @relation(fields: [magazzinoId], references: [id])
+  data                   DateTime
+  ddtNumero              String?
+  ddtData                DateTime?
+  fornitoreId            String?
+  fornitore              VendingFornitore?      @relation(fields: [fornitoreId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  macchinaDestinazioneId String?
+  macchinaDestinazione   VendingMacchina?       @relation(fields: [macchinaDestinazioneId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  note                   String?
+  operatoreNome          String?
+  createdAt              DateTime               @default(now())
+  righe                  VendingMovimentoRiga[]
+
+  @@index([magazzinoId])
+  @@map("vending_movimenti")
+}
+
+model VendingMovimentoRiga {
+  id                 String           @id
+  movimentoId        String
+  movimento          VendingMovimento @relation(fields: [movimentoId], references: [id], onDelete: Cascade)
+  prodottoId         String
+  prodotto           VendingProdotto  @relation(fields: [prodottoId], references: [id])
+  quantita           Int
+  quantitaPrecedente Int?
+
+  @@index([movimentoId])
+  @@map("vending_movimenti_righe")
+}
+
+model VendingStock {
+  magazzinoId String
+  magazzino   VendingMagazzino @relation(fields: [magazzinoId], references: [id])
+  prodottoId  String
+  prodotto    VendingProdotto  @relation(fields: [prodottoId], references: [id])
+  quantita    Int              @default(0)
+
+  @@id([magazzinoId, prodottoId])
+  @@map("vending_stock")
 }
 
 // App: Revenue Forecast
